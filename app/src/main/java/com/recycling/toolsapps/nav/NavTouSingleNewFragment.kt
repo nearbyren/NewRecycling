@@ -75,12 +75,13 @@ class NavTouSingleNewFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBin
 
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaChannel.collect {
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 -> $it")
+                    BoxToolLogUtils.savePrintln("业务流：刷新重量 投递单 -> $it")
                     val refreshType = it.refreshType
                     val warningContent = it.warningContent
+                    val doorGex = it.doorGeX
                     when (refreshType) {
                         1 -> {
-                            val weightPercent = when (cabinetVM.doorGeX) {
+                            val weightPercent = when (doorGex) {
                                 CmdCode.GE1 -> {
                                     cabinetVM.weightPercent1
                                 }
@@ -93,13 +94,25 @@ class NavTouSingleNewFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBin
                                     0
                                 }
                             }
-                            val curWeight = cabinetVM.curG1Weight//刷新ui当前格口重量
+                            val curWeight = when (doorGex) {
+                                CmdCode.GE1 -> {
+                                    it.curG1WeightValue
+                                }
+
+                                CmdCode.GE2 -> {
+                                    it.curG2WeightValue
+                                }
+
+                                else -> {
+                                    "0.00"
+                                }
+                            }
                             if (weightPercent > 0) {
                                 val wp =
                                     CalculationUtil.divideFloats(weightPercent.toString(), "100")
                                 //以服务器百分比换算后的重量
                                 val result = CalculationUtil.multiplyFloats(curWeight ?: "0.00", wp)
-                                if (CalculationUtil.lessEqual(result ?: "0.00")) {
+                                if (CalculationUtil.lessEqual(result)) {
                                     binding.tvCurWeightNet.text = "当前重量(kg)：$curWeight"
                                 } else {
                                     binding.tvCurWeightNet.text = "当前重量(kg)：$result"
@@ -108,7 +121,7 @@ class NavTouSingleNewFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBin
                                 binding.tvCurWeightNet.text = "当前重量(kg)：$curWeight"
                             }
                             val votable = cabinetVM.getVot1Weight() 
-                            Loge.e("流程 刷新Ui $curWeight | $votable")
+                            Loge.e("流程 刷新Ui $curWeight 换算百分百比 $weightPercent | $votable")
                             //可再投递重量
                             binding.tvVotableValueNet.text = "可再投递(kg)：$votable"
                             val valueNet = binding.tvVotableValueNet.text.toString()

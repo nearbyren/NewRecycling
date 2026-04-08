@@ -78,7 +78,7 @@ class NavTouDoubleNewFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBin
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaChannel.collect {
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 -> $it")
+                    BoxToolLogUtils.savePrintln("业务流：刷新重量 投递双 -> $it")
                     val refreshType = it.refreshType
                     val warningContent = it.warningContent
                     val doorGeX = it.doorGeX
@@ -111,7 +111,7 @@ class NavTouDoubleNewFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBin
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.uiCloseStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：关闭页面 -> $it")
+                    BoxToolLogUtils.savePrintln("业务流：关闭页面 投递双-> $it")
                     when (it) {
                         CabinetVM.UiCloseStep.IDLE -> {}
                         CabinetVM.UiCloseStep.CLOSE_DELIVERY -> {

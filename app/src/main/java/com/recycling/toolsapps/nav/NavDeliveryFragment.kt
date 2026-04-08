@@ -43,7 +43,7 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.uiCloseStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：关闭页面 -> $it")
+                    BoxToolLogUtils.savePrintln("业务流：关闭页面 结算页面-> $it")
                     when (it) {
                         CabinetVM.UiCloseStep.IDLE -> {}
                         CabinetVM.UiCloseStep.CLOSE_DELIVERY -> {
@@ -62,12 +62,16 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaChannel.collect {
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 -> $it")
+                    BoxToolLogUtils.savePrintln("业务流：刷新重量 结算页面-> $it")
                     val refreshType = it.refreshType
                     val taskPhotoPath = it.takePhotoUrl
                     when (refreshType) {
                         1 -> {
                             val weightDuringOpening = it.weightDuringOpeningValue ?: "0.00"
+                            val weightAfterOpening = it.weightAfterOpeningValue ?: "0.00"
+                            val resultWeight = CalculationUtil.subtractFloats(
+                                weightDuringOpening, weightAfterOpening
+                            )
                             val weightPercent = when (cabinetVM.doorGeX) {
                                 CmdCode.GE1 -> {
                                     cabinetVM.weightPercent1
@@ -83,28 +87,27 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                             }
                             val price = cabinetVM.curGePrice ?: "0.6"
                             if (weightPercent <= 0) {
-                                val floatValue =
-                                    CalculationUtil.multiplyFloats(price, weightDuringOpening)
+                                val floatValue = CalculationUtil.multiplyFloats(price, resultWeight)
                                 //当前金额
                                 binding.tvMoneyValue.text = "$floatValue 元"
                                 //当前称重
-                                binding.tvWeightValue.text = "$weightDuringOpening 公斤"
-                                BoxToolLogUtils.savePrintln("业务流：刷新当前页面数据重量：$weightDuringOpening | 价格：$price")
+                                binding.tvWeightValue.text = "$resultWeight 公斤"
+                                BoxToolLogUtils.savePrintln("业务流：刷新当前页面数据重量：$resultWeight | 价格：$price")
 
                             } else {
                                 val wp =
                                     CalculationUtil.divideFloats(weightPercent.toString(), "100")
                                 //以服务器百分比换算后的重量
-                                val result = CalculationUtil.multiplyFloats(weightDuringOpening, wp)
+                                val result = CalculationUtil.multiplyFloats(resultWeight, wp)
                                 if (weightPercent > 0) {
                                     if (CalculationUtil.lessEqual(result)) {
                                         val floatValue =
-                                            CalculationUtil.multiplyFloats(price, weightDuringOpening)
+                                            CalculationUtil.multiplyFloats(price, resultWeight)
                                         //当前金额
                                         binding.tvMoneyValue.text = "$floatValue 元"
                                         //当前称重
-                                        binding.tvWeightValue.text = "$weightDuringOpening 公斤"
-                                        BoxToolLogUtils.savePrintln("业务流：刷新当前页面数据重量：$weightDuringOpening | 价格：$price")
+                                        binding.tvWeightValue.text = "$resultWeight 公斤"
+                                        BoxToolLogUtils.savePrintln("业务流：刷新当前页面数据重量：$resultWeight | 价格：$price")
                                     } else {
                                         val floatValue =
                                             CalculationUtil.multiplyFloats(price, result)
@@ -112,7 +115,7 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                                         binding.tvMoneyValue.text = "$floatValue 元"
                                         //当前称重
                                         binding.tvWeightValue.text = "$result 公斤"
-                                        BoxToolLogUtils.savePrintln("业务流：刷新当前页面数据重量：$weightDuringOpening | 价格：$price")
+                                        BoxToolLogUtils.savePrintln("业务流：刷新当前页面数据重量：$resultWeight | 价格：$price")
                                     }
                                 }
                             }
@@ -147,7 +150,7 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
         binding.tvOperation.isEnabled = false
         binding.tvOperation.text = "正在开启仓门中"
         binding.tvOperation.setOnClickListener {
-            binding.tvOperation.isEnabled = false
+            cabinetVM.deliverycancelTimer()
             binding.tvOperation.text = "正在关闭仓门中"
             cabinetVM.setFlowCurrentStep(CabinetVM.LockerStep.CLICK_CLOSE)
         }
@@ -157,6 +160,7 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
         latestBusiness()
 
     }
+
     private fun upgradeAi() {
         // 在 Activity/Fragment 中收集状态
         lifecycleScope.launch {
@@ -173,6 +177,7 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                             // 更新 UI
                             binding.cpvView.setProgress(state.secondsRemaining)
                         }
+
                         DeliveryTimer.CountdownState.Finished -> {
                             Loge.e("流程 deliveryState Finished")
                             cabinetVM.setFlowCurrentStep(CabinetVM.LockerStep.CLICK_CLOSE)

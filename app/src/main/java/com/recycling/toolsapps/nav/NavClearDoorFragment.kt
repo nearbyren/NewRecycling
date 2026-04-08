@@ -39,7 +39,7 @@ class NavClearDoorFragment : BaseBindLazyTimeFragment<NavFragmentClearDoorBindin
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.uiCloseStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：关闭页面 -> $it")
+                    BoxToolLogUtils.savePrintln("业务流：关闭页面 清运页=-> $it")
                     when (it) {
                         CabinetVM.UiCloseStep.IDLE -> {}
                         CabinetVM.UiCloseStep.CLOSE_DELIVERY -> {
@@ -58,7 +58,7 @@ class NavClearDoorFragment : BaseBindLazyTimeFragment<NavFragmentClearDoorBindin
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaChannel.collect {
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 -> $it")
+                    BoxToolLogUtils.savePrintln("业务流：刷新重量 清运页面 -> $it")
                     val refreshType = it.refreshType
                     when (refreshType) {
                         1 -> {

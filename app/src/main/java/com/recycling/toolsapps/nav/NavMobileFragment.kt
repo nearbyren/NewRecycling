@@ -87,7 +87,7 @@ class NavMobileFragment : BaseBindLazyTimeFragment<NavFragmentMobileBinding>() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.uiCloseStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：关闭页面 -> $it")
+                    BoxToolLogUtils.savePrintln("业务流：关闭页面 手机页面-> $it")
                     when (it) {
                         CabinetVM.UiCloseStep.IDLE -> {}
                         CabinetVM.UiCloseStep.CLOSE_DELIVERY -> {

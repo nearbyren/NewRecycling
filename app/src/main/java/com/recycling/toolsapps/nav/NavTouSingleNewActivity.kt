@@ -311,7 +311,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
 
     private fun initPort() {
         // 启动门控制系统
-//        cabinetVM.startContainersStatus()
+        cabinetVM.startContainersStatus()
         //启动检查故障
         cabinetVM.pollingFault()
     }
