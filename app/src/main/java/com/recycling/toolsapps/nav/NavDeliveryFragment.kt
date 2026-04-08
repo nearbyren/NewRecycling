@@ -9,6 +9,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.bumptech.glide.Glide
+import com.recycling.toolsapps.BuildConfig
 import com.recycling.toolsapps.R
 import com.recycling.toolsapps.databinding.NavFragmentDeliveryBinding
 import com.recycling.toolsapps.fitsystembar.base.bind.BaseBindLazyTimeFragment
@@ -62,7 +63,9 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaChannel.collect {
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 结算页面-> $it")
+                    if (BuildConfig.DEBUG) {
+                        BoxToolLogUtils.savePrintln("业务流：刷新重量 结算页面-> $it")
+                    }
                     val refreshType = it.refreshType
                     val taskPhotoPath = it.takePhotoUrl
                     when (refreshType) {

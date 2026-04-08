@@ -21,6 +21,7 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.cabinet.toolsapp.tools.bus.FlowBus
 import com.cabinet.toolsapp.tools.bus.ResEvent
+import com.recycling.toolsapps.BuildConfig
 import com.recycling.toolsapps.R
 import com.recycling.toolsapps.databinding.NavTouSingleFragmentBinding
 import com.recycling.toolsapps.fitsystembar.base.bind.BaseBindLazyTimeFragment
@@ -75,7 +76,9 @@ class NavTouSingleNewFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBin
 
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaChannel.collect {
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 投递单 -> $it")
+                    if (BuildConfig.DEBUG) {
+                        BoxToolLogUtils.savePrintln("业务流：刷新重量 投递单 -> $it")
+                    }
                     val refreshType = it.refreshType
                     val warningContent = it.warningContent
                     val doorGex = it.doorGeX

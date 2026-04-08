@@ -5,6 +5,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.recycling.toolsapps.BuildConfig
 import com.recycling.toolsapps.R
 import com.recycling.toolsapps.databinding.NavFragmentClearDoorBinding
 import com.recycling.toolsapps.fitsystembar.base.bind.BaseBindLazyTimeFragment
@@ -58,19 +59,24 @@ class NavClearDoorFragment : BaseBindLazyTimeFragment<NavFragmentClearDoorBindin
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaChannel.collect {
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 清运页面 -> $it")
+                    if (BuildConfig.DEBUG) {
+                        BoxToolLogUtils.savePrintln("业务流：刷新重量 清运页面 -> $it")
+                    }
                     val refreshType = it.refreshType
                     when (refreshType) {
                         1 -> {
                             //清运前重量
-                            val beforeValue = it.weightBeforeOpenValue
-                            val afterValue = it.weightAfterClosingValue
-                            binding.tvClearBeforeValue.text = "${beforeValue}KG"
+                            val weightBeforeOpen = it.weightBeforeOpenValue
+                            val weightDuringOpening = it.weightDuringOpeningValue
+                            val weightAfterClosing = it.weightAfterClosingValue
+                            binding.tvClearBeforeValue.text = "${weightBeforeOpen}KG"
                             //清运后重量
-                            binding.tvClearAfterValue.text = "${afterValue}KG"
+                            binding.tvClearAfterValue.text = "${weightDuringOpening}KG"
+                            val result =
+                                if (weightAfterClosing == "0.00") weightDuringOpening else weightAfterClosing
                             //换算重量
                             val clearValue = CalculationUtil.subtractFloats(
-                                beforeValue ?: "0.00", afterValue ?: "0.00"
+                                weightBeforeOpen ?: "0.00", result?: "0.00"
                             )
                             //清运重量
                             binding.tvClearValue.text = "${clearValue}KG"

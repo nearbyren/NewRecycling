@@ -1051,7 +1051,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             curG1Weight = lattice.weight
                             curG1TotalWeight = lattice.overweight ?: "60.00"
                             SPreUtil.put(AppUtils.getContext(), SPreUtil.saveIr1, lattice.ir)
-                            weightPercent1 = lattice.weightPercent ?: 0
+                            weightPercent1 = lattice.weightPercent ?: 50
                             closeCount1Default = lattice.closeCount ?: 3
                             closeCount1 = closeCount1Default
 
@@ -1063,7 +1063,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             curG2Weight = lattice.weight
                             curG2TotalWeight = lattice.overweight ?: "60.00"
                             SPreUtil.put(AppUtils.getContext(), SPreUtil.saveIr2, lattice.ir)
-                            weightPercent2 = lattice.weightPercent ?: 0
+                            weightPercent2 = lattice.weightPercent ?: 50
                             closeCount2Default = lattice.closeCount ?: 3
                             closeCount2 = closeCount2Default
 
@@ -1087,7 +1087,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         sync = lattice.sync
                         volume = lattice.volume
                         closeCount = lattice.closeCount ?: 3
-                        weightPercent = lattice.weightPercent ?: 0
+                        weightPercent = lattice.weightPercent ?: 50
                         weight = lattice.weight
                         weightMonitor = lattice.weight
                         time = AppUtils.getDateYMDHMS()
@@ -1135,7 +1135,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         queryLattice.sync = lattice.sync
                         queryLattice.volume = lattice.volume
                         queryLattice.closeCount = lattice.closeCount ?: 3
-                        queryLattice.weightPercent = lattice.weightPercent ?: 0
+                        queryLattice.weightPercent = lattice.weightPercent ?: 50
                         queryLattice.weight = lattice.weight
                         queryLattice.weightDefault = lattice.weight
                         val rowCabin =
@@ -2530,7 +2530,21 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 stateList.withIndex().forEach { (index, state) ->
                     addObject {
                         addProperty("smoke", state.smoke)
-                        if (overflowState) {
+                        val curGTotal = when (index) {
+                            0 -> {
+                                curG1TotalWeight.toFloat()
+                            }
+
+                            1 -> {
+                                curG2TotalWeight.toFloat()
+                            }
+
+                            else -> {
+                                60f
+                            }
+                        }
+                        val curGWeight = state.weigh
+                        if (overflowState && curGWeight > curGTotal) {
                             addProperty("capacity", 2)
                         } else {
                             addProperty("capacity", state.capacity)
@@ -3609,9 +3623,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     SerialPortSdk.queryWeight(doorGex).getOrNull()?.weight.toString()
                 toWeightAfterClosing = weightAfterClosing
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
-                BoxToolLogUtils.savePrintln("业务流：业务流完毕！开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing")
-                println(
-                    "业务流：业务流完毕！ 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${
+                BoxToolLogUtils.savePrintln(
+                    "业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${
                         CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)
                     } " + "refWeight = " + "${
                         CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)
@@ -3747,6 +3760,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             throw Exception("门开后-门关故障: $doorStatus")
                         }
                     }
+                    //门关跳出查询门和重量
+                    if (currentStep.value == LockerStep.CLOSE) {
+                        break
+                    }
                     // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
                     delay(1000)
                 }
@@ -3759,9 +3776,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     SerialPortSdk.queryWeight(doorGex).getOrNull()?.weight.toString()
                 toWeightAfterClosing = weightAfterClosing
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
-                BoxToolLogUtils.savePrintln("业务流：业务流完毕！开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing")
-                println(
-                    "业务流：业务流完毕！ 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${
+                BoxToolLogUtils.savePrintln(
+                    "业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${
                         CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)
                     } " + "refWeight = " + "${
                         CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)
@@ -4060,7 +4076,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile ${toFile?.name}")
                     toFile?.name?.let { uploadPhoto(curSn, setTransId, 0, it, switchType.toString()) }
-                    toGoInsertPhoto(setTransId, switchType.toString(), 0, nameIn)
+                    toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, switchType.toString(), 0, it) }
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = 4
                         takePhotoUrl = fileIn.absolutePath
@@ -4071,7 +4087,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile ${toFile?.name}")
                     toFile?.name?.let { uploadPhoto(curSn, setTransId, 2, it, switchType.toString()) }
-                    toGoInsertPhoto(setTransId, switchType.toString(), 1, nameOut)
+                    toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, switchType.toString(), 1, it) }
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = 4
                         takePhotoUrl = fileOut.absolutePath
@@ -4085,7 +4101,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile ${toFile?.name}")
                     toFile?.name?.let { uploadPhoto(curSn, setTransId, 3, it, switchType.toString()) }
-                    toGoInsertPhoto(setTransId, switchType.toString(), 1, nameOut)
+                    toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, switchType.toString(), 1, it) }
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = 4
                         takePhotoUrl = fileOut.absolutePath
@@ -4096,7 +4112,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile ${toFile?.name}")
                     toFile?.name?.let { uploadPhoto(curSn, setTransId, 1, it, switchType.toString()) }
-                    toGoInsertPhoto(setTransId, switchType.toString(), 0, nameIn)
+                    toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, switchType.toString(), 0, it) }
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = 4
                         takePhotoUrl = fileIn.absolutePath
@@ -4110,6 +4126,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
     suspend fun takePhotoRemote(photoModel: PhotoBean) = withContext(Dispatchers.IO) {
         if (_currentStep.value == LockerStep.IDLE && !isRunning.get()) {
             delay(1000)
+            val dir = File(
+                AppUtils.getContext()
+                    .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
+            )
+            if (!dir.exists()) dir.mkdirs()
             when (photoModel.photoType) {
                 -1 -> {
                     val setTransId = modelOpenBean?.transId ?: "transId"
@@ -4117,36 +4138,32 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         "s-${setTransId}-$45-i-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
                     val nameOut =
                         "s-${setTransId}-$45-o-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-                    val dir = File(
-                        AppUtils.getContext()
-                            .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
-                    )
-                    if (!dir.exists()) dir.mkdirs()
                     val fileIn = File(dir, nameIn)
                     val fileOut = File(dir, nameOut)
 
                     cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
                         BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
                         toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
-                        toGoInsertPhoto(setTransId, "45", 0, nameIn)
+                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 0, it) }
                     }
                     delay(5000)
                     cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
                         BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
                         toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
-                        toGoInsertPhoto(setTransId, "45", 1, nameOut)
+                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 1, it) }
                     }
                 }
 
                 4 -> {
+
                     val setTransId = modelOpenBean?.transId ?: "transId"
                     val nameIn =
                         "${setTransId}-$45-in-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-                    val fileIn = File(AppUtils.getContext().cacheDir, nameIn)
-                    cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
+                    val fileIn = File(dir, nameIn)
+                     cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
                         BoxToolLogUtils.saveCamera("拍照成功 远程 内 $toFile ${toFile?.name}")
                         toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
-                        toGoInsertPhoto(setTransId, "45", 0, nameIn)
+                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 0, it) }
                     }
 
                 }
@@ -4155,11 +4172,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val setTransId = modelOpenBean?.transId ?: "transId"
                     val nameOut =
                         "${setTransId}-$45-out-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-                    val fileOut = File(AppUtils.getContext().cacheDir, nameOut)
+                    val fileOut = File(dir, nameOut)
                     cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
                         BoxToolLogUtils.saveCamera("拍照成功 远程 外 $toFile ${toFile?.name}")
                         toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
-                        toGoInsertPhoto(setTransId, "45", 1, nameOut)
+                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 1, it) }
                     }
                 }
             }
@@ -4264,7 +4281,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                     }
                     val s = DatabaseManager.upWeightEntity(AppUtils.getContext(), weight)
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 更新成功 $s ${openModel.transId}")
+                    BoxToolLogUtils.savePrintln("业务流：刷新重量 更新成功 $s ${openModel.transId} ${openModel.openType}")
 
                 }
                 _refBusStaChannel.send(MonitorWeight().apply {
@@ -4336,8 +4353,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 val state = containersDB[0]
                                 //取出原始重量
                                 val weightNew = lower.weigh?.toFloat() ?: 0.0f
-                                //存临时原始重量
-                                val weightNewY = weightNew
                                 val weightOld = state.weighY.toString()
                                 //处理重量浮动变化
                                 val isChange = CalculationUtil.subtractFloatsBoolean(
@@ -4360,7 +4375,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 state.smoke = lower.smokeValue ?: 0
                                 state.irState = irStateValue
                                 state.doorStatus = irDoorStatusValue
-                                state.weighY = weightNewY
                                 state.weigh = weightNew
                                 state.lockStatus = lockStatus
                                 state.time = AppUtils.getDateYMDHMS()
@@ -4397,7 +4411,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 if (size > 1 && doorGeXType == CmdCode.GE2) {
                                     val state = containersDB[1]
                                     var weightNew = lower.weigh?.toFloat() ?: 0.0f
-                                    val weightNewY = weightNew
                                     val weightOld = state.weighY.toString()
                                     //处理重量浮动变化
                                     val isChange = CalculationUtil.subtractFloatsBoolean(
@@ -4420,20 +4433,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     state.smoke = lower.smokeValue ?: 0
                                     state.irState = irStateValue
                                     state.doorStatus = irDoorStatusValue
-                                    //以服务器百分比再次换算重量
-                                    if (weightPercent2 > 0) {
-                                        val wp = CalculationUtil.divideFloats(
-                                            weightPercent1.toString(), "100"
-                                        )
-                                        //以服务器百分比换算后的重量
-                                        weightNew =
-                                            CalculationUtil.multiplyFloats(weightNew.toString(), wp)
-                                                .toFloat()
-                                        if (CalculationUtil.lessEqual(weightNew.toString())) {
-                                            weightNew = weightNewY
-                                        }
-                                    }
-                                    state.weighY = weightNewY
                                     state.weigh = weightNew
                                     state.lockStatus = lockStatus
                                     state.time = AppUtils.getDateYMDHMS()

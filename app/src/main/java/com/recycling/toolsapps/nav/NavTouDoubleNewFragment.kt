@@ -21,6 +21,7 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.cabinet.toolsapp.tools.bus.FlowBus
 import com.cabinet.toolsapp.tools.bus.ResEvent
+import com.recycling.toolsapps.BuildConfig
 import com.recycling.toolsapps.R
 import com.recycling.toolsapps.databinding.NavTouDoubleFragmentBinding
 import com.recycling.toolsapps.fitsystembar.base.bind.BaseBindLazyTimeFragment
@@ -78,7 +79,9 @@ class NavTouDoubleNewFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBin
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaChannel.collect {
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 投递双 -> $it")
+                    if (BuildConfig.DEBUG) {
+                        BoxToolLogUtils.savePrintln("业务流：刷新重量 投递双 -> $it")
+                    }
                     val refreshType = it.refreshType
                     val warningContent = it.warningContent
                     val doorGeX = it.doorGeX
@@ -168,7 +171,7 @@ class NavTouDoubleNewFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBin
                 } else {
                     binding.tvRightCurWeightNet.text = "当前重量(kg)：$curWeight"
                 }
-                val votable = cabinetVM.getVot1Weight()
+                val votable = cabinetVM.getVot2Weight()
                 Loge.e("流程 刷新Ui $curWeight | $votable")
                 //可再投递重量
                 binding.tvRightCurWeightNet.text = "可再投递(kg)：$votable"
