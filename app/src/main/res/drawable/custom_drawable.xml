@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/background">
+        <shape>
+            <corners android:radius="20dp" />
+            <solid android:color="#e0e0e0" />
+        </shape>
+    </item>
+    <!-- 下面这边注释主要是因为这段虽然可以设置进度条渐变色，但并不能显示圆角，这让我不得不把它写在注释里面-->
+    <!--<item android:id="@android:id/progress">
+        <clip>
+            <shape >
+                <corners android:radius="20dp" /> &lt;!&ndash; 圆角 &ndash;&gt;
+                <gradient
+                    android:startColor="#FF5722"
+                    android:endColor="#FFC107"
+                    android:angle="0"/> &lt;!&ndash; 渐变色 &ndash;&gt;
+            </shape>
+        </clip>
+    </item>-->
+</layer-list>

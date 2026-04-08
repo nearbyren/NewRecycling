@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#00045B"
+        tools:ignore="MissingConstraints">
+
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_sn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SN:123456851111111"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_13"
+                app:layout_constraintRight_toRightOf="parent" />
+
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/dp_10"
+                app:layout_constraintBottom_toTopOf="@+id/cl_jl"
+                app:layout_constraintLeft_toLeftOf="@+id/gline"
+                app:layout_constraintRight_toRightOf="@+id/gline">
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/tv_value1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="0dp"
+                    android:gravity="bottom"
+                    android:text="回收单价"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/sp_20"
+                    android:textStyle="bold"
+                    app:layout_constraintBaseline_toBaselineOf="@id/tv_value2"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toLeftOf="@+id/tv_value2" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/tv_value2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="0dp"
+                    android:layout_marginLeft="@dimen/dp_5"
+                    android:layout_marginRight="@dimen/dp_5"
+                    android:text="0.6"
+                    android:textColor="@color/yellow"
+                    android:textSize="@dimen/sp_40"
+                    android:textStyle="bold"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toRightOf="@+id/tv_value1"
+                    app:layout_constraintRight_toLeftOf="@+id/tv_value3" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/tv_value3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="0dp"
+                    android:gravity="bottom"
+                    android:text="元"
+                    android:textColor="@color/yellow"
+
+                    android:textSize="@dimen/sp_25"
+                    app:layout_constraintBaseline_toBaselineOf="@id/tv_value2"
+                    app:layout_constraintLeft_toRightOf="@+id/tv_value2"
+                    app:layout_constraintRight_toLeftOf="@+id/tv_value4" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/tv_value4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="0dp"
+                    android:layout_marginLeft="@dimen/dp_5"
+                    android:gravity="bottom"
+                    android:text="/Kg"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/sp_20"
+                    android:textStyle="bold"
+                    app:layout_constraintBaseline_toBaselineOf="@id/tv_value2"
+                    app:layout_constraintBottom_toBottomOf="@+id/tv_value2"
+                    app:layout_constraintLeft_toRightOf="@+id/tv_value3" />
+
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/gline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                app:layout_constraintGuide_percent="0.5" />
+
+            <!--计量的数据-->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cl_jl"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/dp_200"
+                android:layout_marginLeft="@dimen/dp_20"
+                android:layout_marginRight="@dimen/dp_20"
+                android:background="@drawable/bg_item_shape"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/tv_zl_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="0dp"
+                    android:gravity="bottom"
+                    android:text="当前重量(kg)：15.00"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/sp_20"
+                    app:layout_constraintBottom_toTopOf="@+id/tv_ketou_value"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/tv_ketou_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="0dp"
+                    android:gravity="top"
+                    android:text="可再投递(kg)：40.00"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/sp_20"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/tv_zl_value" />
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/aiv1"
+                    android:layout_width="@dimen/dp_30"
+                    android:layout_height="@dimen/dp_30"
+                    android:src="@drawable/ic_zhixiang"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toLeftOf="@+id/aiv2" />
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/aiv2"
+                    android:layout_width="@dimen/dp_30"
+                    android:layout_height="@dimen/dp_30"
+                    android:src="@drawable/ic_yilaguan"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toRightOf="@+id/aiv1"
+                    app:layout_constraintRight_toLeftOf="@+id/aiv3" />
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/aiv3"
+                    android:layout_width="@dimen/dp_30"
+                    android:layout_height="@dimen/dp_30"
+                    android:src="@drawable/ic_pingzi"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toRightOf="@+id/aiv2"
+                    app:layout_constraintRight_toRightOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/aiv_code"
+                android:layout_width="@dimen/dp_80"
+                android:layout_height="@dimen/dp_80"
+                android:src="@drawable/ic_erweima"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="已连接"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_13"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toRightOf="@+id/iv_xinhao" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="@color/yellow"
+                android:textSize="@dimen/sp_36"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/tv_sn">
+
+            </androidx.appcompat.widget.AppCompatTextView>
+
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/iv_xinhao"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_xinhao1"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_version"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="版本号:1.0.0"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_13"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintRight_toRightOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:visibility="visible"
+            android:background="#00045B"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_connect"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_100"
+                android:gravity="center"
+                android:text="连接"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_13"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toLeftOf="@+id/tv_send"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_send"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_100"
+                android:gravity="center"
+                android:text="发送"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_13"
+                app:layout_constraintLeft_toRightOf="@+id/tv_connect"
+                app:layout_constraintRight_toLeftOf="@+id/tv_stop" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tv_stop"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_100"
+                android:gravity="center"
+                android:text="停止"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_13"
+                app:layout_constraintLeft_toRightOf="@+id/tv_send"
+                app:layout_constraintRight_toRightOf="parent" />
+
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

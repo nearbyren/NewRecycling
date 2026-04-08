@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme. -->
+    <style name="Theme.App" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/date_dialog_btn</item>
+        <item name="colorPrimaryDark">@color/white</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/date_dialog_btn</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@color/transparent</item>
+        <!-- Customize your theme here. -->
+        <!--        <item name="android:windowBackground">@color/white</item>-->
+        <!-- 设置无标题
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">?android:windowNoTitle</item>-->
+    </style>
+
+    <style name="CabinetLauncherTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/cabinet_layer_launcher_logo</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+    <!--colorControlNormal 为没有获取焦点时候下划线的颜色-->
+    <!--colorControlActivated 为获取焦点时候光标与下划线的颜色-->
+    <style name="MyEditText" parent="Theme.AppCompat.Light">
+        <item name="colorControlNormal">@color/yellow</item>
+        <item name="colorControlActivated">@color/colorAccent</item>
+    </style>
+    <!--通用Dialog-->
+    <style name="lib_uikit_CommonDialog" parent="@android:style/Theme.Dialog">
+        <!--是否去除标题 -->
+        <item name="android:windowNoTitle">true</item>
+        <!--是否去除边框-->
+        <item name="android:windowFrame">@null</item>
+        <!--是否浮现在activity之上-->
+        <item name="android:windowIsFloating">true</item>
+        <!-- 是否半透明 -->
+        <item name="android:windowIsTranslucent">true</item>
+        <!-- 无背景 -->
+        <item name="android:background">@null</item>
+        <!--窗口背景透明-->
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <!-- 去除黑色边框的关键设置项 -->
+        <item name="android:windowContentOverlay">@null</item>
+        <!--弹窗背景是否变暗-->
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+
+    <style name="RoundedCorners">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">100%</item>
+    </style>
+
+    <!--通用的背景透明Dialog-->
+    <style name="lib_uikit_TransparentDialog" parent="lib_uikit_CommonDialog">
+        <!--弹窗背景是否变暗-->
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
+    <style name="common_spinner" parent="Widget.AppCompat.DropDownItem.Spinner">
+        <item name="android:textColor">@color/red</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+
+    <style name="CustomProgressBar" parent="Widget.AppCompat.ProgressBar">
+        <item name="android:indeterminate">true</item>
+        <item name="android:indeterminateTint">@color/turquoise</item> <!-- 设置颜色 -->
+    </style>
+
+    <style name="CircleImageViewStyle">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item> <!-- 50% 宽高即圆形 -->
+    </style>
+
+    <style name="elementDate" parent="Theme.MaterialComponents.DayNight.DarkActionBar.Bridge">
+        <!-- Primary brand color. -->
+        <item name="colorOnPrimary">@color/teal_200</item>
+    </style>
+
+    <declare-styleable name="CheckMarkView">
+        <attr name="circleColor" format="color" />
+        <attr name="checkColor" format="color" />
+        <attr name="crossColor" format="color" />
+        <attr name="strokeWidth" format="dimension" />
+    </declare-styleable>
+
+    <declare-styleable name="CircleProgressView">
+        <attr name="cpv_backgroundColor" format="color" />
+        <attr name="cpv_progressColor" format="color" />
+        <attr name="cpv_textColor" format="color" />
+        <attr name="cpv_strokeWidth" format="dimension" />
+        <attr name="cpv_textSize" format="dimension" />
+        <attr name="cpv_progress" format="integer" />
+        <attr name="cpv_maxProgress" format="integer" />
+    </declare-styleable>
+    <declare-styleable name="FaceScanView">
+        <attr name="checkColor2" format="color" />
+        <attr name="crossColor2" format="color" />
+        <attr name="checkStrokeWidth" format="dimension" />
+    </declare-styleable>
+    <!-- styles.xml -->
+    <style name="SelectableBoxStyle">
+        <item name="android:layout_width">@dimen/dp_600</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">@dimen/sp_12</item>
+    </style>
+</resources>

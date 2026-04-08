@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <usb-device product-id="21970" vendor-id="6790"/>
+    <usb-device product-id="21971" vendor-id="6790"/>
+    <usb-device product-id="21972" vendor-id="6790"/>
+    <usb-device product-id="21973" vendor-id="6790"/>
+    <usb-device product-id="21974" vendor-id="6790"/>
+    <usb-device product-id="21975" vendor-id="6790"/>
+    <usb-device product-id="21976" vendor-id="6790"/>
+
+    <usb-device product-id="29987" vendor-id="6790"/>
+    <usb-device product-id="29986" vendor-id="6790"/>
+    <usb-device product-id="21778" vendor-id="6790"/>
+    <usb-device product-id="21795" vendor-id="6790"/>
+
+    <usb-device product-id="21978" vendor-id="6790"/>
+    <usb-device product-id="21979" vendor-id="6790"/>
+    <usb-device product-id="21981" vendor-id="6790"/>
+
+    <usb-device product-id="21983" vendor-id="6790"/>
+
+    <!-- USB设备过滤器配置 -->
+    <!-- 这里配置你的USB设备的厂商ID和产品ID -->
+
+    <!-- 示例：STMicroelectronics设备 -->
+    <usb-device vendor-id="1155" product-id="22336" /> <!-- 0x0483, 0x5740 -->
+
+    <!-- 示例：FTDI设备 -->
+    <usb-device vendor-id="1027" product-id="24577" /> <!-- 0x0403, 0x6001 -->
+
+    <!-- 示例：Arduino设备 -->
+    <usb-device vendor-id="9025" product-id="67" /> <!-- 0x2341, 0x0043 -->
+
+    <!-- 示例：通用大容量存储设备 -->
+    <usb-device class="8" /> <!-- USB_CLASS_MASS_STORAGE -->
+
+    <!-- 示例：厂商特定设备 -->
+    <usb-device class="255" /> <!-- USB_CLASS_VENDOR_SPEC -->
+
+    <!-- 注意：请根据你的实际设备修改这些值 -->
+    <!-- 你可以使用以下命令查看设备的vendor-id和product-id： -->
+    <!-- adb shell lsusb -->
+    <!-- 或者在代码中打印设备信息来获取正确的ID -->
+
+</resources>

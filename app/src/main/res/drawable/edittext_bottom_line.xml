@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent"/>
+            <padding android:bottom="@dimen/dp_0_5"/> <!-- 控制底部线的厚度 -->
+        </shape>
+    </item>
+    <item android:gravity="bottom">
+        <shape>
+            <size android:height="@dimen/dp_0_5"/> <!-- 底部线的厚度 -->
+            <solid android:color="@color/white"/> <!-- 底部线的颜色 -->
+        </shape>
+    </item>
+</layer-list>

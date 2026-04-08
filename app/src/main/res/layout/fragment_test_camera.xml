@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/ic_home_bg"
+        tools:ignore="MissingConstraints">
+        <!--相机模块-->
+        <FrameLayout
+            android:id="@+id/fl_camera4"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tt_add_camera"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="@dimen/dp_1"
+            android:layout_marginBottom="@dimen/dp_50"
+            android:text="添加相机"
+            app:layout_constraintLeft_toLeftOf="parent"
+            android:textColor="@color/white"
+            android:textSize="@dimen/sp_12"
+            android:visibility="visible"
+            app:layout_constraintRight_toLeftOf="@+id/tt_add_camera2"
+            app:layout_constraintBottom_toBottomOf="parent"
+            tools:ignore="MissingConstraints" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tt_add_camera2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="@dimen/dp_1"
+            android:layout_marginBottom="@dimen/dp_50"
+            android:text="拍照"
+            android:textColor="@color/white"
+            android:textSize="@dimen/sp_12"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintRight_toLeftOf="@+id/tt_add_camera3"
+            app:layout_constraintLeft_toRightOf="@+id/tt_add_camera"
+            tools:ignore="MissingConstraints" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tt_add_camera3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="@dimen/dp_1"
+            app:layout_constraintRight_toRightOf="parent"
+            android:layout_marginBottom="@dimen/dp_50"
+            android:text="上传照片"
+            android:textColor="@color/white"
+            android:textSize="@dimen/sp_12"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toRightOf="@+id/tt_add_camera2"
+            app:layout_constraintRight_toLeftOf="@+id/tt_add_close"
+            tools:ignore="MissingConstraints" />
+
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tt_add_close"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="@dimen/dp_1"
+            app:layout_constraintRight_toRightOf="parent"
+            android:layout_marginBottom="@dimen/dp_50"
+            android:text="关闭"
+            android:textColor="@color/white"
+            android:textSize="@dimen/sp_12"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toRightOf="@+id/tt_add_camera3"
+            tools:ignore="MissingConstraints" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

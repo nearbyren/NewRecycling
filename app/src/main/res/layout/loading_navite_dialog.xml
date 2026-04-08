@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout>
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical">
+
+
+        <androidx.core.widget.ContentLoadingProgressBar
+            android:id="@+id/loading"
+            style="@style/CustomProgressBar"
+            android:layout_width="@dimen/dp_320"
+            android:layout_height="@dimen/dp_320"
+            android:indeterminateTint="@color/colorPrimary"
+            android:progressDrawable="@drawable/custom_drawable" />
+    </LinearLayout>
+</layout>

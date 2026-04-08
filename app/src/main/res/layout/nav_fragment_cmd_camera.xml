@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/ic_home_bg"
+        tools:ignore="MissingConstraints">
+
+
+        <TextureView
+            android:id="@+id/texture_in"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/dp_0"
+            app:layout_constraintBottom_toTopOf="@+id/texture_out"
+            app:layout_constraintTop_toTopOf="parent" />
+
+
+        <TextureView
+            android:id="@+id/texture_out"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/dp_0"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/texture_in" />
+
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_in"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/dp_0"
+            app:layout_constraintBottom_toTopOf="@+id/cl_out"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="MissingConstraints"
+            tools:visibility="visible">
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/atv_picture_in"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_120"
+                android:gravity="center"
+                android:text="拍摄"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_12"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toLeftOf="@+id/atv_recording_in" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/atv_recording_in"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_120"
+                android:gravity="center"
+                android:text="录像"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_12"
+                app:layout_constraintLeft_toRightOf="@+id/atv_picture_in"
+                app:layout_constraintRight_toLeftOf="@+id/atv_stop_recording_in" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/atv_stop_recording_in"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_120"
+                android:gravity="center"
+                android:text="停止录像"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_12"
+                app:layout_constraintLeft_toRightOf="@+id/atv_recording_in"
+                app:layout_constraintRight_toRightOf="parent" />
+
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_out"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/cl_in"
+            tools:ignore="MissingConstraints"
+            tools:visibility="visible">
+
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/atv_picture_out"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_120"
+                android:gravity="center"
+                android:text="拍摄"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_12"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toLeftOf="@+id/atv_recording_out" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/atv_recording_out"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_120"
+                android:gravity="center"
+                android:text="录像"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_12"
+                app:layout_constraintLeft_toRightOf="@+id/atv_picture_out"
+                app:layout_constraintRight_toLeftOf="@+id/atv_stop_recording_out" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/atv_stop_recording_out"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_120"
+                android:gravity="center"
+                android:text="停止录像"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_12"
+                app:layout_constraintLeft_toRightOf="@+id/atv_recording_out"
+                app:layout_constraintRight_toRightOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

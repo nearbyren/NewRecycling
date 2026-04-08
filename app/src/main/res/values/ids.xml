@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item type="id" name="mp_tag_key" />
+
+    <item name="click_debounce_action" type="id"/>
+    <item name="click_time_stamp" type="id"/>
+    <!--沉浸式-->
+    <item type="id" name="navigation_height_live_data" />
+    <item type="id" name="navigation_bar_view" />
+    <!--控制状态栏和导航栏-->
+    <item name="fit_system_helper" type="id" />
+</resources>

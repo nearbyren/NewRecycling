@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/ic_home_bg"
+        tools:ignore="MissingConstraints">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_top"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/dp_8"
+            android:background="@drawable/ic_bug_bg"
+            tools:ignore="MissingConstraints">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/aciv_ni_hao"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/dp_23"
+                android:layout_marginTop="@dimen/dp_20"
+                android:src="@drawable/ic_mobile_ninhao"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/aciv_logo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp_20"
+                android:layout_marginRight="@dimen/dp_29"
+                android:src="@drawable/ic_mobile_mogo"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cl_content1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/dp_8"
+                android:layout_marginTop="@dimen/dp_7"
+                android:layout_marginRight="@dimen/dp_8"
+                android:background="@drawable/ic_bg_01"
+                app:layout_constraintTop_toBottomOf="@+id/aciv_logo"
+                tools:ignore="MissingConstraints">
+
+                <!--  经销商id-->
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/acet_dealer_id"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dp_32"
+                    android:layout_marginLeft="@dimen/dp_12"
+                    android:layout_marginTop="@dimen/dp_8"
+                    android:layout_marginRight="@dimen/dp_12"
+                    android:layout_marginBottom="@dimen/dp_10"
+                    android:background="@drawable/shape_input_delivery_bg"
+                    android:digits="1234567890"
+                    android:gravity="center"
+                    android:hint="@string/str_dealer_id_text"
+                    android:imeOptions="actionDone"
+                    android:inputType="number"
+                    android:maxLength="4"
+                    android:singleLine="true"
+                    android:text=""
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_12"
+                    android:textStyle="bold"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cl_content2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/dp_8"
+                android:layout_marginTop="@dimen/dp_14"
+                android:layout_marginRight="@dimen/dp_8"
+                android:background="@drawable/ic_bg_02"
+                app:layout_constraintTop_toBottomOf="@+id/cl_content1"
+                tools:ignore="MissingConstraints">
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/actv_type"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/dp_32"
+                    android:layout_marginLeft="@dimen/dp_12"
+                    android:layout_marginTop="@dimen/dp_8"
+                    android:background="@drawable/shape_input_delivery_bg"
+                    android:gravity="center"
+                    android:paddingLeft="@dimen/dp_10"
+                    android:paddingRight="@dimen/dp_10"
+                    android:text="@string/str_lattice_type_init"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/sp_12"
+                    android:textStyle="bold"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <RadioGroup
+                    android:id="@+id/rg_lattice"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="@dimen/dp_12"
+                    android:layout_marginTop="@dimen/dp_15"
+                    android:layout_marginBottom="@dimen/dp_10"
+                    android:orientation="horizontal"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/actv_type">
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/mrb_lattice1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginRight="@dimen/dp_23"
+                        android:layout_weight="1"
+                        android:button="@null"
+                        android:drawableLeft="@drawable/radio_selector"
+                        android:drawablePadding="@dimen/dp_5"
+                        android:text="@string/str_lattice1_init"
+                        android:textColor="@color/white"
+                        android:textSize="@dimen/sp_13" />
+
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/mrb_lattice2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginRight="@dimen/dp_23"
+                        android:layout_weight="1"
+                        android:button="@null"
+                        android:drawableLeft="@drawable/radio_selector"
+                        android:drawablePadding="@dimen/dp_5"
+                        android:text="@string/str_lattice2_init"
+                        android:textColor="@color/white"
+                        android:textSize="@dimen/sp_13" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/mrb_lattice3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:button="@null"
+                        android:drawableLeft="@drawable/radio_selector"
+                        android:drawablePadding="@dimen/dp_5"
+                        android:text="@string/str_lattice3_init"
+                        android:textColor="@color/white"
+                        android:textSize="@dimen/sp_13" />
+
+                </RadioGroup>
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/actv_tips_sn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/dp_32"
+                    android:layout_marginLeft="@dimen/dp_12"
+                    android:layout_marginTop="@dimen/dp_8"
+                    android:background="@drawable/shape_input_delivery_bg"
+                    android:gravity="center"
+                    android:paddingLeft="@dimen/dp_10"
+                    android:paddingRight="@dimen/dp_10"
+                    android:text="@string/str_input_tips_sn_init"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/sp_12"
+                    android:textStyle="bold"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/rg_lattice" />
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/cl_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/dp_42"
+                    android:layout_marginTop="@dimen/dp_8"
+                    android:paddingLeft="@dimen/dp_10"
+                    android:paddingRight="@dimen/dp_10"
+                    app:layout_constraintTop_toBottomOf="@+id/actv_tips_sn">
+
+
+                    <androidx.appcompat.widget.AppCompatEditText
+                        android:id="@+id/acet_sn1"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/dp_32"
+                        android:layout_marginRight="@dimen/dp_2"
+                        android:background="@drawable/shape_input_delivery_bg"
+                        android:gravity="center"
+                        android:imeOptions="actionDone"
+                        android:inputType="number"
+                        android:maxLength="4"
+                        android:singleLine="true"
+                        android:text=""
+                        android:textColor="@color/white"
+                        android:textColorHint="@color/white"
+                        android:textSize="@dimen/sp_12"
+                        android:textStyle="bold"
+                        app:layout_constraintHorizontal_weight="0.15"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toLeftOf="@+id/acet_sn2" />
+
+                    <androidx.appcompat.widget.AppCompatTextView
+                        android:id="@+id/acet_sn2"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/dp_32"
+                        android:layout_marginRight="@dimen/dp_2"
+                        android:background="@drawable/shape_input_delivery_bg"
+                        android:gravity="center"
+                        android:text=""
+                        android:textColor="@color/white"
+                        android:textSize="@dimen/sp_12"
+                        android:textStyle="bold"
+                        app:layout_constraintHorizontal_weight="0.15"
+                        app:layout_constraintLeft_toRightOf="@+id/acet_sn1"
+                        app:layout_constraintRight_toLeftOf="@+id/acet_sn3" />
+
+                    <androidx.appcompat.widget.AppCompatEditText
+                        android:id="@+id/acet_sn3"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/dp_32"
+                        android:layout_marginRight="@dimen/dp_2"
+                        android:background="@drawable/shape_input_delivery_bg"
+                        android:focusable="false"
+                        android:gravity="center"
+                        android:text="GW"
+                        android:textColor="@color/white"
+                        android:textSize="@dimen/sp_12"
+                        android:textStyle="bold"
+                        app:layout_constraintHorizontal_weight="0.15"
+                        app:layout_constraintLeft_toRightOf="@+id/acet_sn2"
+                        app:layout_constraintRight_toLeftOf="@+id/acet_sn4" />
+
+                    <androidx.appcompat.widget.AppCompatEditText
+                        android:id="@+id/acet_sn4"
+                        android:layout_width="0dp"
+                        android:layout_height="@dimen/dp_32"
+                        android:layout_marginRight="@dimen/dp_2"
+                        android:background="@drawable/shape_input_delivery_bg"
+                        android:gravity="center"
+                        android:imeOptions="actionDone"
+                        android:inputType="number"
+                        android:maxLength="5"
+                        android:singleLine="true"
+                        android:text=""
+                        android:textColor="@color/white"
+                        android:textColorHint="@color/white"
+                        android:textSize="@dimen/sp_12"
+                        android:textStyle="bold"
+                        app:layout_constraintHorizontal_weight="0.3"
+                        app:layout_constraintLeft_toRightOf="@+id/acet_sn3"
+                        app:layout_constraintRight_toRightOf="parent" />
+
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/actv_init"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/dp_12"
+                android:layout_marginTop="@dimen/dp_16"
+                android:layout_marginBottom="@dimen/dp_16"
+                android:background="@drawable/shape_input_delivery_bg"
+                android:gravity="center"
+                android:padding="@dimen/dp_5"
+                android:text="@string/str_confirm_init"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_12"
+                android:textStyle="bold"
+                app:layout_constraintTop_toBottomOf="@+id/cl_content2" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/aciv_init"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="matrix"
+            android:src="@drawable/ic_start2"
+            android:visibility="gone" />
+
+        <!--一次确认提示框-->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/ll_confirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/dp_8"
+            android:background="@color/round_color1"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent">
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/actv_type_confirm"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/dp_32"
+                android:layout_marginLeft="@dimen/dp_12"
+                android:layout_marginTop="@dimen/dp_5"
+                android:background="@drawable/shape_input_delivery_bg"
+                android:gravity="center"
+                android:paddingLeft="@dimen/dp_10"
+                android:paddingRight="@dimen/dp_10"
+                android:text="温馨提示：请确认出厂SN码无误"
+                android:textColor="@color/red"
+                android:textSize="@dimen/sp_12"
+                android:textStyle="bold"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/actv_sn_confirm"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/dp_32"
+                android:layout_marginLeft="@dimen/dp_12"
+                android:layout_marginTop="@dimen/dp_5"
+                android:layout_marginRight="@dimen/dp_12"
+                android:layout_marginBottom="@dimen/dp_5"
+                android:background="@drawable/shape_input_delivery_bg"
+                android:gravity="center"
+                android:imeOptions="actionDone"
+                android:inputType="text"
+                android:singleLine="true"
+                android:text=""
+                android:textColor="@color/white"
+                android:textColorHint="@color/white"
+                android:textSize="@dimen/sp_22"
+                android:textStyle="bold"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/actv_type_confirm" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/actv_init_confirm"
+                android:layout_width="@dimen/dp_120"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/dp_12"
+                android:layout_marginTop="@dimen/dp_5"
+                android:layout_marginBottom="@dimen/dp_5"
+                android:background="@drawable/shape_input_delivery_bg"
+                android:gravity="center"
+                android:padding="@dimen/dp_5"
+                android:text="确认无误"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_12"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/actv_sn_confirm" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!--二次确认提示框-->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/ll_confirm2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/dp_8"
+            android:background="@color/round_color1"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingTop="@dimen/dp_10"
+            android:paddingBottom="@dimen/dp_10"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent">
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/actv_type_confirm2"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/dp_32"
+                android:layout_marginLeft="@dimen/dp_12"
+                android:layout_marginTop="@dimen/dp_5"
+                android:background="@drawable/shape_input_delivery_bg"
+                android:gravity="center"
+                android:paddingLeft="@dimen/dp_10"
+                android:paddingRight="@dimen/dp_10"
+                android:text="温馨提示：请再次确认出厂SN码无误"
+                android:textColor="@color/red"
+                android:textSize="@dimen/sp_12"
+                android:textStyle="bold"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/actv_sn_confirm2"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/dp_32"
+                android:layout_marginLeft="@dimen/dp_12"
+                android:layout_marginTop="@dimen/dp_5"
+                android:layout_marginRight="@dimen/dp_12"
+                android:layout_marginBottom="@dimen/dp_5"
+                android:background="@drawable/shape_input_delivery_bg"
+                android:gravity="center"
+                android:imeOptions="actionDone"
+                android:inputType="text"
+                android:singleLine="true"
+                android:text=""
+                android:textColor="@color/red"
+                android:textColorHint="@color/white"
+                android:textSize="@dimen/sp_22"
+                android:textStyle="bold"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/actv_type_confirm2" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/actv_init_confirm2"
+                android:layout_width="@dimen/dp_120"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/dp_12"
+                android:layout_marginTop="@dimen/dp_5"
+                android:layout_marginBottom="@dimen/dp_5"
+                android:background="@drawable/shape_input_delivery_bg"
+                android:gravity="center"
+                android:padding="@dimen/dp_5"
+                android:text="再次确认无误"
+                android:textColor="@color/white"
+                android:textSize="@dimen/sp_12"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/actv_sn_confirm2" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!--导入用户提示加载框-->
+        <androidx.core.widget.ContentLoadingProgressBar
+            android:id="@+id/cpb_loading"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="@dimen/dp_180"
+            android:layout_height="@dimen/dp_180"
+            android:layout_centerInParent="true"
+            android:indeterminateTint="@color/date_dialog_btn"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibiity="visible" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

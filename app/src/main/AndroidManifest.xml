@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.recycling.toolsapps"
+    tools:overrideLibrary="com.arthenica.mobileffmpeg">
+    <!-- 需要使用Feature -->
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.front" />
+    <uses-feature android:name="android.hardware.camera.autofocus" />
+    <uses-feature android:name="android.hardware.camera.flash" />
+
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.USB_PERMISSION" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE " />
+    <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS " />
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE " />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 声明系统级权限
+    <uses-permission android:name="android.permission.MANAGE_USB" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />-->
+
+    <uses-permission android:name="android.permission.READ_LOGS" />
+
+
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="true" />
+
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 精确定位权限 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- 粗略定位权限 -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- 后台定位权限（Android 10+需要） -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- App 需要使用的部分权限 -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- 科大讯飞 -->
+    <uses-permission
+        android:name="android.permission.READ_PRIVILEGED_PHONE_STATE"
+        android:protectionLevel="signature|privileged"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.READ_PHONE_NUMBERS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission
+        android:name="android.permission.READ_SMS"
+        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+
+    <uses-feature android:name="android.hardware.camera.any" />
+    <application
+        android:name=".FaceApplication"
+        android:icon="@mipmap/ic_launcher_by"
+        android:label="测试"
+        android:largeHeap="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:requestLegacyExternalStorage="true"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.App"
+        tools:ignore="HardcodedDebugMode"
+        tools:replace="android:label">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileProvider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity
+            android:name="com.recycling.toolsapps.HomeActivity"
+            android:configChanges="keyboard|keyboardHidden"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+            <!--  <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+              </intent-filter>
+
+              &lt;!&ndash; Deep Link Support &ndash;&gt;
+              <intent-filter>
+                  <action android:name="android.intent.action.VIEW" />
+
+                  <category android:name="android.intent.category.DEFAULT" />
+                  <category android:name="android.intent.category.BROWSABLE" />
+
+                  <data android:scheme="myapp" />
+              </intent-filter>-->
+        </activity>
+        <activity
+            android:name=".InitFactoryActivity"
+            android:configChanges="keyboard|keyboardHidden"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+            <!--     <intent-filter>
+                     <action android:name="android.intent.action.MAIN" />
+                     <category android:name="android.intent.category.LAUNCHER" />
+                 </intent-filter>-->
+
+        </activity>
+        <activity
+            android:name=".StartUiActivity"
+            android:configChanges="keyboard|keyboardHidden"
+            android:exported="true"
+            android:theme="@style/CabinetLauncherTheme"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="com.recycling.toolsapps.ui.test.Camera2RecordingPhotoActivity"
+            android:configChanges="keyboard|keyboardHidden"
+            android:exported="true"
+            android:theme="@style/CabinetLauncherTheme"
+            tools:ignore="Instantiatable">
+            <!--      <intent-filter>
+                      <action android:name="android.intent.action.MAIN" />
+                      <category android:name="android.intent.category.LAUNCHER" />
+                  </intent-filter>-->
+        </activity>
+        <activity
+            android:name="com.recycling.toolsapps.ui.test.DualCameraRecordingPhotoActivity"
+            android:configChanges="keyboard|keyboardHidden"
+            android:exported="true"
+            android:theme="@style/CabinetLauncherTheme"
+            tools:ignore="Instantiatable">
+            <!-- <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+                 <category android:name="android.intent.category.LAUNCHER" />
+             </intent-filter>-->
+        </activity>
+        <activity
+            android:name="com.recycling.toolsapps.nav.NavTouSingleActivity"
+            android:launchMode="singleTask"
+            android:exported="false"
+            android:windowSoftInputMode="stateHidden" />
+        <activity
+            android:name=".nav.NavTouSingleNewActivity"
+            android:launchMode="singleTask"
+            android:exported="false"
+            android:windowSoftInputMode="stateHidden" />
+        <activity
+            android:name="com.recycling.toolsapps.nav.NavTouDoubleActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="stateHidden" />
+        <activity
+            android:name="com.recycling.toolsapps.TestIDActivity"
+            android:configChanges="keyboard|keyboardHidden"
+            android:exported="true"
+            android:theme="@style/CabinetLauncherTheme"
+            tools:ignore="Instantiatable">
+            <!--   <intent-filter>
+                   <action android:name="android.intent.action.MAIN" />
+                   <category android:name="android.intent.category.LAUNCHER" />
+               </intent-filter>-->
+        </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize"
+            android:exported="true"
+            android:screenOrientation="fullSensor">
+            <!-- <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+
+                 <category android:name="android.intent.category.LAUNCHER" />
+             </intent-filter>-->
+        </activity>
+
+        <service
+            android:name=".utils.QiniuPushService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection|dataSync" />
+
+    </application>
+
+</manifest>

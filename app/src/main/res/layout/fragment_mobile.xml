@@ -1,0 +1,448 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/ic_home_bg"
+        tools:ignore="MissingConstraints">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_top"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/dp_8"
+            android:background="@drawable/ic_bug_bg"
+            tools:ignore="MissingConstraints">
+
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/aciv_ni_hao"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/dp_23"
+                android:layout_marginTop="@dimen/dp_20"
+                android:src="@drawable/ic_mobile_ninhao"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/aciv_logo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp_20"
+                android:layout_marginRight="@dimen/dp_29"
+                android:src="@drawable/ic_mobile_mogo"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <!--数字按键-->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cl_number_keys"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/dp_8"
+                android:layout_marginTop="@dimen/dp_7"
+                android:layout_marginRight="@dimen/dp_8"
+                android:background="@drawable/ic_bug_bg"
+                app:layout_constraintTop_toBottomOf="@+id/aciv_logo"
+                tools:ignore="MissingConstraints">
+
+                <androidx.appcompat.widget.AppCompatEditText
+                    android:id="@+id/acet_mobile"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_22"
+                    android:background="@null"
+                    android:digits="1234567890"
+                    android:hint="请输入手机号"
+                    android:imeOptions="actionDone"
+                    android:inputType="number"
+                    android:maxLength="11"
+                    android:maxLines="1"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <!--1 2 3-->
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_18"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="1"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toLeftOf="@+id/acet_2"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_mobile" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_18"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="2"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toRightOf="@+id/acet_1"
+                    app:layout_constraintRight_toLeftOf="@+id/acet_3"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_mobile" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_18"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="3"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toRightOf="@+id/acet_2"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_mobile" />
+
+                <!--4 5 6-->
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_12"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="4"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toLeftOf="@+id/acet_5"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_1" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_5"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_12"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="5"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toRightOf="@+id/acet_4"
+                    app:layout_constraintRight_toLeftOf="@+id/acet_6"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_2" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_6"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_12"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="6"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toRightOf="@+id/acet_5"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_3" />
+
+                <!--7 8 9-->
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_7"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_12"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="7"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toLeftOf="@+id/acet_8"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_4" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_8"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_12"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="8"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toRightOf="@+id/acet_7"
+                    app:layout_constraintRight_toLeftOf="@+id/acet_9"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_5" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_9"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_12"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="9"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toRightOf="@+id/acet_8"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_6" />
+
+                <!--0 删除-->
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_0"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_12"
+                    android:background="@drawable/ic_mobile_number_bg"
+                    android:gravity="center"
+                    android:hint="0"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toLeftOf="@+id/acet_8"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_9" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/acet_del"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_12"
+                    android:background="@drawable/ic_mobile_del"
+                    android:gravity="center"
+                    android:hint="删除"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintEnd_toEndOf="@+id/acet_9"
+                    app:layout_constraintHorizontal_weight="1"
+                    app:layout_constraintLeft_toRightOf="@+id/acet_1"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintStart_toStartOf="@+id/acet_8"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_8" />
+
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/actv_login"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_20"
+                    android:background="@drawable/ic_mobile_login"
+                    android:gravity="center"
+                    android:hint="登录"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintEnd_toEndOf="@+id/acet_del"
+                    app:layout_constraintHorizontal_weight="1"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintStart_toStartOf="@+id/acet_0"
+                    app:layout_constraintTop_toBottomOf="@+id/acet_del" />
+
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/actv_exit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_10"
+                    android:layout_marginBottom="@dimen/dp_42"
+                    android:gravity="center"
+                    android:hint="@string/mobile_exit"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintHorizontal_weight="1"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/actv_login" />
+
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+        <!--格口选择-->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_select"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/dp_7"
+            android:background="@drawable/shape_lattice_select_bg"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintVertical_weight="2"
+            tools:ignore="MissingConstraints"
+            tools:visibility="visible">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/aciv_close"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/dp_15"
+                android:src="@drawable/ic_close_box"
+                app:layout_constraintBottom_toBottomOf="@+id/actv_cast_title"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/actv_cast_title" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/actv_cast_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/dp_10"
+                android:gravity="center"
+                android:hint="请选择投递门投口"
+                android:textColor="@color/white"
+                android:textColorHint="@color/white"
+                android:textSize="@dimen/sp_18"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <!--左投口-->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cl_cast_left"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/dp_16"
+                android:layout_marginTop="@dimen/dp_12"
+                android:layout_marginEnd="@dimen/dp_5"
+                android:layout_marginBottom="@dimen/dp_15"
+                android:background="@drawable/shape_btn_delivery_bg"
+                android:clickable="true"
+                android:focusable="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintRight_toLeftOf="@+id/cl_cast_right"
+                app:layout_constraintTop_toBottomOf="@+id/actv_cast_title"
+                tools:ignore="MissingConstraints">
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/actv_cast_left"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_5"
+                    android:gravity="center"
+                    android:hint="投递左门"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/aciv_cast_left_logo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_5"
+                    android:src="@drawable/ic_mobile_mogo"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/actv_cast_left" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/actv_cast_left_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="@dimen/dp_10"
+                    android:gravity="center"
+                    android:hint="容量已满0%\n（0.00kg）"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_14"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/aciv_cast_left_logo" />
+
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+            <!--右投口-->
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cl_cast_right"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/dp_5"
+                android:layout_marginTop="@dimen/dp_12"
+                android:layout_marginEnd="@dimen/dp_16"
+                android:layout_marginBottom="@dimen/dp_15"
+                android:background="@drawable/shape_btn_delivery_bg"
+                android:clickable="true"
+                android:focusable="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintLeft_toRightOf="@+id/cl_cast_left"
+                app:layout_constraintRight_toRightOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/actv_cast_title"
+                tools:ignore="MissingConstraints">
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/actv_cast_right"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_5"
+                    android:gravity="center"
+                    android:hint="投递右门"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_16"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/aciv_cast_right_logo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/dp_5"
+                    android:src="@drawable/ic_mobile_mogo"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/actv_cast_right" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/actv_cast_right_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="@dimen/dp_10"
+                    android:gravity="center"
+                    android:hint="容量已满0%\n（0.00kg）"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/white"
+                    android:textSize="@dimen/sp_14"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/aciv_cast_right_logo" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

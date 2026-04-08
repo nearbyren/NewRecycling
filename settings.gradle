@@ -1,0 +1,51 @@
+
+//用于 配置 Gradle 插件的 Maven 仓库
+//配置的是 构建过程 中 , 使用的仓库
+pluginManagement {//对应之前的 buildscript 中的 repositories 配置
+    repositories {
+        mavenLocal()   //配置先从本地仓库寻找jar包，优先寻找上一个配置，找到不执行下面的配置
+        maven { url 'https://maven.aliyun.com/repository/central/' }
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+        maven { url 'https://maven.aliyun.com/repository/jcenter/' }
+        maven { url 'https://maven.aliyun.com/repository/google/' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        maven { url 'https://jitpack.io' }
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+//用于 配置 依赖 的 Maven 仓库
+//配置的是 工程 或 模块 下的依赖使用的仓库
+dependencyResolutionManagement {//对应之前的 allprojects 中的 repositories 配置
+    //只能使用本脚本块中的 Maven 仓库 , 不能使用 Module 子项目中的依赖
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    //RepositoriesMode.PREFER_PROJECT : 解析依赖库时 , 优先使用本地仓库 , 本地仓库没有该依赖 , 则使用远程仓库 ;
+    //RepositoriesMode.PREFER_SETTINGS : 首选settings远程仓库，表述任何通过工程单独设置或插件设置的仓库，都会被忽略
+    //RepositoriesMode.FAIL_ON_PROJECT_REPOS : 解析依赖库时 , 强行使用远程仓库 , 不管本地仓库有没有该依赖库 ;
+    //-------------------------------------------------------------------------------------------------------------------------------------------------
+    //PREFER_PROJECT --首选项目远程仓库，表示如果工程单独设置了仓库，就优先使用工程配置的，忽略settings里面的
+    //PREFER_SETTINGS–首选settings远程仓库，表述任何通过工程单独设置或插件设置的仓库，都会被忽略
+    //FAIL_ON_PROJECT_REPOS–强制settings远程仓库，表示如果工程单独设置了仓库，或工程的插件设置了仓库，构建就直接报错抛出异常
+    repositories {
+//        mavenLocal()   //配置先从本地仓库寻找jar包，优先寻找上一个配置，找到不执行下面的配置
+        maven { url 'https://maven.aliyun.com/repository/central/' }
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+        maven { url 'https://maven.aliyun.com/repository/jcenter/' }
+        maven { url 'https://maven.aliyun.com/repository/google/' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        maven { url 'https://jitpack.io' }
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+
+    }
+}
+//用于指定工程根目录 , 在该目录下有一个 build.gradle 构建脚本 , 声明后会自动执行该构建脚本 ;
+rootProject.name = "NewRecycling"
+//include 用于指定子项目 , 在子项目中也有一个 build.gradle 构建脚本 , 声明后会自动执行该构建脚本 ;
+include ':app'
+include ':CabinetSerialPort'
+include ':lib-netwrok'
+includeBuild('toolsbuilds')

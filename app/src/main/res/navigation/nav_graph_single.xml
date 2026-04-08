@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/main_tou_fragment">
+
+    <!-- 单投口 子母投口 -->
+    <fragment
+        android:id="@+id/main_tou_fragment"
+        android:name="com.recycling.toolsapps.nav.NavTouSingleNewFragment"
+        android:label="fragmentMain"
+        tools:layout="@layout/nav_tou_single_activity">
+
+        <!--启动手机登录-->
+        <action
+            android:id="@+id/action_start_mobile"
+            app:destination="@id/mobileFragment" />
+
+        <!--启动调试页-->
+        <action
+            android:id="@+id/action_start_debug_type_self"
+            app:destination="@id/DeBugTypeSelfFragment" />
+
+        <!--启动计重页-->
+        <action
+            android:id="@+id/action_start_delivery"
+            app:destination="@id/deliveryFragment" />
+
+        <!--启动清运页-->
+        <action
+            android:id="@+id/action_start_clear_door"
+            app:destination="@id/clearDoorFragment" />
+
+        <!--启动网络调试页-->
+        <action
+            android:id="@+id/action_start_debug_type"
+            app:destination="@id/deBugTypeFragment" />
+
+        <!--启动内相机-->
+        <action
+            android:id="@+id/action_start_camera_in"
+            app:destination="@id/cameraInFragment" />
+
+        <!--启动外相机-->
+        <action
+            android:id="@+id/action_start_camera_out"
+            app:destination="@id/cameraOutFragment" />
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/cameraOutFragment"
+        android:name="com.recycling.toolsapps.nav.NavCameraOutFragment"
+        android:label="cameraOut"
+        tools:layout="@layout/nav_fragment_camera_out" />
+
+    <fragment
+        android:id="@+id/cameraInFragment"
+        android:name="com.recycling.toolsapps.nav.NavCameraInFragment"
+        android:label="cameraIn"
+        tools:layout="@layout/nav_fragment_camera_in" />
+
+    <fragment
+        android:id="@+id/clearDoorFragment"
+        android:name="com.recycling.toolsapps.nav.NavClearDoorFragment"
+        android:label="clear"
+        tools:layout="@layout/nav_fragment_clear_door" />
+
+    <fragment
+        android:id="@+id/mobileFragment"
+        android:name="com.recycling.toolsapps.nav.NavMobileFragment"
+        android:label="mobile"
+        tools:layout="@layout/nav_fragment_mobile">
+        <!--启动网络调试页-->
+        <action
+            android:id="@+id/action_start_debug_type"
+            app:destination="@id/deBugTypeFragment" />
+        <!--启动调试页-->
+        <action
+            android:id="@+id/action_start_debug_type_self"
+            app:destination="@id/DeBugTypeSelfFragment" />
+        <!--启动计重页-->
+        <action
+            android:id="@+id/action_start_delivery"
+            app:destination="@id/deliveryFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/deliveryFragment"
+        android:name="com.recycling.toolsapps.nav.NavDeliveryFragment"
+        android:label="delivery"
+        tools:layout="@layout/nav_fragment_delivery">
+        <!--启动网络调试页-->
+        <action
+            android:id="@+id/action_start_debug_type"
+            app:destination="@id/deBugTypeFragment" />
+        <!--启动调试页-->
+        <action
+            android:id="@+id/action_start_debug_type_self"
+            app:destination="@id/DeBugTypeSelfFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/deBugTypeFragment"
+        android:name="com.recycling.toolsapps.nav.NavDeBugTypeFragment"
+        android:label="deBugType"
+        tools:layout="@layout/nav_fragment_debug_type">
+
+        <!--启动内相机-->
+        <action
+            android:id="@+id/action_start_camera_in"
+            app:destination="@id/cameraInFragment" />
+
+        <!--启动外相机-->
+        <action
+            android:id="@+id/action_start_camera_out"
+            app:destination="@id/cameraOutFragment" />
+
+    </fragment>
+
+    <fragment
+        android:id="@+id/DeBugTypeSelfFragment"
+        android:name="com.recycling.toolsapps.nav.NavDeBugTypeSelfFragment"
+        android:label="deBugTypeSelf"
+        tools:layout="@layout/nav_fragment_debug_type_self">
+
+        <!--启动内相机-->
+        <action
+            android:id="@+id/action_start_camera_in"
+            app:destination="@id/cameraInFragment" />
+
+        <!--启动外相机-->
+        <action
+            android:id="@+id/action_start_camera_out"
+            app:destination="@id/cameraOutFragment" />
+
+    </fragment>
+
+</navigation>
