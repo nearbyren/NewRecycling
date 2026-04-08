@@ -1,0 +1,15 @@
+<resources>
+    <string name="mobile_exit"><u>退出</u></string>
+    <string name="kg_1">1kg校准</string>
+    <string name="kg_2">2kg校准</string>
+    <string name="kg_3">5kg校准</string>
+    <string name="kg_4">板框校准</string>
+    <string name="title_date_dialogs">选择流量卡到期时间</string>
+    <string name="str_confirm_init">确认配置初始化</string>
+    <string name="str_input_tips_sn_init">请填写出厂SN码</string>
+    <string name="str_lattice1_init">单格口</string>
+    <string name="str_lattice2_init">双格口</string>
+    <string name="str_lattice3_init">子母格口</string>
+    <string name="str_lattice_type_init">请选择出厂回收箱类型</string>
+    <string name="str_dealer_id_text">请输入经销商id(输入后请对准经销商id是否准确)</string>
+</resources>

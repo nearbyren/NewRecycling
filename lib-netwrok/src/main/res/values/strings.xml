@@ -1,0 +1,8 @@
+<resources>
+
+    <string name="network_title">Base64AndFile</string>
+    <string name="library_data_in_wrong_format">數據格式錯誤</string>
+    <string name="library_request_was_aborted">请求失败</string>
+    <string name="library_network_sneak_off">網絡開小差了</string>
+    <string name="library_server_sneak_off">服務器開小差了</string>
+</resources>
