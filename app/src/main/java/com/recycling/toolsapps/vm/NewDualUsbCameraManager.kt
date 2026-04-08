@@ -126,7 +126,7 @@ class NewDualUsbCameraManager(context: Context) {
      * 自动识别并启动 USB 摄像头
      * @param startPaused 是否在启动后直接进入暂停休眠状态（默认 false，启动即预览）
      */
-    fun autoStartUsbCameras(view1: TextureView, view2: TextureView, delayMs: Long = 3000, startPaused: Boolean = false, listener: CameraErrorListener) {
+    fun autoStartUsbCameras(openAll: Boolean = true, view1: TextureView? = null, view2: TextureView? = null, delayMs: Long = 3000, startPaused: Boolean = false, listener: CameraErrorListener) {
         cameraErrorListener = listener
         if (!scope.isActive) scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -137,16 +137,33 @@ class NewDualUsbCameraManager(context: Context) {
                 return@launch
             }
 
-            BoxToolLogUtils.saveCamera("启动第一个 USB 摄像头: ${usbIds[0]}")
-            openSingleCamera(usbIds[0], view1, startPaused)
+            if (openAll) {
+                BoxToolLogUtils.saveCamera("启动第一个 USB 摄像头: ${usbIds[0]}")
+                if (view1 != null) {
+                    openSingleCamera(usbIds[0], view1, startPaused)
+                }
 
-            if (usbIds.size >= 2) {
-                delay(delayMs)
-                BoxToolLogUtils.saveCamera("启动第二个 USB 摄像头: ${usbIds[1]}")
-                openSingleCamera(usbIds[1], view2, startPaused)
+
+                if (usbIds.size >= 2 && view2 != null) {
+                    delay(delayMs)
+                    BoxToolLogUtils.saveCamera("启动第二个 USB 摄像头: ${usbIds[1]}")
+                    openSingleCamera(usbIds[1], view2, startPaused)
+                } else {
+                    BoxToolLogUtils.saveCamera("只检测到一个外置摄像头")
+                    cameraErrorListener?.cameraStatus(false, "1", "只有一个摄像头")
+                }
             } else {
-                BoxToolLogUtils.saveCamera("只检测到一个外置摄像头")
-                cameraErrorListener?.cameraStatus(false, "1", "只有一个摄像头")
+                if (view1 != null) {
+                    BoxToolLogUtils.saveCamera("启动第一个 USB 摄像头: ${usbIds[0]}")
+                    openSingleCamera(usbIds[0], view1, startPaused)
+                }
+                if (usbIds.size >= 2 && view2 != null) {
+                    BoxToolLogUtils.saveCamera("启动第二个 USB 摄像头: ${usbIds[1]}")
+                    openSingleCamera(usbIds[1], view2, startPaused)
+                } else {
+                    BoxToolLogUtils.saveCamera("只检测到一个外置摄像头")
+                    cameraErrorListener?.cameraStatus(false, "1", "只有一个摄像头")
+                }
             }
         }
     }
@@ -253,8 +270,7 @@ class NewDualUsbCameraManager(context: Context) {
 
                 BoxToolLogUtils.saveCamera("[$cameraId] 开始抓取图像...")
                 val imageFile = captureImageSuspend(cameraId, inOut, switchType, holder, saveFile)
-
-                withContext(Dispatchers.Main) {
+                withContext(Dispatchers.IO) {
                     onComplete(imageFile)
                 }
             } catch (e: Exception) {
@@ -303,7 +319,7 @@ class NewDualUsbCameraManager(context: Context) {
                             val watermarkText = "$text-$inOut-${AppUtils.getDateYMDHMS2()}"
                             val finalPath = addWatermarkToBytes(bytes, saveFile.name, watermarkText)
                             if (cont.isActive) {
-                                cameraErrorListener?.cameraStatus(finalPath != null, "", "")
+                                cameraErrorListener?.cameraStatus(finalPath != null, cameraId, "拍照完成")
                                 cont.resume(if (finalPath != null) File(finalPath) else null)
                             }
                         }
@@ -329,8 +345,13 @@ class NewDualUsbCameraManager(context: Context) {
         val externalIds = mutableListOf<String>()
         try {
             for (id in manager.cameraIdList) {
-                BoxToolLogUtils.saveCamera("getExternalCameraIds: ${manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING)}")
-                if (manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) != null) {
+                BoxToolLogUtils.saveCamera(
+                    "getExternalCameraIds: ${
+                        manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING)
+                    }"
+                )
+                if (manager.getCameraCharacteristics(id)
+                        .get(CameraCharacteristics.LENS_FACING) != null) {
                     externalIds.add(id)
                 }
             }

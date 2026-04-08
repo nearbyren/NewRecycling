@@ -1909,7 +1909,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             println("网络请求 拍照上传 进来 $sn $transId $photoType $fileName $activeType")
             if (activeType == "45") {
                 Loge.d("网络请求 拍照上传 延迟")
-                toGoTPSucces(adminTransId)
+                toGoTPSucces(transId)
                 delay(3000)
 
             }
@@ -1921,6 +1921,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 AppUtils.getContext()
                     .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.path + "/action/${fileName}"
             )
+            println("网络请求 拍照上传 进来 ${file.name} | ${file.absolutePath}")
             post["file"] = file
             httpRepo.uploadPhoto(post).onSuccess { user ->
                 Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
@@ -4045,9 +4046,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
         val transId = modelOpenBean?.transId ?: "transId"
         val setTransId = removeRetryPrefix(transId)
         val nameIn =
-            "${setTransId}-$switchType-in-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+            "s-${setTransId}-i-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
         val nameOut =
-            "${setTransId}-$switchType-out-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+            "s-${setTransId}-o-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
         val dir = File(
             AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
         )
@@ -4057,8 +4058,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
         when (switchType) {
             1 -> {
                 cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile")
-                    uploadPhoto(curSn, setTransId, 0, nameIn, switchType.toString())
+                    BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile ${toFile?.name}")
+                    toFile?.name?.let { uploadPhoto(curSn, setTransId, 0, it, switchType.toString()) }
                     toGoInsertPhoto(setTransId, switchType.toString(), 0, nameIn)
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = 4
@@ -4068,8 +4069,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                 delay(3000)
                 cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile")
-                    uploadPhoto(curSn, setTransId, 2, nameOut, switchType.toString())
+                    BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile ${toFile?.name}")
+                    toFile?.name?.let { uploadPhoto(curSn, setTransId, 2, it, switchType.toString()) }
                     toGoInsertPhoto(setTransId, switchType.toString(), 1, nameOut)
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = 4
@@ -4082,8 +4083,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
             0 -> {
                 cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile")
-                    uploadPhoto(curSn, setTransId, 3, nameOut, switchType.toString())
+                    BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile ${toFile?.name}")
+                    toFile?.name?.let { uploadPhoto(curSn, setTransId, 3, it, switchType.toString()) }
                     toGoInsertPhoto(setTransId, switchType.toString(), 1, nameOut)
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = 4
@@ -4093,8 +4094,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 delay(3000)
                 cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile")
-                    uploadPhoto(curSn, setTransId, 1, nameIn, switchType.toString())
+                    BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile ${toFile?.name}")
+                    toFile?.name?.let { uploadPhoto(curSn, setTransId, 1, it, switchType.toString()) }
                     toGoInsertPhoto(setTransId, switchType.toString(), 0, nameIn)
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = 4
@@ -4113,9 +4114,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 -1 -> {
                     val setTransId = modelOpenBean?.transId ?: "transId"
                     val nameIn =
-                        "${setTransId}-$45-in-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
+                        "s-${setTransId}-$45-i-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
                     val nameOut =
-                        "${setTransId}-$45-out-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
+                        "s-${setTransId}-$45-o-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
                     val dir = File(
                         AppUtils.getContext()
                             .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
@@ -4125,14 +4126,14 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val fileOut = File(dir, nameOut)
 
                     cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
-                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile")
-                        uploadPhoto(curSn, setTransId, 4, nameIn, "45")
+                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
+                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
                         toGoInsertPhoto(setTransId, "45", 0, nameIn)
                     }
                     delay(5000)
                     cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
-                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile")
-                        uploadPhoto(curSn, setTransId, 5, nameOut, "45")
+                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
+                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
                         toGoInsertPhoto(setTransId, "45", 1, nameOut)
                     }
                 }
@@ -4143,8 +4144,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         "${setTransId}-$45-in-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
                     val fileIn = File(AppUtils.getContext().cacheDir, nameIn)
                     cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
-                        BoxToolLogUtils.saveCamera("拍照成功 远程 内 $toFile")
-                        uploadPhoto(curSn, setTransId, 4, nameIn, "45")
+                        BoxToolLogUtils.saveCamera("拍照成功 远程 内 $toFile ${toFile?.name}")
+                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
                         toGoInsertPhoto(setTransId, "45", 0, nameIn)
                     }
 
@@ -4156,8 +4157,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         "${setTransId}-$45-out-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
                     val fileOut = File(AppUtils.getContext().cacheDir, nameOut)
                     cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
-                        BoxToolLogUtils.saveCamera("拍照成功 远程 外 $toFile")
-                        uploadPhoto(curSn, setTransId, 5, nameOut, "45")
+                        BoxToolLogUtils.saveCamera("拍照成功 远程 外 $toFile ${toFile?.name}")
+                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
                         toGoInsertPhoto(setTransId, "45", 1, nameOut)
                     }
                 }
@@ -4365,7 +4366,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 state.time = AppUtils.getDateYMDHMS()
                                 val curG1Total = curG1TotalWeight.toFloat()
                                 //实时总重量
-                                val curG1Weight = state.weighY
+                                val curG1Weight = state.weigh
                                 //上报重量大于总重量则报提示
                                 if (curG1Weight > curG1Total && irStateValue == 1) {
                                     state.capacity = 3
@@ -4438,7 +4439,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     state.time = AppUtils.getDateYMDHMS()
                                     val curG1Total = curG2TotalWeight.toFloat()
                                     //实时总重量
-                                    val curG2Weight = state.weighY
+                                    val curG2Weight = state.weigh
                                     //上报重量大于总重量则报提示
                                     if (curG2Weight > curG1Total && irStateValue == 1) {
                                         state.capacity = 3
@@ -4628,6 +4629,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val rodHinderValue = SerialPortSdk.startRodHinder(doorGeX, rodHinderValue).getOrNull()
             rodHinderValue?.let { rh ->
                 rodHinderResult(rh.locker, rh.rodHinderValue)
+                tipMessage("设置阻力阀值成功 ${rh.rodHinderValue}")
             }
             BoxToolLogUtils.savePrintln("业务流：等待阻力值状态【$rodHinderValue】")
         }

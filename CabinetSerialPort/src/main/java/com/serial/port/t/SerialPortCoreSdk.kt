@@ -188,6 +188,7 @@ class SerialPortCoreSdk private constructor() {
             CLEAR_OPEN_1_1, CLEAR_OPEN_2_1 -> {
                 1
             }
+
             else -> {
                 0
             }
@@ -390,8 +391,11 @@ class SerialPortCoreSdk private constructor() {
             if (cmd != SerialPortSdk.CMD19) DoorResult(cmd = 19, cmdByte = SerialPortSdk.CMD19, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
             println("我的数据 payload ${ByteUtils.toHexString(payload)}")
+            if (payload.size < 5) throw Exception("返回数据长度不足")
+            val value = payload.takeLast(4).toByteArray()
+            val rodHinderValueByte = ProtocolCodec.bytesToInt(value)
             DoorResult(
-                locker = payload[0].toInt(), rodHinderValue = payload[1].toInt(), cmd = 19, cmdByte = SerialPortSdk.CMD19, cmdStatus = true
+                locker = payload[0].toInt(), rodHinderValue = rodHinderValueByte, cmd = 19, cmdByte = SerialPortSdk.CMD19, cmdStatus = true
             )
         }
     }

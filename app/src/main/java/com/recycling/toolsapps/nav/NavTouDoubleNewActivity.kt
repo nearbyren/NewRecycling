@@ -794,7 +794,7 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
                         CabinetVM.LockerStep.START -> {
                             cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_MOBILE)
                             BoxToolLogUtils.savePrintln("业务流：开启相机拍照")
-                            cabinetVM.cameraManagerNew.autoStartUsbCameras(binding.textureIn!!, binding.textureOut!!, delayMs = 3000, listener = cameraErrorListener)
+                            cabinetVM.cameraManagerNew.autoStartUsbCameras(true,binding.textureIn!!, binding.textureOut!!, delayMs = 3000, listener = cameraErrorListener)
                         }
 
                         CabinetVM.LockerStep.OPENING -> {

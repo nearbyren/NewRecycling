@@ -70,7 +70,6 @@ class NavTouSingleNewActivity : AppCompatActivity() {
     private val cabinetVM: CabinetVM by viewModels()
     private lateinit var binding: NavTouSingleActivityBinding
     private lateinit var networkStateManager: NetworkStateManager
-    private var manager: FragmentManager? = null
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -799,7 +798,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                         CabinetVM.LockerStep.START -> {
                             cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_MOBILE)
                             BoxToolLogUtils.savePrintln("业务流：开启相机拍照")
-                            cabinetVM.cameraManagerNew.autoStartUsbCameras(binding.textureIn!!, binding.textureOut!!, delayMs = 3000, listener = cameraErrorListener)
+                            cabinetVM.cameraManagerNew.autoStartUsbCameras(true, binding.textureIn!!, binding.textureOut!!, delayMs = 3000, listener = cameraErrorListener)
                         }
 
                         CabinetVM.LockerStep.OPENING -> {

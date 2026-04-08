@@ -40,11 +40,6 @@ class StartUiActivity : AppCompatActivity() {
             val init = SPreUtil[AppUtils.getContext(), SPreUtil.init, false] as Boolean
             if (init) {
                 getSocketUrl(false)
-//                val host = SPreUtil[AppUtils.getContext(), SPreUtil.host, BuildConfig.socketIP] as String
-//                val port = SPreUtil[AppUtils.getContext(), SPreUtil.port, BuildConfig.socketPort] as Int
-//                Loge.e("出厂配置 initSocket startUI 进入主界面 $host $port")
-//                initSocket(host, port)
-//                startActivity(Intent(this@StartUiActivity, HomeActivity::class.java))
             } else {
                 Loge.e("出厂配置 initSocket startUI 进入初始化")
                 startActivity(Intent(this@StartUiActivity, InitFactoryActivity::class.java))
@@ -128,8 +123,8 @@ class StartUiActivity : AppCompatActivity() {
                 initString?.let { url ->
                     val socketUrl = url.split(":")
                     Loge.d("获取socket连接 onSuccess ${Thread.currentThread().name}| $socketUrl |  ${socketUrl.size} ")
-//                    initSocket(socketUrl[0], socketUrl[1].toInt())
-                    initSocket(BuildConfig.socketIP, BuildConfig.socketPort)
+                    initSocket(socketUrl[0], socketUrl[1].toInt())
+//                    initSocket(BuildConfig.socketIP, BuildConfig.socketPort)
                     cabinetVM.insertInfoLog(LogEntity().apply {
                         cmd = "connectAddress"
                         msg = "获取socket地址成功"
