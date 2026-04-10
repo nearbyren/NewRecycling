@@ -3171,15 +3171,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val chipStep7 =
-                    SerialPortSdk.firmwareUpgrade78910(7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
-                if (chipStep7.isFailure) throw Exception("进入升级失败: ${chipStep7.exceptionOrNull()?.message}")
-                val stepStatus7 = chipStep7.getOrNull()?.upStatus
-                if (stepStatus7 == 1) {
-                    _chipStep.value = UpgradeStep.ENTER_STATUS
-                } else {
+                    SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
+                chipStep7.onSuccess { bytes ->
+                    // 解析 Payload (逻辑同你之前的代码)
+                    val payload = ProtocolCodec.getSafePayload(bytes)
+                    if (payload?.size == 3) {
+                        _chipStep.value = UpgradeStep.ENTER_STATUS
+                    }
+                }.onFailure { e ->
+                    _chipStep.value = UpgradeStep.ENTER_STATUS_FUALT
                     return@launch
                 }
-
                 if (chipStep.value == UpgradeStep.ENTER_STATUS) {
                     val file2 = FileMdUtil.matchNewFile2("bin", chipName)
                     val fileType = byteArrayOf(0xf1.toByte())
@@ -3200,12 +3202,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             HexConverter.combineByteArrays(fileType, sizeByte, vByte, crcByte)
                         val sendResult =
                             HexConverter.combineByteArrays(byteArrayOf(0xA1.toByte(), 0xA2.toByte(), 0xA3.toByte()), sendByte)
-                        val chipStep8 = SerialPortSdk.firmwareUpgrade78910(8, sendResult)
-                        if (chipStep8.isFailure) throw Exception("查询进入升级状态: ${chipStep8.exceptionOrNull()?.message}")
-                        val stepStatus8 = chipStep8.getOrNull()?.upStatus
-                        if (stepStatus8 == 1) {
-                            _chipStep.value = UpgradeStep.QUERY_STATUS
-                        } else {
+                        val chipStep8 =
+                            SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD8, sendResult)
+                        chipStep8.onSuccess { bytes ->
+                            // 解析 Payload (逻辑同你之前的代码)
+                            val payload = ProtocolCodec.getSafePayload(bytes)
+                            if (payload?.size == 3) {
+                                _chipStep.value = UpgradeStep.QUERY_STATUS
+                            }
+                        }.onFailure { e ->
                             _chipStep.value = UpgradeStep.QUERY_STATUS_FUALT
                             return@launch
                         }
