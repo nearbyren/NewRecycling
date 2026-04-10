@@ -161,7 +161,7 @@ class SerialVM : ViewModel() {
         }
     }
 
-    /**
+    /**？
      * 方案 B：绕过队列的直接执行方法
      * @param setCmd 发送的指令字
      * @param data 业务数据
@@ -186,16 +186,13 @@ class SerialVM : ViewModel() {
             } catch (e: TimeoutCancellationException) {
                 // 超时处理：清理状态
                 directAwaitingCmd = null
-                directDeferred = null
                 Result.failure(Exception("下位机响应超时(${timeout}ms)"))
             } catch (e: Exception) {
                 directAwaitingCmd = null
-                directDeferred = null
                 Result.failure(e)
             } catch (e: Exception) {
                 Result.failure(e)
             } finally {
-                directDeferred = null
                 responseWaiter = null
             }
         }
