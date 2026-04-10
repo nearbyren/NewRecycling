@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.ByteUtils
+import com.serial.port.utils.Loge
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -64,7 +65,7 @@ class SerialVM : ViewModel() {
                     } else throw IOException("FD is null")
                 } catch (e: Exception) {
                     _portStatus.value = PortStatus.ERROR
-                    println("我的数据 接收处理 物理链路断开，${retryDelay}ms 后尝试重连")
+                    Loge.i("我的数据 接收处理 物理链路断开，${retryDelay}ms 后尝试重连")
                     closeStreams()
                     delay(retryDelay)
                     retryDelay = (retryDelay * 2).coerceAtMost(10000L) // 指数退避
@@ -78,7 +79,7 @@ class SerialVM : ViewModel() {
         while (isRunning.get()) {
             val len = fis?.read(buffer) ?: -1
             if (len == -1) throw IOException("End of Stream")
-            println("我的数据 接收处理 readLoop ${ByteUtils.toHexString(buffer)}")
+            Loge.i("我的数据 接收处理 readLoop ${ByteUtils.toHexString(buffer)}")
             if (len > 0) extractor.push(buffer.copyOfRange(0, len))
         }
     }
@@ -95,8 +96,8 @@ class SerialVM : ViewModel() {
             responseWaiter = waiter
             try {
                 withContext(Dispatchers.IO) {
-                    println("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
-                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
+                    Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
+//                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
                     fos?.write(data)
                     fos?.flush()
                 }
@@ -124,6 +125,44 @@ class SerialVM : ViewModel() {
         }
         return Result.failure(lastErr ?: Exception("执行失败"))
     }
+
+    suspend fun sendWithRetryChip(data: ByteArray, maxRetries: Int = 5, timeout: Long = 30000): Result<ByteArray> {
+        var lastErr: Exception? = null
+        repeat(maxRetries) { attempt ->
+            val res = sendOnceChip(data, timeout)
+            if (res.isSuccess) return res
+            lastErr = res.exceptionOrNull() as? Exception
+        }
+        return Result.failure(lastErr ?: Exception("执行失败"))
+    }
+    /**
+     * 基础发送：仅执行一次发送并等待响应
+     * 供调度器 CommandScheduler 调用，实现精准的优先级重试
+     */
+    suspend fun sendOnceChip(data: ByteArray, timeout: Long = 3000): Result<ByteArray> {
+        if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
+
+        return sendMutex.withLock {
+            val waiter = CompletableDeferred<ByteArray>()
+            responseWaiter = waiter
+            try {
+                withContext(Dispatchers.IO) {
+                    Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
+//                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
+                    fos?.write(data)
+                    fos?.flush()
+                }
+                // 挂起直到收到数据或超时
+                val response = withTimeout(timeout) { waiter.await() }
+                Result.success(response)
+            } catch (e: Exception) {
+                Result.failure(e)
+            } finally {
+                responseWaiter = null
+            }
+        }
+    }
+
     fun stop() { isRunning.set(false); closeStreams(); extractor.clear() }
 
     private fun closeStreams() {

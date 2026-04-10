@@ -1,6 +1,9 @@
 package com.serial.port.t
 
 import android.util.Log
+import com.serial.port.utils.ByteUtils
+import com.serial.port.utils.SendByteData.SE_FRAME_END
+import com.serial.port.utils.SendByteData.SE_FRAME_HEADER
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -9,8 +12,8 @@ import java.nio.ByteOrder
  * @created on: 2026/3/21 下午4:18
  * @description:
  */
-object  ProtocolCodec {
-    const val FRAME_HEADER =  0x9A.toByte()
+object ProtocolCodec {
+    const val FRAME_HEADER = 0x9A.toByte()
     const val FRAME_END = 0x9B.toByte() // 假设你的帧尾是 9A
 
     // 协议偏移量常量 (对应你的 handlePacket232 定义)
@@ -21,9 +24,10 @@ object  ProtocolCodec {
 
     /**
      * 【封包】
-     * 结构：头(9B) + 地址 + 命令 + 长度 + 数据 + 校验 + 尾(9E)
+     * 结构：头(9B) + 地址 + 命令 + 长度 + 数据 + 校验 + 尾(9A)
      */
     fun encode(cmd: Byte, addr: Byte, payload: ByteArray): ByteArray {
+        println("我的数据 encode ${ByteUtils.toHexString(payload)}")
         val size = payload.size.toByte()
         val header = byteArrayOf(FRAME_HEADER, addr, cmd, size)
         val frameNoCheck = header + payload
@@ -35,6 +39,34 @@ object  ProtocolCodec {
         val checkSum = (sum % 256).toByte()
 
         return frameNoCheck + byteArrayOf(checkSum, FRAME_END)
+    }
+
+
+    fun encode2(cmd: Byte, addr: Byte, payload: ByteArray): ByteArray {
+        println("我的数据 encode2 ${ByteUtils.toHexString(payload)}")
+        val frameHeader: Byte = SE_FRAME_HEADER
+        val address: Byte = addr
+        val frameTail: Byte = SE_FRAME_END
+        val dataLength: Byte = payload.size.toByte()
+
+        // 构造帧（帧头 + 地址 + 指令 + 长度 + 数据域）
+        val frameWithoutChecksum = mutableListOf<Byte>().apply {
+            add(frameHeader)
+            add(address)
+            add(cmd)
+            add(dataLength)
+            addAll(payload.toList())
+        }
+
+        // 计算校验字节
+        val checksum: Byte = (frameWithoutChecksum.sumOf { it.toUByte().toInt() } % 256).toByte()
+
+        // 添加校验字节和帧尾
+        frameWithoutChecksum.add(checksum)
+        frameWithoutChecksum.add(frameTail)
+
+        // 转为字节数组返回
+        return frameWithoutChecksum.toByteArray()
     }
 
     /**
@@ -88,6 +120,7 @@ object  ProtocolCodec {
         }
         return result
     }
+
     /**
      * 【字节转整数】
      * 对应你 handlePacket232 中的重量(4字节)或阻力值(4字节)转换
@@ -96,6 +129,7 @@ object  ProtocolCodec {
         require(bytes.size == 4) { "Byte array must be 4 bytes long" }
         return ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).int
     }
+
     /**
      * 【字节转 16 进制字符串】
      * 用于日志输出，调试利器

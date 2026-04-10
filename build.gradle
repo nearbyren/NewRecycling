@@ -1,0 +1,44 @@
+buildscript {
+    repositories {
+//        mavenLocal()   //配置先从本地仓库寻找jar包，优先寻找上一个配置，找到不执行下面的配置
+        maven { url 'https://maven.aliyun.com/repository/central/' }
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+        maven { url 'https://maven.aliyun.com/repository/jcenter/' }
+        maven { url 'https://maven.aliyun.com/repository/google/' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        maven { url "https://jitpack.io" }
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+        google()
+
+    }
+    dependencies {
+        classpath 'com.google.dagger:hilt-android-gradle-plugin:2.48'
+        classpath 'com.tencent.vasdolly:plugin:3.0.6'//VasDolly多渠道打包
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.10"
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.0'
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:1.9.10"
+
+    }
+}
+
+
+plugins {
+//    引入 com.android.application 插件 ,
+//    version '7.3.1' 说明引入插件的版本号 ,
+//    apply false 表示当前不会马上引用该插件 , 在 Module 子项目 中使用到该插件时 , 才能正式应用 ;
+    id 'com.android.application' version '8.1.4' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.0' apply false
+    //Check that your Kotlin version is >= 1.0: java.lang.IllegalStateException: Unsupported metadata version. Check that your Kotlin version is >= 1.0
+    id 'org.jetbrains.kotlin.jvm' version '1.9.0' apply false
+//    id 'org.jetbrains.kotlin.jvm' version '1.9.0' apply false
+
+}
+// 运行gradle clean时，执行此处定义的task任务。
+// 该任务继承自Delete，删除根目录中的build目录。
+// 相当于执行Delete.delete(rootProject.buildDir)。
+// gradle使用groovy语言，调用method时可以不用加（）。
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}

@@ -30,7 +30,7 @@ import nearby.lib.netwrok.response.SPreUtil
  */
 class StartUiActivity : AppCompatActivity() {
     private val cabinetVM: CabinetVM by viewModels()
-    var getCount = 5
+    var getCount = 100
     private val httpRepo by lazy { RepoImpl() }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,7 +109,7 @@ class StartUiActivity : AppCompatActivity() {
         val postSn = SPreUtil.get(AppUtils.getContext(), SPreUtil.init_sn, "") as String
         cabinetVM.ioScope.launch {
             if (isDelay) {
-                delay(20000)
+                delay(5000)
             }
             val from = mutableMapOf<String, Any>()
             from["sn"] = postSn

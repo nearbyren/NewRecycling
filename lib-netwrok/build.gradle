@@ -1,0 +1,84 @@
+import composing.builds.BuildConfig
+import composing.builds.Google
+import composing.builds.Lib
+import composing.builds.Testing
+
+plugins {
+    id 'com.android.library'
+    id 'composing.builds'
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.kapt'
+    id 'kotlin-parcelize'
+}
+android {
+
+    compileSdk BuildConfig.compileSdk //编译的sdk
+    namespace "nearby.lib.netwrok"
+    defaultConfig {
+        minSdk BuildConfig.minSdk //最低支持版本
+        targetSdk BuildConfig.targetSdk //支持的目标版本
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+    buildFeatures {
+        buildConfig true
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    packagingOptions { exclude 'META-INF/rxjava.properties' }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    buildFeatures {
+        dataBinding true
+    }
+    //适配AGP8.0发布Maven
+    // this is important, scopes the build to the 'release' target/artifact
+    publishing {
+        singleVariant("release"){
+            // if you don't want sources/javadoc, remove these lines
+            withSourcesJar()
+//            withJavadocJar()
+        }
+    }
+}
+// 1. 增加上传源码的task
+task withSourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    archiveClassifier = "sources"
+}
+task withJavadocJar(){
+
+}
+
+
+dependencies {
+    testImplementation Testing.jUnit
+    androidTestImplementation Testing.androidJunit
+    androidTestImplementation Testing.espresso
+
+    api Google.gson
+    api Lib.retrofit
+    api Lib.converterCalars
+    api Lib.retrofitConverterGson
+    api Lib.adapterRxjava
+    api Lib.adapterRxjava2
+    api Lib.okhttp3
+    api Lib.conscryptAndroid
+    api Lib.fastjson
+    //apache StringUtils导入
+    api "org.apache.commons:commons-lang3:3.7"
+    //apache Base64导入
+    api "commons-codec:commons-codec:1.11"
+}

@@ -312,9 +312,11 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
 
     private fun initPort() {
         // 启动门控制系统
-//        cabinetVM.startContainersStatus()
+        cabinetVM.startContainersStatus()
         //启动检查故障
         cabinetVM.pollingFault()
+        //查询版本
+        cabinetVM.startChipVersion()
     }
 
     /***
@@ -449,9 +451,7 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
                         val openType = doorOpenModel.openType
                         when (openType) {
                             1 -> {
-                                cabinetVM.startLockerDoorWorkflow(
-                                    doorOpenModel, setWeightBeforeOpen, a, b, c, d
-                                )
+                                cabinetVM.startLockerDoorWorkflow(doorOpenModel, setWeightBeforeOpen, a, b, c, d)
                             }
 
                             2 -> {
@@ -673,54 +673,33 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
 
     fun latestBusinessStatus() {
         cabinetVM.cameraManagerNew.registerUsbReceiver()
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.flowByteArrayWeight.collect {
-                    BoxToolLogUtils.savePrintln("业务流：重量信息：$it")
-                }
-            }
-        }
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.flowByteArrayResult.collect {
-                    BoxToolLogUtils.savePrintln("业务流：业务结果：$it")
-                }
-            }
-        }
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.flowByteArrayStatus.collect {
-                    BoxToolLogUtils.savePrintln("业务流：柜体信息：$it")
-                }
-            }
-        }
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                SerialPortSdk.flowBusinessSetup.collect {
-                    val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
-                    BoxToolLogUtils.savePrintln("业务流：返回的指令 -> $cmdText | ${it.cmdStatus} | $it")
-                    when (it.cmdByte) {
-                        SerialPortSdk.CMD0 -> {}
-                        SerialPortSdk.CMD1 -> {}
-                        SerialPortSdk.CMD2 -> {}
-                        SerialPortSdk.CMD3 -> {}
-                        SerialPortSdk.CMD4 -> {}
-                        SerialPortSdk.CMD5 -> {}
-                        SerialPortSdk.CMD6 -> {}
-                        SerialPortSdk.CMD7 -> {}
-                        SerialPortSdk.CMD8 -> {}
-                        SerialPortSdk.CMD9 -> {}
-                        SerialPortSdk.CMD10 -> {}
-                        SerialPortSdk.CMD11 -> {}
-                        SerialPortSdk.CMD16 -> {}
-                        SerialPortSdk.CMD17 -> {}
-                        SerialPortSdk.CMD18 -> {}
-                        SerialPortSdk.CMD19 -> {}
-                    }
-
-                }
-            }
-        }
+//        lifecycleScope.launch {
+//            repeatOnLifecycle(Lifecycle.State.STARTED) {
+//                SerialPortSdk.flowBusinessSetup.collect {
+//                    val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
+//                    BoxToolLogUtils.savePrintln("业务流：返回的指令 -> $cmdText | ${it.cmdStatus} | $it")
+//                    when (it.cmdByte) {
+//                        SerialPortSdk.CMD0 -> {}
+//                        SerialPortSdk.CMD1 -> {}
+//                        SerialPortSdk.CMD2 -> {}
+//                        SerialPortSdk.CMD3 -> {}
+//                        SerialPortSdk.CMD4 -> {}
+//                        SerialPortSdk.CMD5 -> {}
+//                        SerialPortSdk.CMD6 -> {}
+//                        SerialPortSdk.CMD7 -> {}
+//                        SerialPortSdk.CMD8 -> {}
+//                        SerialPortSdk.CMD9 -> {}
+//                        SerialPortSdk.CMD10 -> {}
+//                        SerialPortSdk.CMD11 -> {}
+//                        SerialPortSdk.CMD16 -> {}
+//                        SerialPortSdk.CMD17 -> {}
+//                        SerialPortSdk.CMD18 -> {}
+//                        SerialPortSdk.CMD19 -> {}
+//                    }
+//
+//                }
+//            }
+//        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.chipStep.collect {

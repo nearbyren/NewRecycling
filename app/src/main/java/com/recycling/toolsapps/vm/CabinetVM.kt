@@ -49,12 +49,15 @@ import com.recycling.toolsapps.utils.FaultType
 import com.recycling.toolsapps.utils.JsonBuilder
 import com.recycling.toolsapps.utils.MediaPlayerHelper
 import com.recycling.toolsapps.utils.MonitorType
+import com.recycling.toolsapps.utils.RefBusType
 import com.recycling.toolsapps.utils.ResType
 import com.recycling.toolsapps.utils.TelephonyUtils
 import com.recycling.toolsapps.utils.WeightChangeStorage
 import com.recycling.toolsapps.view.AwesomeQRCode
 import com.recycling.toolsapps.vm.CabinetVM.ConnectionState.*
 import com.serial.port.t.ContainersResult
+import com.serial.port.t.ProtocolCodec
+import com.serial.port.t.SendOpenText
 import com.serial.port.t.SerialPortSdk
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.BoxToolLogUtils
@@ -334,7 +337,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             doorGeX = doorGex
             val m = mapOf(
-                "cmd" to CmdValue.CMD_PHONE_NUMBER_LOGIN, "phoneNumber" to phoneNumber, "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_PHONE_NUMBER_LOGIN,
+                "phoneNumber" to phoneNumber,
+                "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -350,7 +355,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun toGoMobileOpen(cabinId: String, userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val m = mapOf(
-                "cmd" to CmdValue.CMD_PHONE_USER_OPEN_DOOR, "cabinId" to cabinId, "userId" to userId, "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_PHONE_USER_OPEN_DOOR,
+                "cabinId" to cabinId,
+                "userId" to userId,
+                "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -365,7 +373,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun toGoTPSucces(transId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val m = mapOf(
-                "cmd" to CmdValue.CMD_ADMIN_PHOTO, "type" to "res", "transId" to transId, "retCode" to 0, "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_ADMIN_PHOTO,
+                "type" to "res",
+                "transId" to transId,
+                "retCode" to 0,
+                "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -435,7 +447,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val getImei = SPreUtil[AppUtils.getContext(), SPreUtil.setImei, ""]
             val getIccid = SPreUtil[AppUtils.getContext(), SPreUtil.setIccid, ""]
             val m = mapOf(
-                "cmd" to CmdValue.CMD_LOGIN, "loginCount" to loginCount, "sn" to getSn, "imsi" to getImsi, "imei" to getImei, "iccid" to getIccid, "version" to gversion, "apkVersion" to AppUtils.getVersionName(), "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_LOGIN,
+                "loginCount" to loginCount,
+                "sn" to getSn,
+                "imsi" to getImsi,
+                "imei" to getImei,
+                "iccid" to getIccid,
+                "version" to gversion,
+                "apkVersion" to AppUtils.getVersionName(),
+                "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -448,7 +468,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun toGoCmdOtaAPK() {
         viewModelScope.launch(Dispatchers.IO) {
             val m = mapOf(
-                "cmd" to CmdValue.CMD_OTA_APK, "retCode" to 0, "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_OTA_APK,
+                "retCode" to 0,
+                "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -474,7 +496,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun toGoCmdLog() {
         viewModelScope.launch(Dispatchers.IO) {
             val m = mapOf(
-                "cmd" to CmdValue.CMD_UPLOAD_LOG, "retCode" to 0, "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_UPLOAD_LOG,
+                "retCode" to 0,
+                "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -513,7 +537,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 maptDoorFault[FaultType.FAULT_CODE_2120] = false
             }
             val m = mapOf(
-                "cmd" to CmdValue.CMD_ADMIN_OVERFLOW, "type" to "res", "retCode" to 0, "transId" to transId, "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_ADMIN_OVERFLOW,
+                "type" to "res",
+                "retCode" to 0,
+                "transId" to transId,
+                "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -546,13 +574,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
             delay(9000)
             // 目标文件夹路径
             val targetFolder = File(
-                AppUtils.getContext()
-                    .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box_crash"
+                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+                "socket_box_crash"
             )
             // 压缩包输出路径
             val zipOutput = File(
-                AppUtils.getContext()
-                    .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "${AppUtils.getDateYMDHMS3()}_socket_box_crash.zip"
+                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+                "${AppUtils.getDateYMDHMS3()}_socket_box_crash.zip"
             )
 
             // 执行压缩
@@ -883,12 +911,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     )
                     _refBusStaChannel.send(MonitorWeight().apply {
                         doorGeX = CmdCode.GE1
-                        refreshType = 2
+                        refreshType = RefBusType.REFRESH_TYPE_2
                         warningContent = BusType.BUS_MAINTAINING_END
                     })
                     _refBusStaChannel.send(MonitorWeight().apply {
                         doorGeX = CmdCode.GE2
-                        refreshType = 2
+                        refreshType = RefBusType.REFRESH_TYPE_2
                         warningContent = BusType.BUS_MAINTAINING_END
                     })
                 }
@@ -902,12 +930,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     )
                     _refBusStaChannel.send(MonitorWeight().apply {
                         doorGeX = CmdCode.GE1
-                        refreshType = 2
+                        refreshType = RefBusType.REFRESH_TYPE_2
                         warningContent = BusType.BUS_MAINTAINING
                     })
                     _refBusStaChannel.send(MonitorWeight().apply {
                         doorGeX = CmdCode.GE2
-                        refreshType = 2
+                        refreshType = RefBusType.REFRESH_TYPE_2
                         warningContent = BusType.BUS_MAINTAINING
                     })
 
@@ -922,12 +950,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     )
                     _refBusStaChannel.send(MonitorWeight().apply {
                         doorGeX = CmdCode.GE1
-                        refreshType = 2
+                        refreshType = RefBusType.REFRESH_TYPE_2
                         warningContent = BusType.BUS_MAINTAINING_END
                     })
                     _refBusStaChannel.send(MonitorWeight().apply {
                         doorGeX = CmdCode.GE2
-                        refreshType = 2
+                        refreshType = RefBusType.REFRESH_TYPE_2
                         warningContent = BusType.BUS_MAINTAINING_END
                     })
                 }
@@ -1149,18 +1177,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 0 -> {
                                     containersDB.add(states)
                                     cur1Cabinld = states.cabinId ?: ""//初始化读取db格口编码
-                                    curG1Weight = states.weighY.toString()
+                                    curG1Weight = states.weigh.toString()
                                     if (!oneInit) {
-                                        restartAppCloseDoor(CmdCode.GE1)
+//                                        restartAppCloseDoor(CmdCode.GE1)
                                     }
                                 }
 
                                 1 -> {
                                     containersDB.add(states)
                                     cur2Cabinld = states.cabinId ?: ""//初始化读取db格口编码
-                                    curG2Weight = states.weighY.toString()
+                                    curG2Weight = states.weigh.toString()
                                     if (!oneInit) {
-                                        restartAppCloseDoor(CmdCode.GE2)
+//                                        restartAppCloseDoor(CmdCode.GE2)
                                     }
                                 }
                             }
@@ -1194,7 +1222,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         delay(500)
                         if (resource.url != null && !TextUtils.isEmpty(resource.url) && resource.filename != null && !TextUtils.isEmpty(
                                 resource.filename
-                            )) {
+                            )
+                        ) {
                             val fileName = resource.filename ?: ""
                             var dir = FileMdUtil.matchNewFileName("audio", fileName)
                             if (FileMdUtil.shouldAudio(fileName)) {
@@ -1210,7 +1239,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             "home.png" -> {
                                                 if (FileMdUtil.checkResFileExists("home.png")) {
                                                     downResBitmap(
-                                                        oneInit, "res/${resource.filename}", 1, config.status
+                                                        oneInit,
+                                                        "res/${resource.filename}",
+                                                        1,
+                                                        config.status
                                                     )
                                                 }
                                             }
@@ -1218,7 +1250,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             "maintaining.png" -> {
                                                 if (FileMdUtil.checkResFileExists("maintaining.png")) {
                                                     downResBitmap(
-                                                        oneInit, "res/${resource.filename}", 3, config.status
+                                                        oneInit,
+                                                        "res/${resource.filename}",
+                                                        3,
+                                                        config.status
                                                     )
                                                 }
                                             }
@@ -1269,7 +1304,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             "home.png" -> {
                                                 if (FileMdUtil.checkResFileExists("home.png")) {
                                                     downResBitmap(
-                                                        oneInit, "res/${resource.filename}", 1, config.status
+                                                        oneInit,
+                                                        "res/${resource.filename}",
+                                                        1,
+                                                        config.status
                                                     )
                                                 }
                                             }
@@ -1277,7 +1315,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             "maintaining.png" -> {
                                                 if (FileMdUtil.checkResFileExists("maintaining.png")) {
                                                     downResBitmap(
-                                                        oneInit, "res/${resource.filename}", 3, config.status
+                                                        oneInit,
+                                                        "res/${resource.filename}",
+                                                        3,
+                                                        config.status
                                                     )
                                                 }
                                             }
@@ -1347,12 +1388,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
 //                            setCabinetStatus2(BusType.BUS_REFRESH_DATA)
                             setRefreshHomeRes(BusType.BUS_REFRESH_HOME_RES)
                             setRefBusStaChannel(MonitorWeight().apply {
-                                refreshType = 2
+                                refreshType = RefBusType.REFRESH_TYPE_2
                                 warningContent = BusType.BUS_REFRESH_DATA
                                 doorGeX = CmdCode.GE1
                             })
                             setRefBusStaChannel(MonitorWeight().apply {
-                                refreshType = 2
+                                refreshType = RefBusType.REFRESH_TYPE_2
                                 warningContent = BusType.BUS_REFRESH_DATA
                                 doorGeX = CmdCode.GE2
                             })
@@ -1367,7 +1408,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             -1 -> {
 //                                setCabinetStatus1(BusType.BUS_MAINTAINING)
                                 setRefBusStaChannel(MonitorWeight().apply {
-                                    refreshType = 2
+                                    refreshType = RefBusType.REFRESH_TYPE_2
                                     warningContent = BusType.BUS_MAINTAINING
                                     doorGeX = CmdCode.GE1
                                 })
@@ -1378,7 +1419,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             0 -> {
 //                                setCabinetStatus1(BusType.BUS_MAINTAINING)
                                 setRefBusStaChannel(MonitorWeight().apply {
-                                    refreshType = 2
+                                    refreshType = RefBusType.REFRESH_TYPE_2
                                     warningContent = BusType.BUS_MAINTAINING
                                     doorGeX = CmdCode.GE2
                                 })
@@ -1723,13 +1764,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     if (doorT1Abnormal) {
                         _refBusStaChannel.send(MonitorWeight().apply {
                             doorGeX = CmdCode.GE1
-                            refreshType = 2
+                            refreshType = RefBusType.REFRESH_TYPE_2
                             warningContent = BusType.BUS_FAULT
                         })
                     } else {
                         _refBusStaChannel.send(MonitorWeight().apply {
                             doorGeX = CmdCode.GE1
-                            refreshType = 2
+                            refreshType = RefBusType.REFRESH_TYPE_2
                             warningContent = BusType.BUS_OVERFLOW
                         })
                     }
@@ -1737,13 +1778,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     if (doorT1Abnormal) {
                         _refBusStaChannel.send(MonitorWeight().apply {
                             doorGeX = CmdCode.GE1
-                            refreshType = 2
+                            refreshType = RefBusType.REFRESH_TYPE_2
                             warningContent = BusType.BUS_FAULT
                         })
                     } else {
                         _refBusStaChannel.send(MonitorWeight().apply {
                             doorGeX = CmdCode.GE1
-                            refreshType = 2
+                            refreshType = RefBusType.REFRESH_TYPE_2
                             warningContent = BusType.BUS_NORMAL
                         })
                     }
@@ -1752,13 +1793,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     if (doorT2Abnormal) {
                         _refBusStaChannel.send(MonitorWeight().apply {
                             doorGeX = CmdCode.GE2
-                            refreshType = 2
+                            refreshType = RefBusType.REFRESH_TYPE_2
                             warningContent = BusType.BUS_FAULT
                         })
                     } else {
                         _refBusStaChannel.send(MonitorWeight().apply {
                             doorGeX = CmdCode.GE2
-                            refreshType = 2
+                            refreshType = RefBusType.REFRESH_TYPE_2
                             warningContent = BusType.BUS_OVERFLOW
                         })
                     }
@@ -1766,13 +1807,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     if (doorT2Abnormal) {
                         _refBusStaChannel.send(MonitorWeight().apply {
                             doorGeX = CmdCode.GE2
-                            refreshType = 2
+                            refreshType = RefBusType.REFRESH_TYPE_2
                             warningContent = BusType.BUS_FAULT
                         })
                     } else {
                         _refBusStaChannel.send(MonitorWeight().apply {
                             doorGeX = CmdCode.GE2
-                            refreshType = 2
+                            refreshType = RefBusType.REFRESH_TYPE_2
                             warningContent = BusType.BUS_NORMAL
                         })
                     }
@@ -1786,17 +1827,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = ""
+    var chipName = "F1-20260403.bin"
 
     /***
      * 下载主芯片版本大小
      */
-    var chipDowV = 0
+    var chipDowV = 20260403
 
     /***
      * 当前主芯片版本大小
      */
-    var chipCurV = 0
+    var chipCurV = 20260401
 
     //统计能发送次数
     var sendFCount = 0
@@ -1998,7 +2039,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun initConfigSocket(initHost: String, initPort: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             config = Config(
-                host = initHost, port = initPort, heartbeatIntervalMillis = 20, heartbeatPayload = "PING".toByteArray()
+                host = initHost,
+                port = initPort,
+                heartbeatIntervalMillis = 20,
+                heartbeatPayload = "PING".toByteArray()
             )
             start()
         }
@@ -2107,14 +2151,16 @@ class CabinetVM @Inject constructor() : ViewModel() {
             } catch (e: CancellationException) {
                 Loge.e("出厂配置 initSocket SocketClient runMainLoop catch1 ${e.message} running $running")
                 BoxToolLogUtils.recordSocket(
-                    CmdValue.CONNECTING, "socketClientrunMainLoop catch1 ${e.message} running $running"
+                    CmdValue.CONNECTING,
+                    "socketClientrunMainLoop catch1 ${e.message} running $running"
                 )
                 break
             } catch (e: Exception) {
                 // Swallow and backoff
                 Loge.e("出厂配置 initSocket SocketClient runMainLoop catch2 ${e.message} running $running")
                 BoxToolLogUtils.recordSocket(
-                    CmdValue.CONNECTING, "socketClient,runMainLoop catch2 ${e.message} running $running"
+                    CmdValue.CONNECTING,
+                    "socketClient,runMainLoop catch2 ${e.message} running $running"
                 )
             } finally {
                 Loge.e("出厂配置 initSocket SocketClient runMainLoop finally running $running")
@@ -2159,7 +2205,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
         s.tcpNoDelay = true
         s.soTimeout = config?.readTimeoutMillis!!
         s.connect(
-            config?.port?.let { InetSocketAddress(config?.host, it) }, config?.connectTimeoutMillis?.toInt()!!
+            config?.port?.let { InetSocketAddress(config?.host, it) },
+            config?.connectTimeoutMillis?.toInt()!!
         )
 
         socketMutex.withLock { socket = s }
@@ -2489,14 +2536,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             if (result2 == "success") {
                                 devWeiChaMapSend[1] = false
                             }
-                            val weightChange = getDeviceWeightChange(
-                                CmdValue.CMD_PERIPHERAL_STATUS, stateList, setSignal, setIr1, setIr2, overflowState
-                            )
+                            val weightChange = getDeviceWeightChange(CmdValue.CMD_PERIPHERAL_STATUS, stateList, setSignal, setIr1, setIr2, overflowState)
                             Loge.e("执行重量变动 数据 $weightChange ")
                             sendText(weightChange.toString())
-                            saveRecordSocket(
-                                CmdValue.CONNECTING, "重量变动,重量-1：${devWeiChaMapCun[0]}|重量-2：${devWeiChaMapCun[1]}"
-                            )
+                            saveRecordSocket(CmdValue.CONNECTING, "重量变动,重量-1：${devWeiChaMapCun[0]}|重量-2：${devWeiChaMapCun[1]}")
                         }
                     }
 //                    Loge.e("出厂配置 initSocket SocketClient 发送心跳数据：$jsonObject")
@@ -2505,7 +2548,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 } catch (e: Exception) {
                     Loge.e("出厂配置 initSocket SocketClient heartbeatAndIdleMonitor catch ${e.message}")
                     BoxToolLogUtils.recordSocket(
-                        CmdValue.CONNECTING, "socketClient,heartbeatAndIdleMonitor catch ${e.message}"
+                        CmdValue.CONNECTING,
+                        "socketClient,heartbeatAndIdleMonitor catch ${e.message}"
                     )
 
                 }
@@ -2561,8 +2605,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
 //                                    addProperty("irState", 1)
 //                                    addProperty("weigh", 36.00)
-                        addProperty("weigh", state.weighY)
-                        addProperty("weighH", state.weigh)
+                        addProperty("weigh", state.weigh)
                         addProperty("doorStatus", state.doorStatus)
                         addProperty("lockStatus", state.lockStatus)
                         addProperty("cabinId", state.cabinId ?: "")
@@ -2937,8 +2980,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     time = AppUtils.getDateYMDHMS()
                 }
                 val queryResource = DatabaseManager.queryResCmd(
-                    AppUtils.getContext(), netVersion.toString(), otaModel.sn ?: "", otaModel.cmd
-                        ?: ""
+                    AppUtils.getContext(),
+                    netVersion.toString(),
+                    otaModel.sn ?: "",
+                    otaModel.cmd ?: ""
                 )
                 Loge.e("流程 toGoCmdOtaBin 添加资源 $queryResource")
                 if (queryResource == null) {
@@ -3169,146 +3214,137 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     fun startUpgradeWorkflow() {
         viewModelScope.launch(Dispatchers.IO) {
-            val chipStep7 =
-                SerialPortSdk.firmwareUpgrade78910(7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
-            if (chipStep7.isFailure) throw Exception("进入升级失败: ${chipStep7.exceptionOrNull()?.message}")
-            val stepStatus7 = chipStep7.getOrNull()?.upStatus
-            if (stepStatus7 == 1) {
-                _chipStep.value = UpgradeStep.ENTER_STATUS
-                chipSetFlow8()
-            } else {
-                _chipStep.value = UpgradeStep.ENTER_STATUS_FUALT
-            }
-        }
-    }
-
-    suspend fun chipSetFlow8() = withContext(Dispatchers.IO) {
-        val file2 = FileMdUtil.matchNewFile2("bin", chipName)
-        val fileType = byteArrayOf(0xf1.toByte())
-        val filSize = file2?.length()?.toInt() ?: 0
-        filSize.let { size ->
-            if (size < 0) return@let
-            //软件大小
-            val sizeByte = HexConverter.intToByteArray(size)
-            Loge.d("流程 芯片升级 filSize = $size | sizeByte = ${ByteUtils.toHexString(sizeByte)}")
-            //软件版本
-            val vByte = HexConverter.intToByteArray(111)
-            Loge.d("流程 芯片升级 chipMasterV = $111 vByte = ${ByteUtils.toHexString(vByte)}")
-            //CRC效验值
-            val crc = CRC32MPEG2Util.computeFile(file2.absolutePath)
-            val crcByte = HexConverter.intToByteArray(crc.toInt())
-            Loge.d("流程 芯片升级 crcByte = ${ByteUtils.toHexString(crcByte)}")
-            val sendByte = HexConverter.combineByteArrays(
-                fileType, sizeByte, vByte, crcByte
-            )
-
-            val chipStep8 = SerialPortSdk.firmwareUpgrade78910(8, sendByte)
-            if (chipStep8.isFailure) throw Exception("查询进入升级状态: ${chipStep8.exceptionOrNull()?.message}")
-            val stepStatus8 = chipStep8.getOrNull()?.upStatus
-            if (stepStatus8 == 1) {
-                _chipStep.value = UpgradeStep.QUERY_STATUS
-                chipSetFlow8fs()
-            } else {
-                _chipStep.value = UpgradeStep.QUERY_STATUS_FUALT
-            }
-        }
-    }
-
-    suspend fun chipSetFlow8fs() = withContext(Dispatchers.IO) {
-        //发送的文件数据
-        val sendBLFile = mutableListOf<ByteArray>()
-        val masterFile = FileMdUtil.matchNewFile2("bin", chipName)
-        masterFile?.let { file ->
-            sendBLFile.clear()
             try {
-                FileInputStream(file).use { fis ->
-                    val buffer = ByteArray(8)
-                    var bytesRead: Int
-                    var blockIndex = 0
-                    // 循环读取直到文件结束
-                    while (fis.read(buffer).also { bytesRead = it } != -1) {
-                        val blockToSend =
-                            buffer.copyOfRange(0, bytesRead) // 或 buffer.copyOf(bytesRead)
-                        Loge.d(
-                            "流程 芯片升级 封装好数据 共发送 $blockIndex 个数据块，发了数据：${
-                                ByteUtils.toHexString(
-                                    blockToSend
-                                )
-                            }"
-                        )
-                        sendBLFile.add(blockToSend)
-                        blockIndex++
-                    }
-                    Loge.d("流程 芯片升级 共发送 $blockIndex 个数据块")
+                val chipStep7 = SerialPortSdk.firmwareUpgrade78910(7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
+                if (chipStep7.isFailure) throw Exception("进入升级失败: ${chipStep7.exceptionOrNull()?.message}")
+                val stepStatus7 = chipStep7.getOrNull()?.upStatus
+                if (stepStatus7 == 1) {
+                    _chipStep.value = UpgradeStep.ENTER_STATUS
+                } else {
+                    return@launch
                 }
-            } catch (e: Exception) {
-                Loge.d("流程 芯片升级 处理文件时出错: ${e.message}")
-            } finally {
-                if (sendBLFile.isNotEmpty()) {
-                    Loge.d("流程 芯片升级 封装好数据 开始发送文件数据")
-                    sendFileByte232.send(sendBLFile[sendFCount])
-                    Loge.d("流程 芯片升级 chipSet8fs ${sendBLFile.size}")
-                    while (isActive) {  // 保证协程一直运行
-                        val sendByte = sendFileByte232.receive()  // 从Channel中接收指令
-                        Loge.d("流程 芯片升级 发送第$sendFCount 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
-                        if (sendByte.isNotEmpty()) {
-                            val chipStep8f = SerialPortSdk.firmwareUpgradeFile(sendByte)
-                            if (chipStep8f.isFailure) throw Exception("发送文件失败: ${chipStep8f.exceptionOrNull()?.message}")
-                            val stepStatus8f = chipStep8f.getOrNull()?.byteArray
-                            val sendByteArray = sendBLFile[sendFCount]
-                            if (stepStatus8f.contentEquals(sendByteArray)) {
-                                sendFCount++
-                                if (sendFCount <= sendBLFile.size - 1) {
-                                    Loge.d(
-                                        "流程 芯片升级 sendByteList = ${sendBLFile.size} | send8fCount = $sendFCount |  bytes = $${ByteUtils.toHexString(stepStatus8f)} "
-                                    )
-                                    sendFileByte232.send(sendBLFile[sendFCount])
-                                } else {
-                                    chipSetFlow9()
-                                    _chipStep.value = UpgradeStep.SEND_FILE
-                                }
-                            } else {
-                                _chipStep.value = UpgradeStep.SEND_FILE_FUALT
 
+                if (chipStep.value == UpgradeStep.ENTER_STATUS) {
+                    val file2 = FileMdUtil.matchNewFile2("bin", chipName)
+                    val fileType = byteArrayOf(0xf1.toByte())
+                    val filSize = file2?.length()?.toInt() ?: 0
+                    filSize.let { size ->
+                        if (size < 0) return@let
+                        //软件大小
+                        val sizeByte = HexConverter.intToByteArray(size)
+                        Loge.d("流程 芯片升级 filSize = $size | sizeByte = ${ByteUtils.toHexString(sizeByte)}")
+                        //软件版本
+                        val vByte = HexConverter.intToByteArray(chipDowV)
+                        Loge.d("流程 芯片升级 chipMasterV = $chipDowV vByte = ${ByteUtils.toHexString(vByte)}")
+                        //CRC效验值
+                        val crc = CRC32MPEG2Util.computeFile(file2.absolutePath)
+                        val crcByte = HexConverter.intToByteArray(crc.toInt())
+                        Loge.d("流程 芯片升级 crcByte = ${ByteUtils.toHexString(crcByte)}")
+                        val sendByte = HexConverter.combineByteArrays(fileType, sizeByte, vByte, crcByte)
+                        val sendResult = HexConverter.combineByteArrays(byteArrayOf(0xA1.toByte(), 0xA2.toByte(), 0xA3.toByte()), sendByte)
+                        val chipStep8 = SerialPortSdk.firmwareUpgrade78910(8, sendResult)
+                        if (chipStep8.isFailure) throw Exception("查询进入升级状态: ${chipStep8.exceptionOrNull()?.message}")
+                        val stepStatus8 = chipStep8.getOrNull()?.upStatus
+                        if (stepStatus8 == 1) {
+                            _chipStep.value = UpgradeStep.QUERY_STATUS
+                        } else {
+                            _chipStep.value = UpgradeStep.QUERY_STATUS_FUALT
+                            return@launch
+                        }
+                        if (chipStep.value == UpgradeStep.QUERY_STATUS) {
+                            //发送的文件数据
+                            val sendBLFile = mutableListOf<ByteArray>()
+                            val masterFile = FileMdUtil.matchNewFile2("bin", chipName)
+                            masterFile?.let { file ->
+                                sendBLFile.clear()
+                                try {
+                                    FileInputStream(file).use { fis ->
+                                        val buffer = ByteArray(8)
+                                        var bytesRead: Int
+                                        var blockIndex = 0
+                                        // 循环读取直到文件结束
+                                        while (fis.read(buffer).also { bytesRead = it } != -1) {
+                                            val blockToSend = buffer.copyOfRange(0, bytesRead) // 或 buffer.copyOf(bytesRead)
+                                            Loge.d("流程 芯片升级 封装好数据 共发送 $blockIndex 个数据块，发了数据：${ByteUtils.toHexString(blockToSend)}")
+                                            sendBLFile.add(blockToSend)
+                                            blockIndex++
+                                        }
+                                        Loge.d("流程 芯片升级 共发送 $blockIndex 个数据块")
+                                    }
+                                } catch (e: Exception) {
+                                    Loge.d("流程 芯片升级 处理文件时出错: ${e.message}")
+                                } finally {
+                                    if (sendBLFile.isNotEmpty()) {
+                                        Loge.d("流程 芯片升级 封装好数据 开始发送文件数据")
+                                        Loge.d("流程 芯片升级 chipSet8fs ${sendBLFile.size}")
+                                        var conutSendByte = 0
+                                        while (isActive) {  // 保证协程一直运行
+                                            val sendByte = sendBLFile[conutSendByte] // 从Channel中接收指令
+                                            Loge.d("流程 芯片升级 发送第$sendFCount 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
+                                            if (sendByte.isNotEmpty()) {
+                                                val chipStep8f = SerialPortSdk.firmwareUpgradeFile(sendByte)
+                                                if (chipStep8f.isFailure) throw Exception("发送文件失败: ${chipStep8f.exceptionOrNull()?.message}")
+                                                val stepStatus8f = chipStep8f.getOrNull()?.byteArray
+                                                val sendByteArray = sendBLFile[sendFCount]
+                                                if (stepStatus8f.contentEquals(sendByteArray)) {
+                                                    sendFCount++
+                                                    conutSendByte++
+                                                    if (sendFCount <= sendBLFile.size - 1) {
+                                                        Loge.d("流程 芯片升级 sendByteList = ${sendBLFile.size} | send8fCount = $sendFCount |  bytes = ${ByteUtils.toHexString(stepStatus8f)} ")
+                                                    } else {
+                                                        _chipStep.value = UpgradeStep.SEND_FILE
+                                                        break
+                                                    }
+                                                } else {
+                                                    _chipStep.value = UpgradeStep.SEND_FILE_FUALT
+                                                    break
+                                                }
+                                                Loge.d("流程 芯片升级 sendByteList = ${sendBLFile.size} | send8fCount = $sendFCount ")
+                                                // 每次指令之间间隔1秒
+                                                delay(50)
+                                            }
+                                        }
+                                    } else {
+                                        _chipStep.value = UpgradeStep.SEND_FILE_FUALT
+                                        Loge.d("流程 芯片升级 封装好数据 没有文件数据")
+                                        return@launch
+                                    }
+                                }
                             }
-                            Loge.d("流程 芯片升级 sendByteList = ${sendBLFile.size} | send8fCount = $sendFCount ")
-                            // 每次指令之间间隔1秒
-                            delay(50)
+                        }
+
+                        if (chipStep.value == UpgradeStep.SEND_FILE) {
+                            delay(5000)
+                            val chipStep9 = SerialPortSdk.firmwareUpgrade78910(9, byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte()))
+                            if (chipStep9.isFailure) throw Exception("发送文件结束开始校验: ${chipStep9.exceptionOrNull()?.message}")
+                            val stepStatus9 = chipStep9.getOrNull()?.upStatus
+                            if (stepStatus9 == 1) {
+                                _chipStep.value = UpgradeStep.SEND_FILE_END
+                            } else {
+                                _chipStep.value = UpgradeStep.SEND_FILE_END_FUALT
+                                return@launch
+                            }
+                        }
+
+                        if (chipStep.value == UpgradeStep.RESTART_APP) {
+                            delay(3000)
+                            val chipStep10 = SerialPortSdk.firmwareUpgrade78910(10, byteArrayOf(0xa7.toByte(), 0xa8.toByte(), 0xa9.toByte()))
+                            if (chipStep10.isFailure) throw Exception("进入重启: ${chipStep10.exceptionOrNull()?.message}")
+                            val stepStatus10 = chipStep10.getOrNull()?.upStatus
+                            if (stepStatus10 == 1) {
+                                _chipStep.value = UpgradeStep.RESTART_APP
+                            } else {
+                                _chipStep.value = UpgradeStep.RESTART_APP_FUALT
+                                return@launch
+                            }
                         }
                     }
-                } else {
-                    Loge.d("流程 芯片升级 封装好数据 没有文件数据")
                 }
+            } catch (e: Exception) {
+                BoxToolLogUtils.savePrintln("升级流程：异常情况")
             }
         }
     }
-
-    suspend fun chipSetFlow9() = withContext(Dispatchers.IO) {
-        val chipStep9 =
-            SerialPortSdk.firmwareUpgrade78910(9, byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte()))
-        if (chipStep9.isFailure) throw Exception("发送文件结束开始校验: ${chipStep9.exceptionOrNull()?.message}")
-        val stepStatus9 = chipStep9.getOrNull()?.upStatus
-        if (stepStatus9 == 1) {
-            _chipStep.value = UpgradeStep.SEND_FILE_END
-            chipSetFlow10()
-        } else {
-            _chipStep.value = UpgradeStep.SEND_FILE_END_FUALT
-
-        }
-    }
-
-    suspend fun chipSetFlow10() = withContext(Dispatchers.IO) {
-        val chipStep10 =
-            SerialPortSdk.firmwareUpgrade78910(10, byteArrayOf(0xa7.toByte(), 0xa8.toByte(), 0xa9.toByte()))
-        if (chipStep10.isFailure) throw Exception("进入重启: ${chipStep10.exceptionOrNull()?.message}")
-        val stepStatus10 = chipStep10.getOrNull()?.upStatus
-        if (stepStatus10 == 1) {
-            _chipStep.value = UpgradeStep.RESTART_APP
-        } else {
-            _chipStep.value = UpgradeStep.RESTART_APP_FUALT
-        }
-    }
-
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -3340,6 +3376,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     var checkStatusResult: Deferred<Boolean>? = null
+
+    /**
+     * @param model
+     * 检测满溢状态信息
+     */
     private fun startLockerCheck(model: DoorOpenBean): Boolean {
         checkStatusResult = ioScope.async {
             Loge.e("流程 startLockerCheck model $model")
@@ -3354,7 +3395,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         if (state.cabinId == model.cabinId) {
                             doorGeX = CmdCode.GE1
                             cur1Cabinld = state.cabinId ?: ""//打开格口前读取db格口编码
-                            curG1Weight = state.weighY.toString()//打开格口前读取db格口重量
+                            curG1Weight = state.weigh.toString()//打开格口前读取db格口重量
                         }
                     }
 
@@ -3362,7 +3403,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         if (state.cabinId == model.cabinId && doorGeXType == CmdCode.GE2) {
                             doorGeX = CmdCode.GE2
                             cur2Cabinld = state.cabinId ?: ""//打开格口前读取db格口编码
-                            curG2Weight = state.weighY.toString()//打开格口前读取db格口重量
+                            curG2Weight = state.weigh.toString()//打开格口前读取db格口重量
                         }
                     }
                 }
@@ -3526,7 +3567,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 dbBeforeWeight(weightBeforeOpen, model)
                 val turnDoor = SerialPortSdk.turnDoor(openType)
                 if (turnDoor.isFailure) throw Exception("开门指令发送失败: ${turnDoor.exceptionOrNull()?.message}")
-
                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
                 // --- 第二阶段：轮询等待门开启 ---
                 _currentStep.value = LockerStep.WAITING_OPEN_DOOR
@@ -3535,23 +3575,25 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 withTimeout(20000) { // 20秒超时
                     while (isActive) {
                         val doorStatus = SerialPortSdk.turnDoorStatus(doorGex).getOrNull()?.status
-                        BoxToolLogUtils.savePrintln("业务流：门开动作等待门物理状态变为【$doorStatus】")
+                        BoxToolLogUtils.savePrintln("业务流：门开动作等待门物理状态变为【${SendOpenText.fromStatus(doorStatus ?: -1)}】")
                         if (doorStatus == CmdCode.GE_OPEN) {
-                            _refBusStaChannel.send(MonitorWeight().apply { refreshType = 3 })
+                            _refBusStaChannel.send(MonitorWeight().apply {
+                                refreshType = RefBusType.REFRESH_TYPE_3
+                            })
                             weightAfterOpening =
                                 SerialPortSdk.queryWeight(doorGex).getOrNull()?.weight.toString()
                             BoxToolLogUtils.savePrintln("业务流：打开后的重量：$weightAfterOpening")
-                            DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_1, transId)
+                            DatabaseManager.upTransOpenStatus(
+                                AppUtils.getContext(), EntityType.WEIGHT_TYPE_1, transId
+                            )
                             dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, defauleWeight, defauleWeight, openModel = model, flowEnd = false)
                             break// 门已确认开启
                         }
-                        if (doorStatus == CmdCode.GE_OPEN_CLOSE_ING) {
-
-                        }
+//                        if (doorStatus == CmdCode.GE_OPEN_CLOSE_ING) { }
                         if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
                             noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT)
                             BoxToolLogUtils.savePrintln("业务流：门开前-门开故障 打开后的重量：$weightAfterOpening")
-                            throw Exception("门开前-门开故障: $doorStatus")
+                            throw Exception("门开前-门开故障: $${SendOpenText.fromStatus(doorStatus ?: -1)}")
                         }
                         delay(500)
                     }
@@ -3587,7 +3629,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         withTimeout(30000) { // 30秒超时
                             val doorStatus =
                                 SerialPortSdk.turnDoorStatus(doorGex).getOrNull()?.status
-                            BoxToolLogUtils.savePrintln("业务流：门关动作等待门物理状态变为【$doorStatus】")
+                            BoxToolLogUtils.savePrintln("业务流：门关动作等待门物理状态变为【$SendOpenText.fromStatus(doorStatus ?: -1)}】")
                             if (doorStatus == CmdCode.GE_CLOSE) {
                                 _currentStep.value = LockerStep.CLOSE
                                 BoxToolLogUtils.savePrintln("业务流：启动业务相机拍照后")
@@ -3606,7 +3648,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
                                 noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT)
                                 BoxToolLogUtils.savePrintln("业务流：门开后-门关故障 打开后的重量：$weightAfterOpening")
-                                throw Exception("门开后-门关故障: $doorStatus")
+                                throw Exception("门开后-门关故障: $${SendOpenText.fromStatus(doorStatus ?: -1)}")
                             }
                         }
                         // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
@@ -3647,7 +3689,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 if (containersDB.isNotEmpty()) {
                     val stateEntity = containersDB[doorGex - 1]
                     stateEntity.weigh = toWeightAfterClosing?.toFloat() ?: 0.00f
-                    stateEntity.weighY = toWeightAfterClosing?.toFloat() ?: 0.00f
                     refrehContainers(stateEntity, doorGex - 1)
                 }
                 startContainersStatus() // 恢复全局状态轮询
@@ -3659,7 +3700,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * @param model 服务器下发开门
      * @param setWeightBeforeOpen 开门前重量
      */
-    fun startLockerClearWorkflow(model: DoorOpenBean, setWeightBeforeOpen: String, doorGex: Int, openType: Int, queryType: Int) {
+    fun startLockerClearWorkflow(
+        model: DoorOpenBean,
+        setWeightBeforeOpen: String,
+        doorGex: Int,
+        openType: Int,
+        queryType: Int,
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             var toWeightAfterClosing = "0"  // 彻底关门后重量
             try {
@@ -3697,7 +3744,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 dbBeforeWeight(weightBeforeOpen, model)
                 val openClear = SerialPortSdk.openQueryClear(openType)
                 if (openClear.isFailure) throw Exception("开门指令发送失败: ${openClear.exceptionOrNull()?.message}")
-                DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
+                DatabaseManager.upTransOpenStatus(
+                    AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId
+                )
                 // --- 第二阶段：轮询等待门开启 ---
                 BoxToolLogUtils.savePrintln("业务流：等待门物理状态变为【开启】")
                 // 使用 withTimeout 防止传感器故障导致协程永久挂起
@@ -3712,7 +3761,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             weightAfterOpening =
                                 SerialPortSdk.queryWeight(doorGex).getOrNull()?.weight.toString()
                             BoxToolLogUtils.savePrintln("业务流：打开后的重量：$weightAfterOpening")
-                            DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_1, transId)
+                            DatabaseManager.upTransOpenStatus(
+                                AppUtils.getContext(), EntityType.WEIGHT_TYPE_1, transId
+                            )
                             dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, defauleWeight, defauleWeight, openModel = model, flowEnd = false)
                             break// 门已确认开启
                         }
@@ -3765,7 +3816,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         break
                     }
                     // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
-                    delay(1000)
+                    delay(2000)
                 }
                 _currentStep.value = LockerStep.WAITING_CLOSE
 
@@ -3776,14 +3827,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     SerialPortSdk.queryWeight(doorGex).getOrNull()?.weight.toString()
                 toWeightAfterClosing = weightAfterClosing
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
-                BoxToolLogUtils.savePrintln(
-                    "业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${
-                        CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)
-                    } " + "refWeight = " + "${
-                        CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)
-                    } " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing "
-                )
-
+                BoxToolLogUtils.savePrintln("业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
             } catch (e: TimeoutCancellationException) {
                 BoxToolLogUtils.savePrintln("业务流：操作超时，请检查柜门是否卡住")
             } catch (e: Exception) {
@@ -3802,7 +3846,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val index = doorGex - 1
                     val stateEntity = containersDB[index]
                     stateEntity.weigh = toWeightAfterClosing?.toFloat() ?: 0.00f
-                    stateEntity.weighY = toWeightAfterClosing?.toFloat() ?: 0.00f
                     refrehContainers(stateEntity, index)
                 }
                 startContainersStatus() // 恢复全局状态轮询
@@ -3819,7 +3862,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         withContext(Dispatchers.IO) {
             _refBusStaChannel.send(MonitorWeight().apply {
                 doorGeX = doorGex
-                refreshType = 2
+                refreshType = RefBusType.REFRESH_TYPE_2
                 warningContent = setWarningContent
             })
             when (doorGex) {
@@ -3860,19 +3903,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
         deteServiceCloseJob = ioScope.launch {
             while (isActive) {
-                Loge.e("流程 refreshTimerDoorClose ")
                 delay(10000L)
-                Loge.e("流程 refreshTimerDoorClose 执行")
+                if (isRunning.getAndSet(true)) {
+                    BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 有业务在处理中")
+                    return@launch
+                }
                 val weights = DatabaseManager.queryWeightStatus(
                     AppUtils.getContext(), EntityType.WEIGHT_TYPE_10
                 )
-                Loge.e("流程 refreshTimerDoorClose refreshTimerDoorClose 发送关门成功 当前未处理：${weights.isEmpty()}")
+                BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 当前未处理：${weights.isEmpty()}")
                 if (weights.isEmpty()) {
                     cancelServiceClose()
                 }
-                saveRecordSocket(
-                    CmdValue.CONNECTING, "流程 refreshTimerDoorClose 门关定时发送：执行 ${flowFrontBackState.value} $weights"
-                )
                 weights.forEach { weight ->
                     val doorClose = DoorCloseBean().apply {
                         cmd = CmdValue.CMD_CLOSE_DOOR
@@ -3896,13 +3938,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         timestamp = AppUtils.getDateYMDHMS()
                     }
                     val json = JsonBuilder.convertToJsonString(doorClose)
-                    saveRecordSocket(
-                        CmdValue.CONNECTING, "流程 refreshTimerDoorClose 门关定时发送：${json}"
-                    )
-                    Loge.e("流程 refreshTimerDoorClose 发送关门成功 $json")
                     sendText(json)
+                    BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 再次上报：${doorClose}")
                 }
-
             }
         }
     }
@@ -3938,24 +3976,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 ) //刷新事务信息 根据事务id来
                 Loge.e("流程 refreshWeightStatus 刷新本地事务数据 $s ${Gson().toJson(trans)}")
             }
+            BoxToolLogUtils.savePrintln("接收到服务器 关闭 门打开:${queryTrans.openStatus} | 门关闭：${queryTrans.closeStatus} 业务：${weight?.status ?: -1}")
         }
     }
 
     /**
      * 提取出来的 UI 更新私有方法，避免主逻辑过于臃肿
      */
-    private fun updateWeightUI(
-        beforeUp: String,
-        afterUp: String,
-        beforeDown: String,
-        afterDown: String,
-        isEnd: Boolean = false,
-    ) {
+    private fun updateWeightUI(beforeUp: String, afterUp: String, beforeDown: String, afterDown: String, isEnd: Boolean = false) {
         val prefix = if (isEnd) "业务结束--" else ""
         val msg = "${prefix}实时数据：\n" + "当前重量 = $beforeDown\n" + "总重量变化 = ${
-            CalculationUtil.subtractFloats(
-                afterDown, beforeUp
-            )
+            CalculationUtil.subtractFloats(afterDown, beforeUp)
         }\n" + "投递参考值 = ${
             CalculationUtil.subtractFloats(
                 beforeDown, afterUp
@@ -4075,10 +4106,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
             1 -> {
                 cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile ${toFile?.name}")
-                    toFile?.name?.let { uploadPhoto(curSn, setTransId, 0, it, switchType.toString()) }
-                    toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, switchType.toString(), 0, it) }
+                    toFile?.name?.let {
+                        uploadPhoto(
+                            curSn, setTransId, 0, it, switchType.toString()
+                        )
+                    }
+                    toFile?.absolutePath?.let {
+                        toGoInsertPhoto(
+                            setTransId, switchType.toString(), 0, it
+                        )
+                    }
                     setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = 4
+                        refreshType = RefBusType.REFRESH_TYPE_4
                         takePhotoUrl = fileIn.absolutePath
                     })
                 }
@@ -4086,10 +4125,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 delay(3000)
                 cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile ${toFile?.name}")
-                    toFile?.name?.let { uploadPhoto(curSn, setTransId, 2, it, switchType.toString()) }
-                    toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, switchType.toString(), 1, it) }
+                    toFile?.name?.let {
+                        uploadPhoto(
+                            curSn, setTransId, 2, it, switchType.toString()
+                        )
+                    }
+                    toFile?.absolutePath?.let {
+                        toGoInsertPhoto(
+                            setTransId, switchType.toString(), 1, it
+                        )
+                    }
                     setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = 4
+                        refreshType = RefBusType.REFRESH_TYPE_4
                         takePhotoUrl = fileOut.absolutePath
                     })
 
@@ -4100,10 +4147,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
             0 -> {
                 cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile ${toFile?.name}")
-                    toFile?.name?.let { uploadPhoto(curSn, setTransId, 3, it, switchType.toString()) }
-                    toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, switchType.toString(), 1, it) }
+                    toFile?.name?.let {
+                        uploadPhoto(
+                            curSn, setTransId, 3, it, switchType.toString()
+                        )
+                    }
+                    toFile?.absolutePath?.let {
+                        toGoInsertPhoto(
+                            setTransId, switchType.toString(), 1, it
+                        )
+                    }
                     setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = 4
+                        refreshType = RefBusType.REFRESH_TYPE_4
                         takePhotoUrl = fileOut.absolutePath
                     })
 
@@ -4111,10 +4166,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 delay(3000)
                 cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile ${toFile?.name}")
-                    toFile?.name?.let { uploadPhoto(curSn, setTransId, 1, it, switchType.toString()) }
-                    toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, switchType.toString(), 0, it) }
+                    toFile?.name?.let {
+                        uploadPhoto(
+                            curSn, setTransId, 1, it, switchType.toString()
+                        )
+                    }
+                    toFile?.absolutePath?.let {
+                        toGoInsertPhoto(
+                            setTransId, switchType.toString(), 0, it
+                        )
+                    }
                     setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = 4
+                        refreshType = RefBusType.REFRESH_TYPE_4
                         takePhotoUrl = fileIn.absolutePath
                     })
                 }
@@ -4127,8 +4190,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         if (_currentStep.value == LockerStep.IDLE && !isRunning.get()) {
             delay(1000)
             val dir = File(
-                AppUtils.getContext()
-                    .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
+                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
             )
             if (!dir.exists()) dir.mkdirs()
             when (photoModel.photoType) {
@@ -4160,7 +4222,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val nameIn =
                         "${setTransId}-$45-in-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
                     val fileIn = File(dir, nameIn)
-                     cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
+                    cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
                         BoxToolLogUtils.saveCamera("拍照成功 远程 内 $toFile ${toFile?.name}")
                         toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
                         toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 0, it) }
@@ -4224,105 +4286,111 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * @param weightDuringOpening 关门前重量
      * @param weightAfterClosing 关门后重量
      */
-    suspend fun dbBeforeWeightRefresh(weightBeforeOpen: String, weightAfterOpening: String, weightDuringOpening: String, weightAfterClosing: String, openModel: DoorOpenBean, flowEnd: Boolean = false) =
-        withContext(Dispatchers.IO) {
-            val transMax = DatabaseManager.queryTransMax(AppUtils.getContext())
-            if (transMax != null) {
-                val getTransId = transMax.transId ?: ""
-                val weight = DatabaseManager.queryWeightId(AppUtils.getContext(), getTransId)
-                if (weight != null) {
-                    val type = openModel.openType
-                    if (type == 1) {
-                        //当前重量
-                        weight.curWeightY = weightAfterClosing
-                        //当前重量
-                        weight.curWeight = weightAfterClosing
+    suspend fun dbBeforeWeightRefresh(
+        weightBeforeOpen: String,
+        weightAfterOpening: String,
+        weightDuringOpening: String,
+        weightAfterClosing: String,
+        openModel: DoorOpenBean,
+        flowEnd: Boolean = false,
+    ) = withContext(Dispatchers.IO) {
+        val transMax = DatabaseManager.queryTransMax(AppUtils.getContext())
+        if (transMax != null) {
+            val getTransId = transMax.transId ?: ""
+            val weight = DatabaseManager.queryWeightId(AppUtils.getContext(), getTransId)
+            if (weight != null) {
+                val type = openModel.openType
+                if (type == 1) {
+                    //当前重量
+                    weight.curWeightY = weightAfterClosing
+                    //当前重量
+                    weight.curWeight = weightAfterClosing
 
-                        weight.changeWeight = CalculationUtil.subtractFloats(
-                            weightAfterClosing, weightBeforeOpen
-                        )//关门后重量-开门前重量
-                        weight.refWeight = CalculationUtil.subtractFloats(
-                            weightDuringOpening, weightAfterOpening
-                        )//关门前重量-开门后重量
-
-
-                        //未上称物品前重量
-                        weight.beforeUpWeight = weightBeforeOpen//开门前重量
-                        weight.afterUpWeight = weightAfterOpening//开门后重量
-
-                        //已上称物品前重量
-                        weight.beforeDownWeight = weightDuringOpening//关门前重量
-                        weight.afterDownWeight = weightAfterClosing//关门后重量
-                        //时间
-                        weight.time = AppUtils.getDateYMDHMS()
-                    }
-                    if (type == 2) {
-                        val result = CalculationUtil.subtractFloats(
-                            weightBeforeOpen, weightAfterClosing
-                        )
-                        //当前重量
-                        weight.curWeightY = weightAfterClosing
-                        //当前重量
-                        weight.curWeight = weightAfterClosing
-
-                        weight.changeWeight = result //开门前重量-关门后重量
-                        weight.refWeight = result//开门前重量-关门后重量
+                    weight.changeWeight = CalculationUtil.subtractFloats(
+                        weightAfterClosing, weightBeforeOpen
+                    )//关门后重量-开门前重量
+                    weight.refWeight = CalculationUtil.subtractFloats(
+                        weightDuringOpening, weightAfterOpening
+                    )//关门前重量-开门后重量
 
 
-                        //未上称物品前重量
-                        weight.beforeUpWeight = weightBeforeOpen//开门前重量
-                        weight.afterUpWeight = weightAfterOpening//开门后重量
+                    //未上称物品前重量
+                    weight.beforeUpWeight = weightBeforeOpen//开门前重量
+                    weight.afterUpWeight = weightAfterOpening//开门后重量
 
-                        //已上称物品前重量
-                        weight.beforeDownWeight = weightDuringOpening//关门前重量
-                        weight.afterDownWeight = weightAfterClosing//关门后重量
-                        //时间
-                        weight.time = AppUtils.getDateYMDHMS()
+                    //已上称物品前重量
+                    weight.beforeDownWeight = weightDuringOpening//关门前重量
+                    weight.afterDownWeight = weightAfterClosing//关门后重量
+                    //时间
+                    weight.time = AppUtils.getDateYMDHMS()
+                }
+                if (type == 2) {
+                    val result = CalculationUtil.subtractFloats(
+                        weightBeforeOpen, weightAfterClosing
+                    )
+                    //当前重量
+                    weight.curWeightY = weightAfterClosing
+                    //当前重量
+                    weight.curWeight = weightAfterClosing
 
-                    }
-                    val s = DatabaseManager.upWeightEntity(AppUtils.getContext(), weight)
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 更新成功 $s ${openModel.transId} ${openModel.openType}")
+                    weight.changeWeight = result //开门前重量-关门后重量
+                    weight.refWeight = result//开门前重量-关门后重量
+
+
+                    //未上称物品前重量
+                    weight.beforeUpWeight = weightBeforeOpen//开门前重量
+                    weight.afterUpWeight = weightAfterOpening//开门后重量
+
+                    //已上称物品前重量
+                    weight.beforeDownWeight = weightDuringOpening//关门前重量
+                    weight.afterDownWeight = weightAfterClosing//关门后重量
+                    //时间
+                    weight.time = AppUtils.getDateYMDHMS()
 
                 }
-                _refBusStaChannel.send(MonitorWeight().apply {
-                    refreshType = 1
-                    weightBeforeOpenValue = weightBeforeOpen
-                    weightAfterOpeningValue = weightAfterOpening
-                    weightDuringOpeningValue = weightDuringOpening
-                    weightAfterClosingValue = weightAfterClosing
-                })
-                if (flowEnd) {
-                    val doorClose = DoorCloseBean().apply {
-                        cmd = CmdValue.CMD_CLOSE_DOOR
-                        transId = openModel.transId
-                        cabinId = openModel.cabinId
-                        phoneNumber = ""
-                        //当前设备称重重量
-                        curWeight = weight.curWeight
-                        curWeightY = weight.curWeight
+                val s = DatabaseManager.upWeightEntity(AppUtils.getContext(), weight)
+                BoxToolLogUtils.savePrintln("业务流：刷新重量 更新成功 $s ${SendOpenText.fromStatus(if (openModel.openType == 1) 100 else 200)} ${openModel.transId} ")
 
-                        //上称物品的重量
-                        changeWeight = weight.changeWeight
-                        refWeight = weight.refWeight
-
-                        //未上称物品前重量
-                        beforeUpWeight = weight.beforeUpWeight
-                        afterUpWeight = weight.afterUpWeight
-
-                        //已上称物品前重量
-                        beforeDownWeight = weight.beforeDownWeight
-                        afterDownWeight = weight.afterDownWeight
-
-                        timestamp = AppUtils.getDateYMDHMS()
-                    }
-                    val json = JsonBuilder.convertToJsonString(doorClose)
-                    BoxToolLogUtils.savePrintln("业务流：刷新重量 发送关门成功 $json")
-                    sendText(json)
-                }
-            } else {
-                BoxToolLogUtils.savePrintln("业务流：刷新重量 无")
             }
+            _refBusStaChannel.send(MonitorWeight().apply {
+                refreshType = RefBusType.REFRESH_TYPE_1
+                weightBeforeOpenValue = weightBeforeOpen
+                weightAfterOpeningValue = weightAfterOpening
+                weightDuringOpeningValue = weightDuringOpening
+                weightAfterClosingValue = weightAfterClosing
+            })
+            if (flowEnd) {
+                val doorClose = DoorCloseBean().apply {
+                    cmd = CmdValue.CMD_CLOSE_DOOR
+                    transId = openModel.transId
+                    cabinId = openModel.cabinId
+                    phoneNumber = ""
+                    //当前设备称重重量
+                    curWeight = weight.curWeight
+                    curWeightY = weight.curWeight
+
+                    //上称物品的重量
+                    changeWeight = weight.changeWeight
+                    refWeight = weight.refWeight
+
+                    //未上称物品前重量
+                    beforeUpWeight = weight.beforeUpWeight
+                    afterUpWeight = weight.afterUpWeight
+
+                    //已上称物品前重量
+                    beforeDownWeight = weight.beforeDownWeight
+                    afterDownWeight = weight.afterDownWeight
+
+                    timestamp = AppUtils.getDateYMDHMS()
+                }
+                val json = JsonBuilder.convertToJsonString(doorClose)
+                BoxToolLogUtils.savePrintln("业务流：刷新重量 发送关门成功 $doorClose")
+                sendText(json)
+            }
+        } else {
+            BoxToolLogUtils.savePrintln("业务流：刷新重量 无")
         }
+    }
 
     private var containersDB = mutableListOf<StateEntity>()
 
@@ -4333,18 +4401,25 @@ class CabinetVM @Inject constructor() : ViewModel() {
         containersJob = null
     }
 
+    /****
+     * 投递柜状态查询
+     */
     fun startContainersStatus() {
+        println("进来查询投递柜")
         if (containersJob?.isActive == true) {
             BoxToolLogUtils.savePrintln("业务流： 柜体 轮询已在运行")
             return
         }
+
         containersJob = ioScope.launch {
             while (isActive) {
+                println("进来查询投递柜开始")
                 SerialPortSdk.queryStatus().onSuccess { result ->
                     if (containersDB.isEmpty()) {
                         containersDB =
                             DatabaseManager.queryStateList(AppUtils.getContext()).toMutableList()
                     }
+                    println("进来查询投递柜结果")
                     val size = containersDB.size
                     BoxToolLogUtils.savePrintln("业务流：startStatus onSuccess $result")
                     result.containers.withIndex().forEach { (index, lower) ->
@@ -4353,15 +4428,16 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 val state = containersDB[0]
                                 //取出原始重量
                                 val weightNew = lower.weigh?.toFloat() ?: 0.0f
-                                val weightOld = state.weighY.toString()
+                                val weightOld = state.weigh.toString()
                                 //处理重量浮动变化
                                 val isChange = CalculationUtil.subtractFloatsBoolean(
                                     weightNew.toString(), weightOld
                                 )
                                 val result1 =
                                     WeightChangeStorage(AppUtils.getContext()).putWithCooldown(
-                                        "key_weight1", if (isChange) "success" else "Failure", devWeiChaMapSend[0]
-                                            ?: false
+                                        "key_weight1",
+                                        if (isChange) "success" else "Failure",
+                                        devWeiChaMapSend[0] ?: false
                                     )
                                 if (result1 && isChange) {
                                     devWeiChaMapCun[0] = weightNew.toString()
@@ -4410,16 +4486,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             1 -> {
                                 if (size > 1 && doorGeXType == CmdCode.GE2) {
                                     val state = containersDB[1]
-                                    var weightNew = lower.weigh?.toFloat() ?: 0.0f
-                                    val weightOld = state.weighY.toString()
+                                    val weightNew = lower.weigh?.toFloat() ?: 0.0f
+                                    val weightOld = state.weigh.toString()
                                     //处理重量浮动变化
                                     val isChange = CalculationUtil.subtractFloatsBoolean(
                                         weightNew.toString(), weightOld
                                     )
                                     val result1 =
                                         WeightChangeStorage(AppUtils.getContext()).putWithCooldown(
-                                            "key_weight2", if (isChange) "success" else "Failure", devWeiChaMapSend[1]
-                                                ?: false
+                                            "key_weight2",
+                                            if (isChange) "success" else "Failure",
+                                            devWeiChaMapSend[1] ?: false
                                         )
                                     if (result1 && isChange) {
                                         devWeiChaMapCun[1] = weightNew.toString()
@@ -4469,28 +4546,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
 
                     }
-//                    val builder1 = StringBuilder()
-//                    result.containers.forEach { list ->
-//                        builder1.append("格口一").append("<br>")
-//                        builder1.append("烟雾警报：${EnumCabState.getDescByCode("1${list.smokeValue}")}<br>")
-//                        builder1.append("红外警报：${EnumCabState.getDescByCode("2${list.irStateValue}")}<br>")
-//                        builder1.append("投门传感：${EnumCabState.getDescByCode("3${list.touCGStatusValue}")}<br>")
-//                        builder1.append("夹手传感：${EnumCabState.getDescByCode("4${list.touJSStatusValue}")}<br>")
-//                        builder1.append("投门状态：${EnumCabState.getDescByCode("5${list.doorStatusValue}")}<br>")
-//                        builder1.append("清运状态：${EnumCabState.getDescByCode("6${list.lockStatusValue}")}<br>")
-//                        builder1.append("校准状态：${EnumCabState.getDescByCode("7${list.xzStatusValue}")}<br>")
-//                        builder1.append("夹手状态：${EnumCabState.getDescByCode("8${list.jsStatusValue}")}<br>")
-//                        builder1.append("当前重量：${list.weigh}kg<br>")
-//                        builder1.append("<br>")
-//                    }
-//                    setFlowByteArrayStatus(builder1.toString())
                 }.onFailure {
                     BoxToolLogUtils.savePrintln("业务流： startStatus onFailure")
                 }
-                delay(5000)
+                delay(1000)
+                println("进来查询投递柜结束")
             }
         }
     }
+
 
     suspend fun refrehContainers(state: StateEntity, index: Int) = withContext(Dispatchers.IO) {
         val row = DatabaseManager.upStateEntity(AppUtils.getContext(), state)
@@ -4498,22 +4562,22 @@ class CabinetVM @Inject constructor() : ViewModel() {
         containersDB[index] = state//刷新格口状态信息
         if (containersDB.size == 1) {
             _refBusStaChannel.send(MonitorWeight().apply {
-                refreshType = 1
+                refreshType = RefBusType.REFRESH_TYPE_1
                 doorGeX = CmdCode.GE1
-                curG1WeightValue = state.weighY?.toString()
+                curG1WeightValue = state.weigh?.toString()
             })
         } else {
             if (index == 0) {
                 _refBusStaChannel.send(MonitorWeight().apply {
-                    refreshType = 1
+                    refreshType = RefBusType.REFRESH_TYPE_1
                     doorGeX = CmdCode.GE1
-                    curG1WeightValue = state.weighY?.toString()
+                    curG1WeightValue = state.weigh?.toString()
                 })
             } else if (index == 1) {
                 _refBusStaChannel.send(MonitorWeight().apply {
-                    refreshType = 1
+                    refreshType = RefBusType.REFRESH_TYPE_1
                     doorGeX = CmdCode.GE2
-                    curG2WeightValue = state.weighY?.toString()
+                    curG2WeightValue = state.weigh?.toString()
                 })
             }
 
@@ -4524,12 +4588,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
             0 -> {
                 val curG1Total = curG1TotalWeight.toFloat()
                 //实时总重量
-                val curG1Weight = state.weighY
+                val curG1Weight = state.weigh
                 val setIr1 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr1, -1] as Int
                 //上报重量大于总重量则报提示
                 if (curG1Weight > curG1Total && setIr1 == 1) {
                     _refBusStaChannel.send(MonitorWeight().apply {
-                        refreshType = 2
+                        refreshType = RefBusType.REFRESH_TYPE_2
                         doorGeX = CmdCode.GE1
                         warningContent = BusType.BUS_OVERFLOW
                     })
@@ -4539,12 +4603,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
             1 -> {
                 val curG2Total = curG2TotalWeight.toFloat()
                 //实时总重量
-                val curG2Weight = state.weighY
+                val curG2Weight = state.weigh
                 val setIr2 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr2, -1] as Int
                 //上报重量大于总重量则报提示
                 if (curG2Weight > curG2Total && setIr2 == 1) {
                     _refBusStaChannel.send(MonitorWeight().apply {
-                        refreshType = 2
+                        refreshType = RefBusType.REFRESH_TYPE_2
                         doorGeX = CmdCode.GE2
                         warningContent = BusType.BUS_OVERFLOW
                     })
@@ -4598,6 +4662,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * @param doorGeX
      * 启动推杆
      */
+    fun startChipVersion() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val chipStep11 = SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
+            if (chipStep11.isFailure) throw Exception("查询版本失败: ${chipStep11.exceptionOrNull()?.message}")
+            val stepStatus11 = chipStep11.getOrNull()?.chipVersion ?: SPreUtil.gversion
+            println("查询到的版本：$stepStatus11")
+//            SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, stepStatus11)
+        }
+    }
+
+    /***
+     * @param doorGeX
+     * 启动推杆
+     */
     fun startTurnDoor(doorGeX: Int) {
         viewModelScope.launch {
             val status = SerialPortSdk.turnDoor(doorGeX).getOrNull()?.status
@@ -4623,7 +4701,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * @param rodHinderResult
      * 启动设置助力值
      */
-    fun startRodHinder(doorGeX: Int, rodHinderValue: Int, rodHinderResult: (lockerNo: Int, rodHinderValue: Int) -> Unit) {
+    fun startRodHinder(
+        doorGeX: Int,
+        rodHinderValue: Int,
+        rodHinderResult: (lockerNo: Int, rodHinderValue: Int) -> Unit,
+    ) {
         viewModelScope.launch {
             val rodHinderValue = SerialPortSdk.startRodHinder(doorGeX, rodHinderValue).getOrNull()
             rodHinderValue?.let { rh ->

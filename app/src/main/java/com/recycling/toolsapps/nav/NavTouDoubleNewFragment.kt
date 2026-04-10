@@ -111,26 +111,6 @@ class NavTouDoubleNewFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBin
                 }
             }
         }
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.uiCloseStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：关闭页面 投递双-> $it")
-                    when (it) {
-                        CabinetVM.UiCloseStep.IDLE -> {}
-                        CabinetVM.UiCloseStep.CLOSE_DELIVERY -> {
-                            super.performCloseAction()
-                        }
-
-                        CabinetVM.UiCloseStep.CLOSE_MOBILE -> {
-                        }
-
-                        CabinetVM.UiCloseStep.CLOSE_CLEAR_DOOR -> {
-
-                        }
-                    }
-                }
-            }
-        }
     }
 
     fun setPriceWeight(weightPercent: Int, doorGeX: Int) {

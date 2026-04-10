@@ -310,9 +310,12 @@ class NavTouSingleNewActivity : AppCompatActivity() {
 
     private fun initPort() {
         // 启动门控制系统
-        cabinetVM.startContainersStatus()
+//        cabinetVM.startContainersStatus()
         //启动检查故障
         cabinetVM.pollingFault()
+        //查询版本
+//        cabinetVM.startChipVersion()
+//        cabinetVM.startUpgradeWorkflow()
     }
 
     /***
@@ -355,16 +358,17 @@ class NavTouSingleNewActivity : AppCompatActivity() {
 //                }, cabinetVM.curG1Weight
 //                    ?: "0.00", CmdCode.GE1, CmdCode.GE11, CmdCode.GE10, CmdCode.GE12
 //            )
-            cabinetVM.startLockerClearWorkflow(
-                DoorOpenBean().apply {
-                    cmd = "openDoor"
-                    openType = 2
-                    cabinId = "20251015171646408518"
-                    transId = randomString
-
-                }, cabinetVM.curG1Weight
-                    ?: "0.00", CmdCode.GE1, CmdCode.CLEAR_OPEN_1_1, CmdCode.CLEAR_QUERY_1_0
-            )
+//            cabinetVM.startLockerClearWorkflow(
+//                DoorOpenBean().apply {
+//                    cmd = "openDoor"
+//                    openType = 2
+//                    cabinId = "20251015171646408518"
+//                    transId = randomString
+//
+//                }, cabinetVM.curG1Weight
+//                    ?: "0.00", CmdCode.GE1, CmdCode.CLEAR_OPEN_1_1, CmdCode.CLEAR_QUERY_1_0
+//            )
+            cabinetVM.startUpgradeWorkflow()
         }
         //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
@@ -677,28 +681,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
 
     fun latestBusinessStatus() {
         cabinetVM.cameraManagerNew.registerUsbReceiver()
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.flowByteArrayWeight.collect {
-                    BoxToolLogUtils.savePrintln("业务流：重量信息：$it")
-                }
-            }
-        }
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.flowByteArrayResult.collect {
-                    BoxToolLogUtils.savePrintln("业务流：业务结果：$it")
-                }
-            }
-        }
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.flowByteArrayStatus.collect {
-                    BoxToolLogUtils.savePrintln("业务流：柜体信息：$it")
-                }
-            }
-        }
-        lifecycleScope.launch {
+  /*      lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 SerialPortSdk.flowBusinessSetup.collect {
                     val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
@@ -724,11 +707,11 @@ class NavTouSingleNewActivity : AppCompatActivity() {
 
                 }
             }
-        }
+        }*/
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.chipStep.collect {
-                    println("升级流程：返回的指令 -> $it")
+                    Loge.i("升级流程：返回的指令 -> $it")
                     when (it) {
                         CabinetVM.UpgradeStep.IDLE -> {}
 

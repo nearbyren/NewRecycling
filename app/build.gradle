@@ -1,0 +1,182 @@
+import java.text.SimpleDateFormat
+
+plugins {
+    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.kapt'
+    id 'maven-publish'
+    id 'dagger.hilt.android.plugin'
+}
+
+apply plugin: 'com.android.application'
+android {
+    compileSdk 34 //编译的sdk
+    namespace "com.recycling.toolsapps"
+    defaultConfig {
+        minSdk 24 //最低支持版本
+        targetSdk 34 //支持的目标版本
+        versionCode 150
+        versionName "1.5.0"
+        buildConfigField "String", "initToken", "\"c2f5de4f-93de-4195-9c74-aa6ad9b2edd8\""
+//        buildConfigField "String", "httpIP", "\"https://testapi.lyshenrecycle.cn:10082/api\""
+//        buildConfigField "String", "socketIP", "\"testapi.lyshenrecycle.cn\""
+//        buildConfigField "int", "socketPort", "9095"
+        buildConfigField "String", "httpIP", "\"https://api.lyshenrecycle.cn:10082/api\""
+        buildConfigField "String", "socketIP", "\"api.lyshenrecycle.cn\""
+        buildConfigField "int", "socketPort", "9096"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+        ndk {
+            abiFilters 'arm64-v8a', "armeabi-v7a" // 仅保留arm64-v8a
+        }
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = ["room.schemaLocation"  : "$projectDir/schemas".toString(),
+                             "room.incremental"     : "true",
+                             "room.expandProjection": "true"]
+            }
+        }
+    }
+    signingConfigs {
+        release {
+            storeFile file("${rootDir}/app/recycling.jks")
+            storePassword "recycling123"
+            keyAlias "recycling"
+            keyPassword "recycling123"
+            v1SigningEnabled true//v1版本签名
+            v2SigningEnabled true//v2版本签名
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release // 应用签名配置
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        //debug-db:1.0.7使用方式
+        debug {
+            resValue("string", "PORT_NUMBER", "9999")
+        }
+    }
+    // 动态生成包含年月日的APK文件名
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            // 获取当前日期，格式为 "yyyyMMdd"
+            def date = new Date()
+            def formattedDate = new SimpleDateFormat("yyyyMMdd-HHmmss").format(date)
+
+            // 生成文件名：包含variant名称、版本名称和当前日期
+            def apkFileName = "Recycling-${variant.name}-${variant.versionName}-${formattedDate}.apk"
+
+            // 设置输出路径
+            output.outputFileName = apkFileName
+        }
+    }
+    packagingOptions {
+        exclude 'META-INF/rxjava.properties'
+        exclude 'META-INF/LICENSE.md'
+        exclude 'META-INF/NOTICE.md'
+        exclude '/lib/x86_64/*' // 显式排除其他架构
+        exclude '/lib/x86/*' // 显式排除其他架构
+//        exclude '/lib/armeabi-v7a/*' // 显式排除其他架构
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    buildFeatures {
+        buildConfig = true
+        dataBinding true
+        aidl true
+    }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+}
+dependencies {
+    // 必须的 KTX 扩展库
+    implementation 'junit:junit:4.12'
+    testImplementation "junit:junit:4.13.2"
+    androidTestImplementation "androidx.test.ext:junit:1.1.5"
+    implementation files('libs/EnjoySDKV2-V4.0.0.aar')
+    implementation project(':CabinetSerialPort')
+    implementation project(':lib-netwrok')
+    implementation 'com.google.zxing:core:3.2.0'
+    //官方库
+    def room_version = "2.5.2"
+    implementation "androidx.room:room-runtime:$room_version"
+    // Kotlin 使用 kapt 替代 annotationProcessor
+    kapt "androidx.room:room-compiler:$room_version"
+    // 可选 - Kotlin扩展和协程支持
+    implementation "androidx.room:room-ktx:$room_version"
+    // 可选 - Guava 支持, including Optional and ListenableFuture
+    implementation "androidx.room:room-guava:$room_version"
+
+    implementation "androidx.fragment:fragment-ktx:1.6.2"  // 使用最新版本
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.appcompat:appcompat:1.6.0'
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.6.2"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2"
+    implementation "androidx.activity:activity-ktx:1.7.0"
+    implementation 'androidx.graphics:graphics-core:1.0.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.3.7'
+    implementation "com.google.code.gson:gson:2.8.8"
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'com.orhanobut:logger:2.2.0'
+    implementation "com.google.dagger:hilt-android:2.48"
+    kapt "com.google.dagger:hilt-compiler:2.48"
+    implementation "androidx.work:work-runtime-ktx:2.9.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1"
+    //三方库
+    implementation 'top.zibin:Luban:1.1.8'
+    implementation 'com.guolindev.permissionx:permissionx:1.6.1'
+    implementation 'com.blankj:utilcodex:1.31.0'
+    implementation 'com.github.CymChad:BaseRecyclerViewAdapterHelper:3.0.4'
+//    implementation 'com.youth.banner:banner:2.1.0'
+    implementation 'io.github.youth5201314:banner:2.2.3'
+    implementation 'com.airbnb.android:lottie:5.0.3'
+    implementation 'pub.devrel:easypermissions:3.0.0'
+    api 'com.gyf.immersionbar:immersionbar:3.0.0'
+//    implementation 'io.github.meetsl:SCardView:1.2'
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    implementation 'com.github.felHR85:UsbSerial:6.1.0'
+    //日期
+    implementation 'com.github.prolificinteractive:material-calendarview:2.0.1'
+    implementation 'com.sun.mail:android-mail:1.6.7'
+    implementation 'com.sun.mail:android-activation:1.6.7'
+
+
+    //摄像头预览库
+    //def canerax = "1.3.4"//1.4.1
+    def canerax = "1.4.1"//1.4.1
+    implementation 'androidx.camera:camera-core:1.4.1'
+    // CameraX Camera2 extensions[可选]拓展库可实现人像、HDR、夜间和美颜、滤镜但依赖于OEM
+    implementation 'androidx.camera:camera-camera2:1.4.1'
+    // CameraX Lifecycle library[可选]避免手动在生命周期释放和销毁数据
+    implementation 'androidx.camera:camera-lifecycle:1.4.1'
+    // CameraX View class[可选]最佳实践，最好用里面的PreviewView，它会自行判断用SurfaceView还是TextureView来实现
+    implementation 'androidx.camera:camera-view:1.4.1'
+    //在终端中运行命令 -adb forward tcp:8080 tcp:8080然后打开http://localhost:8080
+    //在串口模拟器执行 adb -s 192.168.56.111:5555 forward tcp:8081 tcp:8081
+    debugImplementation("com.github.amitshekhariitbhu.Android-Debug-Database:debug-db:1.0.7")
+
+    //极速版 (预计占用 4M 左右空间)，主要移除了一些不常用的编解码器
+//    implementation 'com.github.microshow:RxFFmpeg:4.9.0-lite'
+//    implementation 'com.github.microshow:RxFFmpeg:4.9.0'
+    //推流
+//    implementation 'com.arthenica:mobile-ffmpeg-min:4.4'
+    //推流和压缩
+//    implementation 'com.arthenica:mobile-ffmpeg-full-gpl:4.4.LTS'
+    //七牛云推流
+//    implementation files('libs\\pldroid-media-streaming-3.1.6.jar')
+//    implementation 'com.qiniu:happy-dns:1.0.0'
+
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.9.6'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.9.6'
+}

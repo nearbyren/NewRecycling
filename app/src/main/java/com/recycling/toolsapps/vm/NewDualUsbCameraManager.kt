@@ -156,13 +156,14 @@ class NewDualUsbCameraManager(context: Context) {
                 if (view1 != null) {
                     BoxToolLogUtils.saveCamera("启动第一个 USB 摄像头: ${usbIds[0]}")
                     openSingleCamera(usbIds[0], view1, startPaused)
-                }
-                if (usbIds.size >= 2 && view2 != null) {
-                    BoxToolLogUtils.saveCamera("启动第二个 USB 摄像头: ${usbIds[1]}")
-                    openSingleCamera(usbIds[1], view2, startPaused)
-                } else {
-                    BoxToolLogUtils.saveCamera("只检测到一个外置摄像头")
-                    cameraErrorListener?.cameraStatus(false, "1", "只有一个摄像头")
+                }else{
+                    if (usbIds.size >= 2 && view2 != null) {
+                        BoxToolLogUtils.saveCamera("启动第二个 USB 摄像头: ${usbIds[1]}")
+                        openSingleCamera(usbIds[1], view2, startPaused)
+                    } else {
+                        BoxToolLogUtils.saveCamera("只检测到一个外置摄像头")
+                        cameraErrorListener?.cameraStatus(false, "1", "只有一个摄像头")
+                    }
                 }
             }
         }
@@ -308,19 +309,20 @@ class NewDualUsbCameraManager(context: Context) {
                         reader.setOnImageAvailableListener(null, null)
 
                         // 切到 IO 线程处理图片加水印和本地保存
-                        scope.launch(Dispatchers.IO) {
-                            val text = if (switchType == 1) {
-                                "投递前"
-                            } else if (switchType == 0) {
-                                "投递后"
-                            } else {
-                                "远程拍照"
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val text = when (switchType) {
+                                1 -> "投递前"
+                                0 -> "投递后"
+                                else -> "远程拍照"
                             }
                             val watermarkText = "$text-$inOut-${AppUtils.getDateYMDHMS2()}"
                             val finalPath = addWatermarkToBytes(bytes, saveFile.name, watermarkText)
                             if (cont.isActive) {
+                                val resultFile = if (finalPath != null) File(finalPath) else null
+                                BoxToolLogUtils.saveCamera("拍照完成：$cameraId, 路径：$finalPath, 大小：${resultFile?.length() ?: 0}")
                                 cameraErrorListener?.cameraStatus(finalPath != null, cameraId, "拍照完成")
-                                cont.resume(if (finalPath != null) File(finalPath) else null)
+                                // 恢复外部挂起函数，返回 File 对象
+                                cont.resume(resultFile)
                             }
                         }
                     } catch (e: Exception) {
@@ -477,7 +479,7 @@ class NewDualUsbCameraManager(context: Context) {
 
     // ================== 水印处理 ==================
 
-    private fun addWatermarkToBytes(imageBytes: ByteArray, fileName: String, watermarkText: String, color: Int = Color.RED): String? {
+    private fun addWatermarkToBytes(imageBytes: ByteArray, fileName: String, watermarkText: String, setColor: Int = Color.RED): String? {
         val dir = File(
             AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
         )
@@ -486,29 +488,27 @@ class NewDualUsbCameraManager(context: Context) {
 
         // 保持原画尺寸，禁用缩放
         val options = BitmapFactory.Options().apply {
-            inMutable = true; inScaled = false; inPreferredConfig = Bitmap.Config.ARGB_8888
+            inMutable = true
+            inScaled = false
         }
-        val bitmap =
-            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options) ?: return null
-
+        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options) ?: return null
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.color = color; this.style = Paint.Style.FILL
-            this.textSize = bitmap.width / 40f; this.isDither = true; this.isFilterBitmap = true
-            // 增加阴影，防止水印在极度高光的背景下看不清
-            setShadowLayer(3f, 2f, 2f, Color.BLACK)
+            color = setColor
+            textSize = bitmap.width / 40f
+            setShadowLayer(3f, 2f, 2f, Color.BLACK) // 增加阴影增强可见度
         }
 
         val margin = bitmap.width * 0.02f
-        val metrics = paint.fontMetrics
-        canvas.drawText(watermarkText, margin, margin + Math.abs(metrics.ascent), paint)
+        canvas.drawText(watermarkText, margin, margin + 40f, paint)
 
         return try {
             FileOutputStream(destFile).use { out ->
-                // 100 质量压缩，保证高分辨率图像不失真
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                // 写入磁盘
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                out.flush() // 【核心修改】确保缓冲区数据强制刷入磁盘
             }
-            if (!bitmap.isRecycled) bitmap.recycle()
+            bitmap.recycle() // 及时回收内存
             destFile.absolutePath
         } catch (e: Exception) {
             BoxToolLogUtils.saveCamera("写入水印文件失败: ${e.message}")

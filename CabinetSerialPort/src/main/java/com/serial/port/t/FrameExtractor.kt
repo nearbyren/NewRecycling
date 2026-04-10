@@ -6,8 +6,10 @@ package com.serial.port.t
  * @description:
  */
 
+import com.serial.port.BuildConfig
 import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.ByteUtils
+import com.serial.port.utils.Loge
 import java.io.ByteArrayOutputStream
 
 /**
@@ -26,8 +28,8 @@ class FrameExtractor(private val onFrameFound: (ByteArray) -> Unit) {
     buffer.write(input)
     val data = buffer.toByteArray()
     var head = 0
-    println("我的数据 接收处理 push ${ByteUtils.toHexString(data)}")
-    BoxToolLogUtils.receiveOriginalLower(1, data)
+    Loge.i("我的数据 接收处理 push ${ByteUtils.toHexString(data)}")
+//    BoxToolLogUtils.receiveOriginalLower(1, data)
     // 2. 滑动窗口扫描
     while (head < data.size) {
       // 寻找接收帧的法定包头 0x9B
@@ -70,7 +72,7 @@ class FrameExtractor(private val onFrameFound: (ByteArray) -> Unit) {
     buffer.reset()
     if (remaining > 0) {
       buffer.write(data, head, remaining)
-      println("wo来了啊  push 刷新 $head-$remaining-${ ByteUtils.toHexString(data)}")
+      Loge.i("wo来了啊  push 刷新 头：$head | 其余：$remaining  完整：${ ByteUtils.toHexString(data)}")
 
     }
   }

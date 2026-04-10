@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.CorHttp
+import nearby.lib.netwrok.response.SPreUtil
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileReader
@@ -90,7 +91,7 @@ dp: 55.555573
      * 异常崩溃重启
      */
     private fun initCrash() {
-//        SPreUtil.put(AppUtils.getContext(), SPreUtil.crash, 1)
+        SPreUtil.put(AppUtils.getContext(), SPreUtil.crash, 1)
         CrashHandlerManager(this).init()
     }
 
@@ -141,9 +142,9 @@ dp: 55.555573
         enjoySDK.setSecurePasswd("Abc12345", "Abc12345")
         enjoySDK.registSafeProgram("Abc12345")
         //控制系统状态栏的隐藏/显示
-        enjoySDK.setStatusBarShowStatus(0)
+//        enjoySDK.setStatusBarShowStatus(0)
         //控制系统导航栏的隐藏/显示。
-        enjoySDK.setNavigationBarShowStatus(0)
+//        enjoySDK.setNavigationBarShowStatus(0)
         //设置静默安装状态
         enjoySDK.silentInstallRulesSwitch(true)
         val appRule = AppRule("com.recycling.toolsapps", true)

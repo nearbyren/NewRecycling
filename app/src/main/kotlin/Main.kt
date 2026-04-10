@@ -1,5 +1,6 @@
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.serial.port.t.ProtocolCodec
 import com.serial.port.utils.ByteUtils
 import com.serial.port.utils.HexConverter
 import com.serial.port.utils.SendByteData
@@ -84,7 +85,13 @@ fun main() {
     send485(
         frameHeader = 0x9B.toByte(), command = 0x05.toByte(), add = 0x00.toByte(), data = dd, frameTail = 0x9A.toByte()
     )
+    val r1 = byteArrayOf(
+        0xA1.toByte(), 0xA2 .toByte(),0xA3.toByte(), 0xF1.toByte() ,0x00.toByte(), 0x00.toByte() ,0x75.toByte() ,0x88 .toByte(),0x01.toByte() ,0x35.toByte() ,0x26.toByte() ,0x33.toByte(), 0x6B.toByte() ,0xC3.toByte(),0xC0.toByte() ,0x27.toByte()
+    )
 
+
+    println("测试 发送的字节 结果1：${ByteUtils.toHexString(ProtocolCodec.encode(0x08.toByte(),0x00.toByte(),r1))}")
+    println("测试 发送的字节 结果2：${ByteUtils.toHexString(ProtocolCodec.encode2(0x08.toByte(),0x00.toByte(),r1))}")
 
     println("测试 发送的字节 weight：${HexConverter.byteArrayToInt(HexConverter.intToByteArray(19750)) / 1000}")
 //    println("测试 发送的字节 byte:${ByteUtils.toHexString(byteArray)}")
@@ -93,8 +100,11 @@ fun main() {
     val result = subtractFloatsBoolean("0.00", "0.96")
     println("测试 发送的字节 result：${result}")
 //
-    val weight2 = HexConverter.byteArrayToInt(byteArrayOf(0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0xC4.toByte()))
-    println("测试 发送的字节 weight2：${weight2}")
+    val weight2 = HexConverter.byteArrayToInt(byteArrayOf(0x01.toByte(), 35.toByte(), 26.toByte(), 34.toByte()))
+    println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260401))}")
+    println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260402))}")
+    println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260403))}")
+    println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260404))}")
     val weight3 = HexConverter.byteArrayToInt(byteArrayOf(0x00, 0x00, 0x60, 0x04.toByte()))
 
     println("测试 发送的字节 weight3：${weight3}")
