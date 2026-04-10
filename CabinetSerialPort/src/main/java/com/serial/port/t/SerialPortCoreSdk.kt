@@ -41,6 +41,11 @@ class SerialPortCoreSdk private constructor() {
         return vm?.sendWithRetryChip(frame) ?: Result.failure(Exception("Communication VM is null"))
     }
 
+     suspend fun executeChip2(cmd: Byte, data: ByteArray): Result<ByteArray> {
+        return vm?.executeDirect(cmd, data) ?: Result.failure(Exception("Communication VM is null"))
+    }
+
+
     /**
      * 核心执行器：对接调度器与底层 VM
      */

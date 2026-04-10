@@ -58,6 +58,7 @@ import com.recycling.toolsapps.vm.CabinetVM.ConnectionState.*
 import com.serial.port.t.ContainersResult
 import com.serial.port.t.ProtocolCodec
 import com.serial.port.t.SendOpenText
+import com.serial.port.t.SerialPortCoreSdk
 import com.serial.port.t.SerialPortSdk
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.BoxToolLogUtils
@@ -337,9 +338,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             doorGeX = doorGex
             val m = mapOf(
-                "cmd" to CmdValue.CMD_PHONE_NUMBER_LOGIN,
-                "phoneNumber" to phoneNumber,
-                "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_PHONE_NUMBER_LOGIN, "phoneNumber" to phoneNumber, "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -355,10 +354,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun toGoMobileOpen(cabinId: String, userId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val m = mapOf(
-                "cmd" to CmdValue.CMD_PHONE_USER_OPEN_DOOR,
-                "cabinId" to cabinId,
-                "userId" to userId,
-                "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_PHONE_USER_OPEN_DOOR, "cabinId" to cabinId, "userId" to userId, "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -373,11 +369,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun toGoTPSucces(transId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val m = mapOf(
-                "cmd" to CmdValue.CMD_ADMIN_PHOTO,
-                "type" to "res",
-                "transId" to transId,
-                "retCode" to 0,
-                "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_ADMIN_PHOTO, "type" to "res", "transId" to transId, "retCode" to 0, "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -447,15 +439,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val getImei = SPreUtil[AppUtils.getContext(), SPreUtil.setImei, ""]
             val getIccid = SPreUtil[AppUtils.getContext(), SPreUtil.setIccid, ""]
             val m = mapOf(
-                "cmd" to CmdValue.CMD_LOGIN,
-                "loginCount" to loginCount,
-                "sn" to getSn,
-                "imsi" to getImsi,
-                "imei" to getImei,
-                "iccid" to getIccid,
-                "version" to gversion,
-                "apkVersion" to AppUtils.getVersionName(),
-                "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_LOGIN, "loginCount" to loginCount, "sn" to getSn, "imsi" to getImsi, "imei" to getImei, "iccid" to getIccid, "version" to gversion, "apkVersion" to AppUtils.getVersionName(), "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -468,9 +452,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun toGoCmdOtaAPK() {
         viewModelScope.launch(Dispatchers.IO) {
             val m = mapOf(
-                "cmd" to CmdValue.CMD_OTA_APK,
-                "retCode" to 0,
-                "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_OTA_APK, "retCode" to 0, "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -496,9 +478,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun toGoCmdLog() {
         viewModelScope.launch(Dispatchers.IO) {
             val m = mapOf(
-                "cmd" to CmdValue.CMD_UPLOAD_LOG,
-                "retCode" to 0,
-                "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_UPLOAD_LOG, "retCode" to 0, "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -537,11 +517,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 maptDoorFault[FaultType.FAULT_CODE_2120] = false
             }
             val m = mapOf(
-                "cmd" to CmdValue.CMD_ADMIN_OVERFLOW,
-                "type" to "res",
-                "retCode" to 0,
-                "transId" to transId,
-                "timestamp" to System.currentTimeMillis()
+                "cmd" to CmdValue.CMD_ADMIN_OVERFLOW, "type" to "res", "retCode" to 0, "transId" to transId, "timestamp" to System.currentTimeMillis()
             )
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -574,13 +550,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
             delay(9000)
             // 目标文件夹路径
             val targetFolder = File(
-                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-                "socket_box_crash"
+                AppUtils.getContext()
+                    .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box_crash"
             )
             // 压缩包输出路径
             val zipOutput = File(
-                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-                "${AppUtils.getDateYMDHMS3()}_socket_box_crash.zip"
+                AppUtils.getContext()
+                    .getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "${AppUtils.getDateYMDHMS3()}_socket_box_crash.zip"
             )
 
             // 执行压缩
@@ -1222,8 +1198,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         delay(500)
                         if (resource.url != null && !TextUtils.isEmpty(resource.url) && resource.filename != null && !TextUtils.isEmpty(
                                 resource.filename
-                            )
-                        ) {
+                            )) {
                             val fileName = resource.filename ?: ""
                             var dir = FileMdUtil.matchNewFileName("audio", fileName)
                             if (FileMdUtil.shouldAudio(fileName)) {
@@ -1239,10 +1214,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             "home.png" -> {
                                                 if (FileMdUtil.checkResFileExists("home.png")) {
                                                     downResBitmap(
-                                                        oneInit,
-                                                        "res/${resource.filename}",
-                                                        1,
-                                                        config.status
+                                                        oneInit, "res/${resource.filename}", 1, config.status
                                                     )
                                                 }
                                             }
@@ -1250,10 +1222,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             "maintaining.png" -> {
                                                 if (FileMdUtil.checkResFileExists("maintaining.png")) {
                                                     downResBitmap(
-                                                        oneInit,
-                                                        "res/${resource.filename}",
-                                                        3,
-                                                        config.status
+                                                        oneInit, "res/${resource.filename}", 3, config.status
                                                     )
                                                 }
                                             }
@@ -1304,10 +1273,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             "home.png" -> {
                                                 if (FileMdUtil.checkResFileExists("home.png")) {
                                                     downResBitmap(
-                                                        oneInit,
-                                                        "res/${resource.filename}",
-                                                        1,
-                                                        config.status
+                                                        oneInit, "res/${resource.filename}", 1, config.status
                                                     )
                                                 }
                                             }
@@ -1315,10 +1281,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             "maintaining.png" -> {
                                                 if (FileMdUtil.checkResFileExists("maintaining.png")) {
                                                     downResBitmap(
-                                                        oneInit,
-                                                        "res/${resource.filename}",
-                                                        3,
-                                                        config.status
+                                                        oneInit, "res/${resource.filename}", 3, config.status
                                                     )
                                                 }
                                             }
@@ -2039,10 +2002,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun initConfigSocket(initHost: String, initPort: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             config = Config(
-                host = initHost,
-                port = initPort,
-                heartbeatIntervalMillis = 20,
-                heartbeatPayload = "PING".toByteArray()
+                host = initHost, port = initPort, heartbeatIntervalMillis = 20, heartbeatPayload = "PING".toByteArray()
             )
             start()
         }
@@ -2151,16 +2111,14 @@ class CabinetVM @Inject constructor() : ViewModel() {
             } catch (e: CancellationException) {
                 Loge.e("出厂配置 initSocket SocketClient runMainLoop catch1 ${e.message} running $running")
                 BoxToolLogUtils.recordSocket(
-                    CmdValue.CONNECTING,
-                    "socketClientrunMainLoop catch1 ${e.message} running $running"
+                    CmdValue.CONNECTING, "socketClientrunMainLoop catch1 ${e.message} running $running"
                 )
                 break
             } catch (e: Exception) {
                 // Swallow and backoff
                 Loge.e("出厂配置 initSocket SocketClient runMainLoop catch2 ${e.message} running $running")
                 BoxToolLogUtils.recordSocket(
-                    CmdValue.CONNECTING,
-                    "socketClient,runMainLoop catch2 ${e.message} running $running"
+                    CmdValue.CONNECTING, "socketClient,runMainLoop catch2 ${e.message} running $running"
                 )
             } finally {
                 Loge.e("出厂配置 initSocket SocketClient runMainLoop finally running $running")
@@ -2205,8 +2163,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         s.tcpNoDelay = true
         s.soTimeout = config?.readTimeoutMillis!!
         s.connect(
-            config?.port?.let { InetSocketAddress(config?.host, it) },
-            config?.connectTimeoutMillis?.toInt()!!
+            config?.port?.let { InetSocketAddress(config?.host, it) }, config?.connectTimeoutMillis?.toInt()!!
         )
 
         socketMutex.withLock { socket = s }
@@ -2536,7 +2493,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             if (result2 == "success") {
                                 devWeiChaMapSend[1] = false
                             }
-                            val weightChange = getDeviceWeightChange(CmdValue.CMD_PERIPHERAL_STATUS, stateList, setSignal, setIr1, setIr2, overflowState)
+                            val weightChange =
+                                getDeviceWeightChange(CmdValue.CMD_PERIPHERAL_STATUS, stateList, setSignal, setIr1, setIr2, overflowState)
                             Loge.e("执行重量变动 数据 $weightChange ")
                             sendText(weightChange.toString())
                             saveRecordSocket(CmdValue.CONNECTING, "重量变动,重量-1：${devWeiChaMapCun[0]}|重量-2：${devWeiChaMapCun[1]}")
@@ -2548,8 +2506,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 } catch (e: Exception) {
                     Loge.e("出厂配置 initSocket SocketClient heartbeatAndIdleMonitor catch ${e.message}")
                     BoxToolLogUtils.recordSocket(
-                        CmdValue.CONNECTING,
-                        "socketClient,heartbeatAndIdleMonitor catch ${e.message}"
+                        CmdValue.CONNECTING, "socketClient,heartbeatAndIdleMonitor catch ${e.message}"
                     )
 
                 }
@@ -2980,10 +2937,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     time = AppUtils.getDateYMDHMS()
                 }
                 val queryResource = DatabaseManager.queryResCmd(
-                    AppUtils.getContext(),
-                    netVersion.toString(),
-                    otaModel.sn ?: "",
-                    otaModel.cmd ?: ""
+                    AppUtils.getContext(), netVersion.toString(), otaModel.sn ?: "", otaModel.cmd
+                        ?: ""
                 )
                 Loge.e("流程 toGoCmdOtaBin 添加资源 $queryResource")
                 if (queryResource == null) {
@@ -3215,7 +3170,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun startUpgradeWorkflow() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val chipStep7 = SerialPortSdk.firmwareUpgrade78910(7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
+                val chipStep7 =
+                    SerialPortSdk.firmwareUpgrade78910(7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
                 if (chipStep7.isFailure) throw Exception("进入升级失败: ${chipStep7.exceptionOrNull()?.message}")
                 val stepStatus7 = chipStep7.getOrNull()?.upStatus
                 if (stepStatus7 == 1) {
@@ -3240,8 +3196,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         val crc = CRC32MPEG2Util.computeFile(file2.absolutePath)
                         val crcByte = HexConverter.intToByteArray(crc.toInt())
                         Loge.d("流程 芯片升级 crcByte = ${ByteUtils.toHexString(crcByte)}")
-                        val sendByte = HexConverter.combineByteArrays(fileType, sizeByte, vByte, crcByte)
-                        val sendResult = HexConverter.combineByteArrays(byteArrayOf(0xA1.toByte(), 0xA2.toByte(), 0xA3.toByte()), sendByte)
+                        val sendByte =
+                            HexConverter.combineByteArrays(fileType, sizeByte, vByte, crcByte)
+                        val sendResult =
+                            HexConverter.combineByteArrays(byteArrayOf(0xA1.toByte(), 0xA2.toByte(), 0xA3.toByte()), sendByte)
                         val chipStep8 = SerialPortSdk.firmwareUpgrade78910(8, sendResult)
                         if (chipStep8.isFailure) throw Exception("查询进入升级状态: ${chipStep8.exceptionOrNull()?.message}")
                         val stepStatus8 = chipStep8.getOrNull()?.upStatus
@@ -3264,7 +3222,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         var blockIndex = 0
                                         // 循环读取直到文件结束
                                         while (fis.read(buffer).also { bytesRead = it } != -1) {
-                                            val blockToSend = buffer.copyOfRange(0, bytesRead) // 或 buffer.copyOf(bytesRead)
+                                            val blockToSend =
+                                                buffer.copyOfRange(0, bytesRead) // 或 buffer.copyOf(bytesRead)
                                             Loge.d("流程 芯片升级 封装好数据 共发送 $blockIndex 个数据块，发了数据：${ByteUtils.toHexString(blockToSend)}")
                                             sendBLFile.add(blockToSend)
                                             blockIndex++
@@ -3278,30 +3237,36 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         Loge.d("流程 芯片升级 封装好数据 开始发送文件数据")
                                         Loge.d("流程 芯片升级 chipSet8fs ${sendBLFile.size}")
                                         var conutSendByte = 0
-                                        while (isActive) {  // 保证协程一直运行
-                                            val sendByte = sendBLFile[conutSendByte] // 从Channel中接收指令
-                                            Loge.d("流程 芯片升级 发送第$sendFCount 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
-                                            if (sendByte.isNotEmpty()) {
-                                                val chipStep8f = SerialPortSdk.firmwareUpgradeFile(sendByte)
-                                                if (chipStep8f.isFailure) throw Exception("发送文件失败: ${chipStep8f.exceptionOrNull()?.message}")
-                                                val stepStatus8f = chipStep8f.getOrNull()?.byteArray
-                                                val sendByteArray = sendBLFile[sendFCount]
-                                                if (stepStatus8f.contentEquals(sendByteArray)) {
-                                                    sendFCount++
-                                                    conutSendByte++
-                                                    if (sendFCount <= sendBLFile.size - 1) {
-                                                        Loge.d("流程 芯片升级 sendByteList = ${sendBLFile.size} | send8fCount = $sendFCount |  bytes = ${ByteUtils.toHexString(stepStatus8f)} ")
+                                        val sendByte = sendBLFile[conutSendByte] // 从Channel中接收指令
+                                        Loge.d("流程 芯片升级 发送第$sendFCount 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
+                                        if (sendByte.isNotEmpty()) {
+                                            // 升级中的文件发送循环
+                                            while (isActive && conutSendByte < sendBLFile.size) {
+                                                val sendByte = sendBLFile[conutSendByte]
+                                                // 直接调用，不排队，速度最快
+                                                val result =
+                                                    SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD18, sendByte)
+                                                result.onSuccess { bytes ->
+                                                    // 解析 Payload (逻辑同你之前的代码)
+                                                    val payload =
+                                                        ProtocolCodec.getSafePayload(bytes)
+                                                    if (payload != null && payload.contentEquals(sendByte)) {
+                                                        // 校验成功，发下一包
+                                                        sendFCount++
+                                                        conutSendByte++
                                                     } else {
-                                                        _chipStep.value = UpgradeStep.SEND_FILE
-                                                        break
+                                                        // 校验失败逻辑...
+                                                        _chipStep.value =
+                                                            UpgradeStep.SEND_FILE_FUALT
                                                     }
-                                                } else {
+                                                }.onFailure { e ->
+                                                    Loge.e("直接发送失败: ${e.message}")
                                                     _chipStep.value = UpgradeStep.SEND_FILE_FUALT
-                                                    break
+                                                    // 此处可以实现重试逻辑，或者抛出异常中断升级
                                                 }
-                                                Loge.d("流程 芯片升级 sendByteList = ${sendBLFile.size} | send8fCount = $sendFCount ")
-                                                // 每次指令之间间隔1秒
-                                                delay(50)
+
+                                                // 方案 B 已经由 executeDirect 的返回速度决定了频率，
+                                                // 这里如果下位机写 Flash 快，可以不 delay，或者只 delay(5)
                                             }
                                         }
                                     } else {
@@ -3315,7 +3280,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                         if (chipStep.value == UpgradeStep.SEND_FILE) {
                             delay(5000)
-                            val chipStep9 = SerialPortSdk.firmwareUpgrade78910(9, byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte()))
+                            val chipStep9 =
+                                SerialPortSdk.firmwareUpgrade78910(9, byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte()))
                             if (chipStep9.isFailure) throw Exception("发送文件结束开始校验: ${chipStep9.exceptionOrNull()?.message}")
                             val stepStatus9 = chipStep9.getOrNull()?.upStatus
                             if (stepStatus9 == 1) {
@@ -3328,7 +3294,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                         if (chipStep.value == UpgradeStep.RESTART_APP) {
                             delay(3000)
-                            val chipStep10 = SerialPortSdk.firmwareUpgrade78910(10, byteArrayOf(0xa7.toByte(), 0xa8.toByte(), 0xa9.toByte()))
+                            val chipStep10 =
+                                SerialPortSdk.firmwareUpgrade78910(10, byteArrayOf(0xa7.toByte(), 0xa8.toByte(), 0xa9.toByte()))
                             if (chipStep10.isFailure) throw Exception("进入重启: ${chipStep10.exceptionOrNull()?.message}")
                             val stepStatus10 = chipStep10.getOrNull()?.upStatus
                             if (stepStatus10 == 1) {
@@ -4435,9 +4402,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 )
                                 val result1 =
                                     WeightChangeStorage(AppUtils.getContext()).putWithCooldown(
-                                        "key_weight1",
-                                        if (isChange) "success" else "Failure",
-                                        devWeiChaMapSend[0] ?: false
+                                        "key_weight1", if (isChange) "success" else "Failure", devWeiChaMapSend[0]
+                                            ?: false
                                     )
                                 if (result1 && isChange) {
                                     devWeiChaMapCun[0] = weightNew.toString()
@@ -4494,9 +4460,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     )
                                     val result1 =
                                         WeightChangeStorage(AppUtils.getContext()).putWithCooldown(
-                                            "key_weight2",
-                                            if (isChange) "success" else "Failure",
-                                            devWeiChaMapSend[1] ?: false
+                                            "key_weight2", if (isChange) "success" else "Failure", devWeiChaMapSend[1]
+                                                ?: false
                                         )
                                     if (result1 && isChange) {
                                         devWeiChaMapCun[1] = weightNew.toString()
@@ -4664,7 +4629,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     fun startChipVersion() {
         viewModelScope.launch(Dispatchers.IO) {
-            val chipStep11 = SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
+            val chipStep11 =
+                SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
             if (chipStep11.isFailure) throw Exception("查询版本失败: ${chipStep11.exceptionOrNull()?.message}")
             val stepStatus11 = chipStep11.getOrNull()?.chipVersion ?: SPreUtil.gversion
             println("查询到的版本：$stepStatus11")
