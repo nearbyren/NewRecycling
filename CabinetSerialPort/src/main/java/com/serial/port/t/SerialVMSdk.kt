@@ -174,8 +174,10 @@ class SerialVM : ViewModel() {
             responseWaiter = waiter
             directAwaitingCmd = setCmd
             try {
-                    Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
-                    fos?.write(data)
+                val fullFrame = ProtocolCodec.encode(setCmd,SerialPortSdk.ADDR,  data)
+
+                Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
+                    fos?.write(fullFrame)
                     fos?.flush()
 
                 // 挂起直到收到数据或超时
