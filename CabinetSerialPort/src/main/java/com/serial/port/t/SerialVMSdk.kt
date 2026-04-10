@@ -46,8 +46,10 @@ class SerialVM : ViewModel() {
     private var fos: FileOutputStream? = null
 
     private val extractor = FrameExtractor { packet ->
+        println("哈哈哈 接收 extractor 1 ${ByteUtils.toHexString(packet)}")
         responseWaiter?.complete(packet)
         directDeferred?.let {
+            println("哈哈哈 接收 extractor 2 ${ByteUtils.toHexString(packet)}")
             onDataReceived(packet)
         }
     }
@@ -150,6 +152,7 @@ class SerialVM : ViewModel() {
     fun onDataReceived(fullPacket: ByteArray) {
         val cmd = fullPacket[SerialPortSdk.CMD_POS]
         // 如果当前有“直接执行”的任务在等待这个 CMD
+        println("哈哈哈 接收 onDataReceived ${ByteUtils.toHexString(fullPacket)}")
         if (cmd == directAwaitingCmd) {
             directDeferred?.complete(fullPacket)
             directAwaitingCmd = null
@@ -163,7 +166,7 @@ class SerialVM : ViewModel() {
      * @param data 业务数据
      * @param timeout 超时时间（毫秒）
      */
-    suspend fun  executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 20000): Result<ByteArray> {
+    suspend fun  executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 30000): Result<ByteArray> {
         return withContext(Dispatchers.IO) {
             // 1. 准备接收容器
             val deferred = CompletableDeferred<ByteArray>()
@@ -174,7 +177,7 @@ class SerialVM : ViewModel() {
                 // 2. 按照协议封装数据包 (Header + Len + Cmd + Data + CRC + Tail)
                 // 假设你的 ProtocolCodec 有这个封装方法
                 val fullFrame = ProtocolCodec.encode(setCmd,SerialPortSdk.ADDR,  data)
-
+                println("哈哈哈 写入 ${ByteUtils.toHexString(fullFrame)}")
                 // 3. 物理写入串口 (不经过任务队列)
                 // 假设你的底层串口对象是 mSerialPort
                 fos?.write(fullFrame)
