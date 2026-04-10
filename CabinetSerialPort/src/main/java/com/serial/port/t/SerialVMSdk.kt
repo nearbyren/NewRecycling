@@ -46,10 +46,12 @@ class SerialVM : ViewModel() {
     private var fos: FileOutputStream? = null
 
     private val extractor = FrameExtractor { packet ->
+        println("哈哈哈 接收 extractor 1 ${ByteUtils.toHexString(packet)}")
         responseWaiter?.complete(packet)
-        directDeferred?.let {
-            onDataReceived(packet)
-        }
+//        directDeferred?.let {
+//            println("哈哈哈 接收 extractor 2 ${ByteUtils.toHexString(packet)}")
+//            onDataReceived(packet)
+//        }
     }
 
     fun startMonitor(path: String, baud: Int) {
@@ -150,6 +152,7 @@ class SerialVM : ViewModel() {
     fun onDataReceived(fullPacket: ByteArray) {
         val cmd = fullPacket[SerialPortSdk.CMD_POS]
         // 如果当前有“直接执行”的任务在等待这个 CMD
+        println("哈哈哈 接收 onDataReceived ${ByteUtils.toHexString(fullPacket)}")
         if (cmd == directAwaitingCmd) {
             directDeferred?.complete(fullPacket)
             directAwaitingCmd = null
@@ -163,29 +166,21 @@ class SerialVM : ViewModel() {
      * @param data 业务数据
      * @param timeout 超时时间（毫秒）
      */
-    suspend fun  executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 20000): Result<ByteArray> {
+    suspend fun  executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 30000): Result<ByteArray> {
+        if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
         return withContext(Dispatchers.IO) {
-            // 1. 准备接收容器
-            val deferred = CompletableDeferred<ByteArray>()
-            directDeferred = deferred
+            val waiter = CompletableDeferred<ByteArray>()
+            responseWaiter = waiter
             directAwaitingCmd = setCmd
-
             try {
-                // 2. 按照协议封装数据包 (Header + Len + Cmd + Data + CRC + Tail)
-                // 假设你的 ProtocolCodec 有这个封装方法
-                val fullFrame = ProtocolCodec.encode(setCmd,SerialPortSdk.ADDR,  data)
+                    Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
+                    fos?.write(data)
+                    fos?.flush()
 
-                // 3. 物理写入串口 (不经过任务队列)
-                // 假设你的底层串口对象是 mSerialPort
-                fos?.write(fullFrame)
-                fos?.flush()
-
-                // 4. 等待结果或超时
-                withTimeout(timeout) {
-                    val responseBytes = deferred.await()
-                    Result.success(responseBytes)
-                }
-            } catch (e: TimeoutCancellationException) {
+                // 挂起直到收到数据或超时
+                val response = withTimeout(timeout) { waiter.await() }
+                Result.success(response)
+            }catch (e: TimeoutCancellationException) {
                 // 超时处理：清理状态
                 directAwaitingCmd = null
                 directDeferred = null
@@ -194,6 +189,11 @@ class SerialVM : ViewModel() {
                 directAwaitingCmd = null
                 directDeferred = null
                 Result.failure(e)
+            } catch (e: Exception) {
+                Result.failure(e)
+            } finally {
+                directDeferred = null
+                responseWaiter = null
             }
         }
     }
