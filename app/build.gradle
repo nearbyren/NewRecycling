@@ -17,12 +17,12 @@ android {
         versionCode 150
         versionName "1.5.0"
         buildConfigField "String", "initToken", "\"c2f5de4f-93de-4195-9c74-aa6ad9b2edd8\""
-//        buildConfigField "String", "httpIP", "\"https://testapi.lyshenrecycle.cn:10082/api\""
-//        buildConfigField "String", "socketIP", "\"testapi.lyshenrecycle.cn\""
-//        buildConfigField "int", "socketPort", "9095"
-        buildConfigField "String", "httpIP", "\"https://api.lyshenrecycle.cn:10082/api\""
-        buildConfigField "String", "socketIP", "\"api.lyshenrecycle.cn\""
-        buildConfigField "int", "socketPort", "9096"
+        buildConfigField "String", "httpIP", "\"https://testapi.lyshenrecycle.cn:10082/api\""
+        buildConfigField "String", "socketIP", "\"testapi.lyshenrecycle.cn\""
+        buildConfigField "int", "socketPort", "9095"
+//        buildConfigField "String", "httpIP", "\"https://api.lyshenrecycle.cn:10082/api\""
+//        buildConfigField "String", "socketIP", "\"api.lyshenrecycle.cn\""
+//        buildConfigField "int", "socketPort", "9096"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
         ndk {

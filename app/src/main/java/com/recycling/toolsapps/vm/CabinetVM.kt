@@ -3179,6 +3179,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         _chipStep.value = UpgradeStep.ENTER_STATUS
                     }
                 }.onFailure { e ->
+                    Loge.d("流程 芯片升级 chipStep7 = ${e.message} ")
                     _chipStep.value = UpgradeStep.ENTER_STATUS_FUALT
                     return@launch
                 }
@@ -3211,6 +3212,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 _chipStep.value = UpgradeStep.QUERY_STATUS
                             }
                         }.onFailure { e ->
+                            Loge.d("流程 芯片升级 chipStep8 = ${e.message} ")
                             _chipStep.value = UpgradeStep.QUERY_STATUS_FUALT
                             return@launch
                         }
@@ -3265,7 +3267,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                                             UpgradeStep.SEND_FILE_FUALT
                                                     }
                                                 }.onFailure { e ->
-                                                    Loge.e("直接发送失败: ${e.message}")
+                                                    Loge.d("流程 芯片升级 文件發送失敗 = ${e.message} ")
                                                     _chipStep.value = UpgradeStep.SEND_FILE_FUALT
                                                     // 此处可以实现重试逻辑，或者抛出异常中断升级
                                                 }
@@ -3295,6 +3297,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 }
                             }.onFailure { e ->
                                 _chipStep.value = UpgradeStep.SEND_FILE_END_FUALT
+                                Loge.d("流程 芯片升级 chipStep9 = ${e.message} ")
                                 return@launch
                             }
                         }
@@ -3311,6 +3314,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 }
                             }.onFailure { e ->
                                 _chipStep.value = UpgradeStep.RESTART_APP_FUALT
+                                Loge.d("流程 芯片升级 chipStep10 = ${e.message} ")
                                 return@launch
                             }
                         }

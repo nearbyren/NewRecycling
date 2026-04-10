@@ -123,8 +123,8 @@ class StartUiActivity : AppCompatActivity() {
                 initString?.let { url ->
                     val socketUrl = url.split(":")
                     Loge.d("获取socket连接 onSuccess ${Thread.currentThread().name}| $socketUrl |  ${socketUrl.size} ")
-                    initSocket(socketUrl[0], socketUrl[1].toInt())
-//                    initSocket(BuildConfig.socketIP, BuildConfig.socketPort)
+//                    initSocket(socketUrl[0], socketUrl[1].toInt())
+                    initSocket(BuildConfig.socketIP, BuildConfig.socketPort)
                     cabinetVM.insertInfoLog(LogEntity().apply {
                         cmd = "connectAddress"
                         msg = "获取socket地址成功"

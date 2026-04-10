@@ -163,7 +163,7 @@ class SerialVM : ViewModel() {
      * @param data 业务数据
      * @param timeout 超时时间（毫秒）
      */
-    suspend fun  executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 2000): Result<ByteArray> {
+    suspend fun  executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 20000): Result<ByteArray> {
         return withContext(Dispatchers.IO) {
             // 1. 准备接收容器
             val deferred = CompletableDeferred<ByteArray>()
