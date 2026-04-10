@@ -48,10 +48,17 @@ class SerialVM : ViewModel() {
     private val extractor = FrameExtractor { packet ->
         println("哈哈哈 接收 extractor 1 ${ByteUtils.toHexString(packet)}")
         responseWaiter?.complete(packet)
+<<<<<<< HEAD
 //        directDeferred?.let {
 //            println("哈哈哈 接收 extractor 2 ${ByteUtils.toHexString(packet)}")
 //            onDataReceived(packet)
 //        }
+=======
+        directDeferred?.let {
+            println("哈哈哈 接收 extractor 2 ${ByteUtils.toHexString(packet)}")
+            onDataReceived(packet)
+        }
+>>>>>>> a13f2cd28250bc78a85a7d2b77961ee160bcd13f
     }
 
     fun startMonitor(path: String, baud: Int) {
@@ -167,12 +174,16 @@ class SerialVM : ViewModel() {
      * @param timeout 超时时间（毫秒）
      */
     suspend fun  executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 30000): Result<ByteArray> {
+<<<<<<< HEAD
         if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
+=======
+>>>>>>> a13f2cd28250bc78a85a7d2b77961ee160bcd13f
         return withContext(Dispatchers.IO) {
             val waiter = CompletableDeferred<ByteArray>()
             responseWaiter = waiter
             directAwaitingCmd = setCmd
             try {
+<<<<<<< HEAD
                     Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
                     fos?.write(data)
                     fos?.flush()
@@ -181,6 +192,23 @@ class SerialVM : ViewModel() {
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)
             }catch (e: TimeoutCancellationException) {
+=======
+                // 2. 按照协议封装数据包 (Header + Len + Cmd + Data + CRC + Tail)
+                // 假设你的 ProtocolCodec 有这个封装方法
+                val fullFrame = ProtocolCodec.encode(setCmd,SerialPortSdk.ADDR,  data)
+                println("哈哈哈 写入 ${ByteUtils.toHexString(fullFrame)}")
+                // 3. 物理写入串口 (不经过任务队列)
+                // 假设你的底层串口对象是 mSerialPort
+                fos?.write(fullFrame)
+                fos?.flush()
+
+                // 4. 等待结果或超时
+                withTimeout(timeout) {
+                    val responseBytes = deferred.await()
+                    Result.success(responseBytes)
+                }
+            } catch (e: TimeoutCancellationException) {
+>>>>>>> a13f2cd28250bc78a85a7d2b77961ee160bcd13f
                 // 超时处理：清理状态
                 directAwaitingCmd = null
                 directDeferred = null
