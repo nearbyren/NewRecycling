@@ -28,7 +28,7 @@ class FrameExtractor(private val onFrameFound: (ByteArray) -> Unit) {
     buffer.write(input)
     val data = buffer.toByteArray()
     var head = 0
-//    BoxToolLogUtils.receiveOriginalLower(1, data)
+    BoxToolLogUtils.receiveOriginalLower(1, data)
     // 2. 滑动窗口扫描
     while (head < data.size) {
       // 寻找接收帧的法定包头 0x9B

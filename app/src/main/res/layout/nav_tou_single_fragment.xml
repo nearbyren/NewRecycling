@@ -367,6 +367,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/dp_2"
                     android:text="可再投递(kg)：40.00"
+                    android:visibility="visible"
                     android:textColor="@color/white"
                     android:textSize="@dimen/sp_15"
                     android:textStyle="bold"

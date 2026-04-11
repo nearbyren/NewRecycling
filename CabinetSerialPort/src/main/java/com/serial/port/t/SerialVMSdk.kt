@@ -131,6 +131,17 @@ class SerialVM : ViewModel() {
         return Result.failure(lastErr ?: Exception("执行失败"))
     }
 
+    suspend fun sendWithRetryStatus(data: ByteArray, maxRetries: Int = 5, timeout: Long = 30000): Result<ByteArray> {
+        var lastErr: Exception? = null
+        repeat(maxRetries) { attempt ->
+            val res = sendOnceChip(data, timeout)
+            if (res.isSuccess) return res
+            lastErr = res.exceptionOrNull() as? Exception
+            delay(1000L)
+        }
+        return Result.failure(lastErr ?: Exception("执行失败"))
+    }
+
     suspend fun sendWithRetryChip(data: ByteArray, maxRetries: Int = 5, timeout: Long = 30000): Result<ByteArray> {
         var lastErr: Exception? = null
         repeat(maxRetries) { attempt ->
@@ -151,7 +162,7 @@ class SerialVM : ViewModel() {
     fun onDataReceived(fullPacket: ByteArray) {
         val cmd = fullPacket[SerialPortSdk.CMD_POS]
         // 如果当前有“直接执行”的任务在等待这个 CMD
-        println("哈哈哈 接收 onDataReceived ${ByteUtils.toHexString(fullPacket)}")
+        Loge.e("哈哈哈 接收 onDataReceived ${ByteUtils.toHexString(fullPacket)}")
         if (cmd == directAwaitingCmd) {
             directDeferred?.complete(fullPacket)
             directAwaitingCmd = null

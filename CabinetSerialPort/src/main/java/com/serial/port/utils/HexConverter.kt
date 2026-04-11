@@ -40,7 +40,7 @@ object HexConverter {
     fun getWeight(weight: Int): String {
         if (weight == 0) return "0.00"
         return "%.2f".format(weight.toDouble() / 1000)
-//        return new BigDecimal(weight).divide(BigDecimal.valueOf(1000)).setScale(2, RoundingMode.HALF_UP).toString();
+//        return new BigDecimal(weight).divide(BigDecimal.valueOf(1000)).setScale(2, RoundingMode.HALF_DOWN).toString();
     }
 
     /**

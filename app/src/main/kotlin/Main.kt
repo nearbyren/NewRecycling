@@ -24,7 +24,7 @@ import kotlin.random.Random
 fun subtractFloatsBoolean(after: String, before: String): Boolean {
     val bd1 = BigDecimal(after)
     val bd2 = BigDecimal(before)
-    val b = bd1.subtract(bd2).setScale(2, RoundingMode.HALF_UP).toDouble()
+    val b = bd1.subtract(bd2).setScale(2, RoundingMode.HALF_DOWN).toDouble()
     return b < -0.5
 }
 
@@ -105,7 +105,7 @@ fun main() {
     println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260402))}")
     println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260403))}")
     println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260404))}")
-    val weight3 = HexConverter.byteArrayToInt(byteArrayOf(0x00, 0x00, 0x60, 0x04.toByte()))
+    val weight3 = HexConverter.byteArrayToInt(byteArrayOf(0x00, 0x00, 0x5B.toByte(), 0x68.toByte()))
 
     println("测试 发送的字节 weight3：${weight3}")
 

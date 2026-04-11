@@ -36,14 +36,21 @@ class SerialPortCoreSdk private constructor() {
         return vm?.sendWithRetry(frame) ?: Result.failure(Exception("Communication VM is null"))
     }
 
+    private suspend fun executeStatus(cmd: Byte, data: ByteArray): Result<ByteArray> {
+        val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
+        return vm?.sendWithRetryStatus(frame)
+            ?: Result.failure(Exception("Communication VM is null"))
+    }
+
     private suspend fun executeChip(cmd: Byte, data: ByteArray): Result<ByteArray> {
         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
         return vm?.sendWithRetryChip(frame) ?: Result.failure(Exception("Communication VM is null"))
     }
 
-     suspend fun executeChip2(cmd: Byte, data: ByteArray): Result<ByteArray> {
-         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-         return vm?.executeDirect(cmd, frame) ?: Result.failure(Exception("Communication VM is null"))
+    suspend fun executeChip2(cmd: Byte, data: ByteArray): Result<ByteArray> {
+        val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
+        return vm?.executeDirect(cmd, frame)
+            ?: Result.failure(Exception("Communication VM is null"))
     }
 
 
@@ -88,8 +95,8 @@ class SerialPortCoreSdk private constructor() {
             val rawResult = vm?.sendWithRetry(frame) ?: Result.failure(Exception("串口不可用"))
 
             rawResult.mapCatching { bytes ->
-                val payload =
-                    ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
+                val payload = ProtocolCodec.getSafePayload(bytes)
+                    ?: throw Exception("解析Payload失败")
                 parser(payload)
             }
         }
@@ -243,7 +250,7 @@ class SerialPortCoreSdk private constructor() {
 
     /** 查询货柜状态 */
     suspend fun queryStatus(): Result<DoorResult> {
-        return execute(SerialPortSdk.CMD5, byteArrayOf(0x01, 0x01)).mapCatching { bytes ->
+        return executeStatus(SerialPortSdk.CMD5, byteArrayOf(0x01, 0x01)).mapCatching { bytes ->
             val cmd = bytes[SerialPortSdk.CMD_POS]
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD5) DoorResult(containers = mutableListOf(), cmd = 5, cmdByte = SerialPortSdk.CMD5, cmdStatus = false)
@@ -259,21 +266,13 @@ class SerialPortCoreSdk private constructor() {
                 // 1. 提取重量 (index 1 到 4，共 4 字节)
                 val weightBytes = group.copyOfRange(1, 5)
                 val rawWeight = ProtocolCodec.bytesToInt(weightBytes)
-
+                Loge.i("我的数据 for 重量：${rawWeight}")
                 // 2. 封装对象
                 list.add(
                     ContainersResult(
-                        locker = group[0].toUByte().toInt(),
-                        weigh = HexConverter.getWeight(rawWeight),
+                        locker = group[0].toUByte().toInt(), weigh = HexConverter.getWeight(rawWeight),
                         // 状态位从 index 5 开始
-                        smokeValue = group[6].toUByte().toInt(),
-                        irStateValue = group[7].toUByte().toInt(),
-                        touCGStatusValue = group[8].toUByte().toInt(),
-                        touJSStatusValue = group[9].toUByte().toInt(),
-                        doorStatusValue = group[10].toUByte().toInt(),
-                        lockStatusValue = group[11].toUByte().toInt(),
-                        xzStatusValue = group[12].toUByte().toInt(),
-                        jsStatusValue = group[13].toUByte().toInt()
+                        smokeValue = group[5].toUByte().toInt(), irStateValue = group[6].toUByte().toInt(), touCGStatusValue = group[7].toUByte().toInt(), touJSStatusValue = group[8].toUByte().toInt(), doorStatusValue = group[9].toUByte().toInt(), lockStatusValue = group[10].toUByte().toInt(), xzStatusValue = group[11].toUByte().toInt(), jsStatusValue = group[12].toUByte().toInt()
                         // 如果还有第 13 位，可以在此继续映射
                     )
                 )
@@ -352,7 +351,9 @@ class SerialPortCoreSdk private constructor() {
             )
         }
     }
-
+    /***
+     * 校准动作
+     */
     suspend fun startCalibration(doorGeX: Int, code: Int): Result<DoorResult> {
         val data2 = when (doorGeX) {
             1 -> {
@@ -371,10 +372,10 @@ class SerialPortCoreSdk private constructor() {
         val sendByte = HexConverter.combineByteArrays(data2, data)
         return execute(SerialPortSdk.CMD17, sendByte).mapCatching { bytes ->
             val cmd = bytes[SerialPortSdk.CMD_POS]
-            println("我的数据 cmd $cmd")
+            Loge.e("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD17) DoorResult(cmd = 17, cmdByte = SerialPortSdk.CMD17, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            println("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
             DoorResult(
                 locker = payload[0].toInt(), caliStatus = if (payload[1].toInt() == 1) 1 else 0, cmd = 17, cmdByte = SerialPortSdk.CMD17, cmdStatus = true
             )
@@ -398,10 +399,10 @@ class SerialPortCoreSdk private constructor() {
         val sendByte = HexConverter.combineByteArrays(data, data2)
         return execute(SerialPortSdk.CMD19, sendByte).mapCatching { bytes ->
             val cmd = bytes[SerialPortSdk.CMD_POS]
-            println("我的数据 cmd $cmd")
+            Loge.e("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD19) DoorResult(cmd = 19, cmdByte = SerialPortSdk.CMD19, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            println("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
             if (payload.size < 5) throw Exception("返回数据长度不足")
             val value = payload.takeLast(4).toByteArray()
             val rodHinderValueByte = ProtocolCodec.bytesToInt(value)
@@ -438,10 +439,10 @@ class SerialPortCoreSdk private constructor() {
 
         return executeChip(setCmd, data).mapCatching { bytes ->
             val cmd = bytes[SerialPortSdk.CMD_POS]
-            println("我的数据 cmd $cmd ${ByteUtils.toHexString(data)}")
+            Loge.e("我的数据 cmd $cmd ${ByteUtils.toHexString(data)}")
             if (cmd != setCmd) DoorResult(cmd = commandType, cmdByte = setCmd, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            println("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
             val result = when (setCmd) {
                 SerialPortSdk.CMD7, SerialPortSdk.CMD8, SerialPortSdk.CMD10 -> {
                     if (payload.size == 3) 1 else 0
@@ -489,7 +490,7 @@ class SerialPortCoreSdk private constructor() {
     suspend fun firmwareUpgradeFile(byte: ByteArray): Result<DoorResult> {
         return executeChip(SerialPortSdk.CMD18, byte).mapCatching { bytes ->
             val cmd = bytes[SerialPortSdk.CMD_POS]
-            println("我的数据 cmd $cmd")
+            Loge.e("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD18) DoorResult(cmd = 18, cmdByte = SerialPortSdk.CMD18, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
             println("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")

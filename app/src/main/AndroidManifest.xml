@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.recycling.toolsapps"
+    package="com.recycling.toolsapp"
     tools:overrideLibrary="com.arthenica.mobileffmpeg">
     <!-- 需要使用Feature -->
     <uses-feature android:name="android.hardware.camera" />
@@ -60,9 +60,9 @@
 
     <uses-feature android:name="android.hardware.camera.any" />
     <application
-        android:name=".FaceApplication"
+        android:name="com.recycling.toolsapp.FaceApplication"
         android:icon="@mipmap/ic_launcher_by"
-        android:label="测试"
+        android:label="回收柜"
         android:largeHeap="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:requestLegacyExternalStorage="true"
@@ -81,7 +81,7 @@
         </provider>
 
         <activity
-            android:name="com.recycling.toolsapps.HomeActivity"
+            android:name="com.recycling.toolsapp.HomeActivity"
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             tools:ignore="Instantiatable">
@@ -101,7 +101,7 @@
               </intent-filter>-->
         </activity>
         <activity
-            android:name=".InitFactoryActivity"
+            android:name="com.recycling.toolsapp.InitFactoryActivity"
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             tools:ignore="Instantiatable">
@@ -112,7 +112,7 @@
 
         </activity>
         <activity
-            android:name=".StartUiActivity"
+            android:name="com.recycling.toolsapp.StartUiActivity"
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             android:theme="@style/CabinetLauncherTheme"
@@ -124,7 +124,7 @@
         </activity>
 
         <activity
-            android:name="com.recycling.toolsapps.ui.test.Camera2RecordingPhotoActivity"
+            android:name="com.recycling.toolsapp.ui.test.Camera2RecordingPhotoActivity"
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             android:theme="@style/CabinetLauncherTheme"
@@ -135,7 +135,7 @@
                   </intent-filter>-->
         </activity>
         <activity
-            android:name="com.recycling.toolsapps.ui.test.DualCameraRecordingPhotoActivity"
+            android:name="com.recycling.toolsapp.ui.test.DualCameraRecordingPhotoActivity"
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             android:theme="@style/CabinetLauncherTheme"
@@ -146,22 +146,22 @@
              </intent-filter>-->
         </activity>
         <activity
-            android:name="com.recycling.toolsapps.nav.NavTouSingleActivity"
+            android:name="com.recycling.toolsapp.nav.NavTouSingleActivity"
             android:launchMode="singleTask"
             android:exported="false"
             android:windowSoftInputMode="stateHidden" />
         <activity
-            android:name=".nav.NavTouSingleNewActivity"
+            android:name="com.recycling.toolsapp.nav.NavTouSingleNewActivity"
             android:launchMode="singleTask"
             android:exported="false"
             android:windowSoftInputMode="stateHidden" />
         <activity
-            android:name="com.recycling.toolsapps.nav.NavTouDoubleActivity"
+            android:name="com.recycling.toolsapp.nav.NavTouDoubleActivity"
             android:exported="false"
             android:launchMode="singleTask"
             android:windowSoftInputMode="stateHidden" />
         <activity
-            android:name="com.recycling.toolsapps.TestIDActivity"
+            android:name="com.recycling.toolsapp.TestIDActivity"
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             android:theme="@style/CabinetLauncherTheme"

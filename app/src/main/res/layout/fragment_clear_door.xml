@@ -16,7 +16,7 @@
             android:orientation="horizontal"
             app:layout_constraintGuide_percent="0.20" />
 
-        <com.recycling.toolsapps.view.CircleProgressView
+        <com.recycling.toolsapp.view.CircleProgressView
             android:id="@+id/cpv_view"
             android:layout_width="@dimen/dp_100"
             android:layout_height="@dimen/dp_100"

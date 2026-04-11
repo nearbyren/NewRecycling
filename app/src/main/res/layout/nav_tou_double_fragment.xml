@@ -515,6 +515,7 @@
                         android:textColor="@color/white"
                         android:textSize="@dimen/sp_12"
                         android:textStyle="bold"
+                        android:visibility="invisible"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintLeft_toLeftOf="parent"
                         app:layout_constraintTop_toBottomOf="@+id/tv_left_cur_weight_net" />
@@ -583,6 +584,7 @@
                         android:textColor="@color/white"
                         android:textSize="@dimen/sp_12"
                         android:textStyle="bold"
+                        android:visibility="invisible"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintLeft_toLeftOf="parent"
                         app:layout_constraintRight_toRightOf="parent"
@@ -667,9 +669,9 @@
 
                 <androidx.appcompat.widget.AppCompatImageView
                     android:layout_width="match_parent"
-                    android:src="@drawable/ic_bg_mobile"
+                    android:layout_height="match_parent"
                     android:scaleType="centerCrop"
-                    android:layout_height="match_parent"/>
+                    android:src="@drawable/ic_bg_mobile" />
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 
