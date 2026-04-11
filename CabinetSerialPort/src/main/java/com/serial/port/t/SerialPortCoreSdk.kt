@@ -42,7 +42,8 @@ class SerialPortCoreSdk private constructor() {
     }
 
      suspend fun executeChip2(cmd: Byte, data: ByteArray): Result<ByteArray> {
-        return vm?.executeDirect(cmd, data) ?: Result.failure(Exception("Communication VM is null"))
+         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
+         return vm?.executeDirect(cmd, frame) ?: Result.failure(Exception("Communication VM is null"))
     }
 
 

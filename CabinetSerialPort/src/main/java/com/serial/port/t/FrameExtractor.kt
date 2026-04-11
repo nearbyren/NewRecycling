@@ -28,7 +28,6 @@ class FrameExtractor(private val onFrameFound: (ByteArray) -> Unit) {
     buffer.write(input)
     val data = buffer.toByteArray()
     var head = 0
-    Loge.i("我的数据 接收处理 push ${ByteUtils.toHexString(data)}")
 //    BoxToolLogUtils.receiveOriginalLower(1, data)
     // 2. 滑动窗口扫描
     while (head < data.size) {

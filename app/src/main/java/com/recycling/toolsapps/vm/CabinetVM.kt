@@ -1198,7 +1198,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         delay(500)
                         if (resource.url != null && !TextUtils.isEmpty(resource.url) && resource.filename != null && !TextUtils.isEmpty(
                                 resource.filename
-                            )) {
+                            )
+                        ) {
                             val fileName = resource.filename ?: ""
                             var dir = FileMdUtil.matchNewFileName("audio", fileName)
                             if (FileMdUtil.shouldAudio(fileName)) {
@@ -1790,12 +1791,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = "F1-20260403.bin"
+    var chipName = "F1-20260404.bin"
 
     /***
      * 下载主芯片版本大小
      */
-    var chipDowV = 20260403
+    var chipDowV = 20260404
 
     /***
      * 当前主芯片版本大小
@@ -3168,8 +3169,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     fun startUpgradeWorkflow() {
-        viewModelScope.launch(Dispatchers.IO) {
+        ioScope.launch(Dispatchers.IO) {
             try {
+                Loge.d("流程 芯片升级 startUpgradeWorkflow  ")
                 val chipStep7 =
                     SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
                 chipStep7.onSuccess { bytes ->
@@ -3183,6 +3185,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     _chipStep.value = UpgradeStep.ENTER_STATUS_FUALT
                     return@launch
                 }
+                delay(2000)
                 if (chipStep.value == UpgradeStep.ENTER_STATUS) {
                     val file2 = FileMdUtil.matchNewFile2("bin", chipName)
                     val fileType = byteArrayOf(0xf1.toByte())
@@ -3216,6 +3219,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             _chipStep.value = UpgradeStep.QUERY_STATUS_FUALT
                             return@launch
                         }
+                        delay(2000)
                         if (chipStep.value == UpgradeStep.QUERY_STATUS) {
                             //发送的文件数据
                             val sendBLFile = mutableListOf<ByteArray>()
@@ -3240,41 +3244,44 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 } catch (e: Exception) {
                                     Loge.d("流程 芯片升级 处理文件时出错: ${e.message}")
                                 } finally {
-                                    if (sendBLFile.isNotEmpty()) {
-                                        Loge.d("流程 芯片升级 封装好数据 开始发送文件数据")
-                                        Loge.d("流程 芯片升级 chipSet8fs ${sendBLFile.size}")
-                                        var conutSendByte = 0
-                                        val sendByte = sendBLFile[conutSendByte] // 从Channel中接收指令
-                                        Loge.d("流程 芯片升级 发送第$sendFCount 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
-                                        if (sendByte.isNotEmpty()) {
-                                            // 升级中的文件发送循环
-                                            while (isActive && conutSendByte < sendBLFile.size) {
-                                                val sendByte = sendBLFile[conutSendByte]
-                                                // 直接调用，不排队，速度最快
-                                                val result =
-                                                    SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD18, sendByte)
-                                                result.onSuccess { bytes ->
-                                                    // 解析 Payload (逻辑同你之前的代码)
-                                                    val payload =
-                                                        ProtocolCodec.getSafePayload(bytes)
-                                                    if (payload != null && payload.contentEquals(sendByte)) {
-                                                        // 校验成功，发下一包
-                                                        sendFCount++
-                                                        conutSendByte++
-                                                    } else {
-                                                        // 校验失败逻辑...
-                                                        _chipStep.value =
-                                                            UpgradeStep.SEND_FILE_FUALT
-                                                    }
-                                                }.onFailure { e ->
-                                                    Loge.d("流程 芯片升级 文件發送失敗 = ${e.message} ")
-                                                    _chipStep.value = UpgradeStep.SEND_FILE_FUALT
-                                                    // 此处可以实现重试逻辑，或者抛出异常中断升级
-                                                }
 
-                                                // 方案 B 已经由 executeDirect 的返回速度决定了频率，
-                                                // 这里如果下位机写 Flash 快，可以不 delay，或者只 delay(5)
+                                    Loge.d("流程 芯片升级 封装好数据 开始发送文件数据")
+                                    Loge.d("流程 芯片升级 chipSet8fs ${sendBLFile.size}")
+                                    var conutSendByte = 0
+                                    if (sendByte.isNotEmpty()) {
+                                        // 升级中的文件发送循环
+                                        while (isActive && conutSendByte < sendBLFile.size) {
+                                            val sendByte = sendBLFile[conutSendByte]
+                                            Loge.d("流程 芯片升级 发送第$sendFCount 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
+
+                                            // 直接调用，不排队，速度最快
+                                            val result =
+                                                SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD18, sendByte)
+                                            result.onSuccess { bytes ->
+                                                // 解析 Payload (逻辑同你之前的代码)
+                                                val payload =
+                                                    ProtocolCodec.getSafePayload(bytes)
+                                                if (payload != null && payload.contentEquals(sendByte)) {
+                                                    // 校验成功，发下一包
+                                                    sendFCount++
+                                                    conutSendByte++
+                                                } else {
+                                                    // 校验失败逻辑...
+                                                    _chipStep.value =
+                                                        UpgradeStep.SEND_FILE_FUALT
+                                                }
+                                            }.onFailure { e ->
+                                                Loge.d("流程 芯片升级 文件發送失敗 = ${e.message} ")
+                                                _chipStep.value = UpgradeStep.SEND_FILE_FUALT
+                                                // 此处可以实现重试逻辑，或者抛出异常中断升级
                                             }
+
+                                            // 方案 B 已经由 executeDirect 的返回速度决定了频率，
+                                            // 这里如果下位机写 Flash 快，可以不 delay，或者只 delay(5)
+                                        }
+                                        Loge.d("流程 芯片升级 ${sendBLFile.size} = ${sendFCount} ")
+                                        if (sendBLFile.size == sendFCount) {
+                                            _chipStep.value = UpgradeStep.SEND_FILE
                                         }
                                     } else {
                                         _chipStep.value = UpgradeStep.SEND_FILE_FUALT
@@ -3288,7 +3295,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         if (chipStep.value == UpgradeStep.SEND_FILE) {
                             delay(5000)
                             val chipStep9 =
-                                SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD9,  byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte()))
+                                SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD9, byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte()))
                             chipStep9.onSuccess { bytes ->
                                 // 解析 Payload (逻辑同你之前的代码)
                                 val payload = ProtocolCodec.getSafePayload(bytes)
@@ -3302,7 +3309,23 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             }
                         }
 
-                        if (chipStep.value == UpgradeStep.RESTART_APP) {
+//                        if (chipStep.value == UpgradeStep.SEND_FILE_END) {
+//                            delay(2000)
+//                            val chipStep11 =
+//                                SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
+//                            chipStep11.onSuccess { bytes ->
+//                                // 解析 Payload (逻辑同你之前的代码)
+//                                val payload = ProtocolCodec.getSafePayload(bytes)
+//                                val version = payload?.let { HexConverter.byteArrayToInt(it) }
+//                                SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, version?:chipCurV)
+//                            }.onFailure { e ->
+//                                _chipStep.value = UpgradeStep.QUERY_VERSION_FUALT
+//                                Loge.d("流程 芯片升级 查询版本失败 = ${e.message} ")
+//                                return@launch
+//                            }
+//                        }
+
+                        if (chipStep.value == UpgradeStep.SEND_FILE_END) {
                             delay(3000)
                             val chipStep10 =
                                 SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD10, byteArrayOf(0xa7.toByte(), 0xa8.toByte(), 0xa9.toByte()))
@@ -3310,6 +3333,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 // 解析 Payload (逻辑同你之前的代码)
                                 val payload = ProtocolCodec.getSafePayload(bytes)
                                 if (payload?.size == 3) {
+                                    SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
                                     _chipStep.value = UpgradeStep.RESTART_APP
                                 }
                             }.onFailure { e ->

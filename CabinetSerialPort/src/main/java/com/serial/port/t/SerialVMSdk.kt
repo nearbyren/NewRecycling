@@ -46,7 +46,6 @@ class SerialVM : ViewModel() {
     private var fos: FileOutputStream? = null
 
     private val extractor = FrameExtractor { packet ->
-        println("哈哈哈 接收 extractor 1 ${ByteUtils.toHexString(packet)}")
         responseWaiter?.complete(packet)
 //        directDeferred?.let {
 //            println("哈哈哈 接收 extractor 2 ${ByteUtils.toHexString(packet)}")
@@ -86,7 +85,6 @@ class SerialVM : ViewModel() {
         while (isRunning.get()) {
             val len = fis?.read(buffer) ?: -1
             if (len == -1) throw IOException("End of Stream")
-            Loge.i("我的数据 接收处理 readLoop ${ByteUtils.toHexString(buffer)}")
             if (len > 0) extractor.push(buffer.copyOfRange(0, len))
         }
     }
@@ -167,19 +165,15 @@ class SerialVM : ViewModel() {
      * @param data 业务数据
      * @param timeout 超时时间（毫秒）
      */
-    suspend fun  executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 30000): Result<ByteArray> {
+    suspend fun executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 600000): Result<ByteArray> {
         if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
         return withContext(Dispatchers.IO) {
             val waiter = CompletableDeferred<ByteArray>()
             responseWaiter = waiter
             directAwaitingCmd = setCmd
             try {
-                val fullFrame = ProtocolCodec.encode(setCmd,SerialPortSdk.ADDR,  data)
-
-                Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
-                    fos?.write(fullFrame)
-                    fos?.flush()
-
+                fos?.write(data)
+                fos?.flush()
                 // 挂起直到收到数据或超时
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)

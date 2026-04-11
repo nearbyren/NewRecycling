@@ -45,6 +45,7 @@ import com.recycling.toolsapps.utils.CommandParser
 import com.recycling.toolsapps.utils.EnumSignal
 import com.recycling.toolsapps.utils.FaultType
 import com.recycling.toolsapps.utils.NetworkStateManager
+import com.recycling.toolsapps.utils.OSUtils
 import com.recycling.toolsapps.utils.SignalStrengthAnalyzer
 import com.recycling.toolsapps.utils.SnackbarUtils
 import com.recycling.toolsapps.vm.CabinetVM
@@ -760,12 +761,21 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                             })
                         }
 
-                        CabinetVM.UpgradeStep.QUERY_VERSION, CabinetVM.UpgradeStep.ENTER_STATUS, CabinetVM.UpgradeStep.QUERY_STATUS, CabinetVM.UpgradeStep.SEND_FILE, CabinetVM.UpgradeStep.SEND_FILE_END, CabinetVM.UpgradeStep.RESTART_APP -> {
+                        CabinetVM.UpgradeStep.QUERY_VERSION,
+                        CabinetVM.UpgradeStep.ENTER_STATUS,
+                        CabinetVM.UpgradeStep.QUERY_STATUS,
+                        CabinetVM.UpgradeStep.SEND_FILE,
+                        CabinetVM.UpgradeStep.SEND_FILE_END,
+                        CabinetVM.UpgradeStep.RESTART_APP -> {
                             cabinetVM.insertInfoLog(LogEntity().apply {
                                 cmd = CmdValue.CMD_OTA
                                 msg = "升级进行中-$it"
                                 time = AppUtils.getDateYMDHMS()
                             })
+                            if(it==CabinetVM.UpgradeStep.RESTART_APP){
+                                delay(3000)
+                                OSUtils.restartAppFrontDesk(this@NavTouSingleNewActivity)
+                            }
                         }
 
                     }

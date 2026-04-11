@@ -91,7 +91,7 @@ fun main() {
 
 
     println("测试 发送的字节 结果1：${ByteUtils.toHexString(ProtocolCodec.encode(0x08.toByte(),0x00.toByte(),r1))}")
-    println("测试 发送的字节 结果2：${ByteUtils.toHexString(ProtocolCodec.encode2(0x08.toByte(),0x00.toByte(),r1))}")
+    println("测试 发送的字节 结果2：${ByteUtils.toHexString(ProtocolCodec.encode(0x08.toByte(),0x00.toByte(),r1))}")
 
     println("测试 发送的字节 weight：${HexConverter.byteArrayToInt(HexConverter.intToByteArray(19750)) / 1000}")
 //    println("测试 发送的字节 byte:${ByteUtils.toHexString(byteArray)}")
