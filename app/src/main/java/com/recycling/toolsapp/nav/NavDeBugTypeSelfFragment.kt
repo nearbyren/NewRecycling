@@ -324,7 +324,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         startActivity(intent)
     }
 
-    fun gotoGetInfo() {
+    fun startQueryStatusData() {
         cabinetVM.isLookState = true
         cabinetVM.startQueryStatus(stateResult = { lowerMachines ->
             val builder1 = StringBuilder()
@@ -496,7 +496,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
 //            testStickyBag()
 //            MediaPlayerHelper.setVolume(AppUtils.getContext(), 4)
 //            MediaPlayerHelper.playAudioAsset(AppUtils.getContext(), "opendoor.wav")
-            gotoGetInfo()
+            startQueryStatusData()
         }
         binding.actvLookWeigh.setOnClickListener {
             cabinetVM.startQueryWeight(currentGe)
@@ -1175,5 +1175,6 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
 
     override fun onDestroy() {
         super.onDestroy()
+        cabinetVM.cancelStartQueryStatus()
     }
 }

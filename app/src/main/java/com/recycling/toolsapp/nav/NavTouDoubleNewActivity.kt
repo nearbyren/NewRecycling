@@ -102,13 +102,11 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
             //开灯
             val lightOn = SPreUtil[AppUtils.getContext(), SPreUtil.lightOn, "0"]
             if (lightOn == it) {
-//                cabinetVM.testLightsCmd(CmdCode.OUT_LIGHTS_OPEN)
                 cabinetVM.startLights(CmdCode.OUT_LIGHTS_OPEN)
             }
             //关灯
             val lightOff = SPreUtil[AppUtils.getContext(), SPreUtil.lightOff, "0"]
             if (lightOff == it) {
-//                cabinetVM.testLightsCmd(CmdCode.OUT_LIGHTS_CLOSE)
                 cabinetVM.startLights(CmdCode.OUT_LIGHTS_CLOSE)
             }
             Loge.d("流程 关开灯 testLightsCmd $it - 开：${lightOn} | 关：${lightOff}")
