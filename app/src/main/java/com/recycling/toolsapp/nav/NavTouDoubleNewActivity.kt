@@ -639,9 +639,12 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
 
     private val cameraErrorListener = CameraErrorListener { status, index, text ->
         if (status) {
-            cabinetVM.maptDoorFault[FaultType.FAULT_CODE_5] = false
-            cabinetVM.maptDoorFault[FaultType.FAULT_CODE_51] = false
-            cabinetVM.maptDoorFault[FaultType.FAULT_CODE_52] = false
+            if ("0" == index) {
+                cabinetVM.maptDoorFault[FaultType.FAULT_CODE_51] = false
+            }
+            if ("1" == index) {
+                cabinetVM.maptDoorFault[FaultType.FAULT_CODE_52] = false
+            }
         } else {
             cabinetVM.insertInfoLog(LogEntity().apply {
                 msg = text
