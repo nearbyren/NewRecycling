@@ -3662,7 +3662,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         val fileIn = File(dir, nameIn)
         val fileOut = File(dir, nameOut)
         when (switchType) {
-            1 -> {
+            CmdCode.GE_OPEN -> {
                 cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile ${toFile?.name}")
                     toFile?.name?.let {
@@ -3681,7 +3681,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     })
                 }
 
-                delay(3000)
+                delay(1500)
                 cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile ${toFile?.name}")
                     toFile?.name?.let {
@@ -3698,14 +3698,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         refreshType = RefBusType.REFRESH_TYPE_4
                         takePhotoUrl = fileOut.absolutePath
                     })
-
-
                 }
+
+                delay(500)
+                cameraManagerNew.destroy()
             }
 
-            0 -> {
+            CmdCode.GE_CLOSE -> {
                 cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile ${toFile?.name}")
+                    BoxToolLogUtils.saveCamera("拍照成功 关门 外 $toFile ${toFile?.name}")
                     toFile?.name?.let {
                         uploadPhoto(
                             curSn, setTransId, 3, it, switchType.toString()
@@ -3722,7 +3723,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     })
 
                 }
-                delay(3000)
+                delay(1500)
                 cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
                     BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile ${toFile?.name}")
                     toFile?.name?.let {
@@ -3740,6 +3741,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         takePhotoUrl = fileIn.absolutePath
                     })
                 }
+                delay(500)
+                cameraManagerNew.destroy()
             }
         }/**/
 
