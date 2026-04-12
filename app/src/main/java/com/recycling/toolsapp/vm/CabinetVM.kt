@@ -3465,7 +3465,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
         deteServiceCloseJob = ioScope.launch {
             while (isActive) {
-                if (!isRunning.getAndSet(true)) {
+                delay(2000)
+                if (!isRunning.get()) {
                     val weights = DatabaseManager.queryWeightStatus(
                         AppUtils.getContext(), EntityType.WEIGHT_TYPE_10
                     )
