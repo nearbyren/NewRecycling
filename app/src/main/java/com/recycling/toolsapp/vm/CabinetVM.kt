@@ -3006,7 +3006,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLockerCheck(model)
                 val transId = model.transId ?: ""
                 val execution = checkStatusResult?.await()
-                BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 格口：$doorGex 当前重量：$setWeightBeforeOpen $execution | 运行：${isRunning.get()} |${transId}")
+                BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 格口：$doorGex 当前重量：$setWeightBeforeOpen 漫溢：$execution | 运行：${isRunning.get()} |${transId}")
                 if (execution == false && isRunning.getAndSet(true)) {
                     return@launch
                 }
@@ -3538,7 +3538,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 ) //刷新事务信息 根据事务id来
                 Loge.e("流程 refreshWeightStatus 刷新本地事务数据 $s ${Gson().toJson(trans)}")
             }
-            BoxToolLogUtils.savePrintln("接收到服务器 关闭 门打开:${queryTrans.openStatus} | 门关闭：${queryTrans.closeStatus} 业务：${weight?.status ?: -1}")
+            BoxToolLogUtils.savePrintln("接收到服务器 关闭 $transId 门打开:${queryTrans.openStatus} | 门关闭：${queryTrans.closeStatus} 业务：${weight?.status ?: -1}")
         }
     }
 
