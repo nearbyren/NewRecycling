@@ -17,6 +17,7 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -28,7 +29,7 @@ import com.google.gson.Gson
 import com.recycling.toolsapp.BuildConfig
 import com.recycling.toolsapp.FaceApplication
 import com.recycling.toolsapp.R
-import com.recycling.toolsapp.databinding.NavTouSingleActivityBinding
+import com.recycling.toolsapp.databinding.NavTouDoubleActivityBinding
 import com.recycling.toolsapp.fitsystembar.showSystemBar
 import com.recycling.toolsapp.http.TaskRestartScheduler
 import com.recycling.toolsapp.model.LogEntity
@@ -44,7 +45,6 @@ import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.EnumSignal
 import com.recycling.toolsapp.utils.FaultType
 import com.recycling.toolsapp.utils.NetworkStateManager
-import com.recycling.toolsapp.utils.OSUtils
 import com.recycling.toolsapp.utils.SignalStrengthAnalyzer
 import com.recycling.toolsapp.utils.SnackbarUtils
 import com.recycling.toolsapp.vm.CabinetVM
@@ -54,7 +54,6 @@ import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.BusType
@@ -62,22 +61,21 @@ import nearby.lib.signal.livebus.LiveBus
 import java.io.File
 import kotlin.random.Random
 
-
 @AndroidEntryPoint
-class NavTouSingleNewActivity : AppCompatActivity() {
+class NavTouDoubleActivity : AppCompatActivity() {
     private val cabinetVM: CabinetVM by viewModels()
-    private lateinit var binding: NavTouSingleActivityBinding
+    private lateinit var binding: NavTouDoubleActivityBinding
     private lateinit var networkStateManager: NetworkStateManager
+    private var manager: FragmentManager? = null
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = NavTouSingleActivityBinding.inflate(layoutInflater)
+        binding = NavTouDoubleActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
         window?.showSystemBar(false)
         FaceApplication.getInstance().baseActivity = this
         initialize(savedInstanceState)
-
     }
 
     private fun initNetworkState() {
@@ -86,18 +84,21 @@ class NavTouSingleNewActivity : AppCompatActivity() {
             cabinetVM._isNetworkMsg.collect {
                 Loge.d("全局提示信息  $it ${Thread.currentThread().name}")
                 SnackbarUtils.show(
-                    activity = this@NavTouSingleNewActivity, message = it, duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
+                    activity = this@NavTouDoubleActivity, message = it, duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
                 )
             }
+
         }
         LiveBus.get(BusType.BUS_NET_MSG).observeForever {
             Loge.d("流程 网络请求 错误内容 $it")
             SnackbarUtils.show(
-                activity = this@NavTouSingleNewActivity, message = it.toString(), duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
+                activity = this@NavTouDoubleActivity, message = it.toString(), duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
             )
+//            if (it == "读取不到socket数据 Stream closed") {
+//                TaskRestartScheduler.triggerImmediately(AppUtils.getContext(), "restart")
+//            }
         }
         LiveBus.get(BusType.BUS_LIGHTS_MSG).observeForever {
-            Loge.d("测试我来了 ${Thread.currentThread().name}")
             //开灯
             val lightOn = SPreUtil[AppUtils.getContext(), SPreUtil.lightOn, "0"]
             if (lightOn == it) {
@@ -127,7 +128,6 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                     NetworkStateManager.NetworkState.Unknown -> {
                         Loge.e("网络测试 检测网络中...")
                         binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao0)
-
                     }
 
                     NetworkStateManager.NetworkState.Disconnected -> {
@@ -170,15 +170,16 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         lifecycleScope.launch {
             networkStateManager.networkStateChangeEvents.collect { event ->
                 event?.let {
+                    Loge.e("网络测试 监听回调 $event")
                     if (it.isConnectionLost) {
                         SnackbarUtils.show(
-                            activity = this@NavTouSingleNewActivity, message = "网络已经断开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
+                            activity = this@NavTouDoubleActivity, message = "网络已经断开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
                         )
                         binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao0)
                         binding.tvNetwork.text = "网络已经断开"
                     } else if (it.isConnectionRestored) {
                         SnackbarUtils.show(
-                            activity = this@NavTouSingleNewActivity, message = "网络连接已恢复", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
+                            activity = this@NavTouDoubleActivity, message = "网络连接已恢复", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
                         )
                         binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao1)
                         binding.tvNetwork.text = "网络已经连接"
@@ -196,9 +197,8 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         initVerSn()
         initNetworkState()
         val initSocket = SPreUtil[AppUtils.getContext(), SPreUtil.initSocket, false] as Boolean
-        Loge.e("出厂配置 initSocket NavTouSingleActivity initialize $initSocket")
+        Loge.e("出厂配置 initSocket NavTouDoubleActivity initialize $initSocket")
         if (initSocket) {
-            Loge.e("测试我来了 刷新背景图 initSocket")
             initSocket()
         }
         initReadSignal()
@@ -224,9 +224,8 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         }
         telephonyManager?.listen(phoneStateListener, PhoneStateListener.LISTEN_SIGNAL_STRENGTHS)
         lifecycleScope.launch {
-            cabinetVM.isReadSignal.collect { result ->
-                Loge.d("流程 接收信号值 $result")
-                if (result == -1) return@collect
+            cabinetVM.isReadSignal.collect {
+                Loge.d("流程 接收信号值 $it")
                 getCurrentSignalStrength()
             }
         }
@@ -311,7 +310,6 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         cabinetVM.startPollingFault()
         ///启动查询版本
         cabinetVM.startChipVersion()
-//        cabinetVM.startUpgradeWorkflow()
     }
 
     /***
@@ -326,10 +324,9 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         lifecycleScope.launch {
             cabinetVM.getLoginCmd.collect {
                 if (it) {
-                    Loge.e("测试我来了 刷新背景图 getLoginCmd")
                     Loge.e("流程 navigateToHome saveSocketInitData 加载fragment")
                     binding.acivInit.isVisible = false
-                    cabinetVM.doorGeXType = CmdCode.GE1
+                    cabinetVM.doorGeXType = CmdCode.GE2
                     initPort()
                     FlowBus.with<ResEvent>("ResEvent").post(this, ResEvent().apply {})
                     refreshHomeRes()
@@ -341,31 +338,6 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                 refreshHomeRes()
             }
         }
-        binding.tvNetwork.setOnClickListener {
-            val targetNumber = "172604022105219755278313"
-            val randomString = generateRandomNumberString(targetNumber.length)
-//            cabinetVM.startLockerDoorWorkflow(
-//                DoorOpenBean().apply {
-//                    cmd = "openDoor"
-//                    openType = 1
-//                    cabinId = "20251015171646408518"
-//                    transId = randomString
-//
-//                }, cabinetVM.curG1Weight
-//                    ?: "0.00", CmdCode.GE1, CmdCode.GE11, CmdCode.GE10, CmdCode.GE12
-//            )
-//            cabinetVM.startLockerClearWorkflow(
-//                DoorOpenBean().apply {
-//                    cmd = "openDoor"
-//                    openType = 2
-//                    cabinId = "20251015171646408518"
-//                    transId = randomString
-//
-//                }, cabinetVM.curG1Weight
-//                    ?: "0.00", CmdCode.GE1, CmdCode.CLEAR_OPEN_1_1, CmdCode.CLEAR_QUERY_1_0
-//            )
-//            cabinetVM.startUpgradeWorkflow()
-        }
         //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
             cabinetVM.initConfigSocket(host!!, port)
@@ -374,30 +346,32 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                 cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "socket,$it")
                 when (it) {
                     CabinetVM.ConnectionState.START -> {
-                        Loge.e("出厂配置 initSocket NavTouSingleActivity addSocketResultListener2 监 开始：${Thread.currentThread().name} | state $")
+                        Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 开始：${Thread.currentThread().name} | state $")
+                        BoxToolLogUtils.savePrintln("socketClient,START")
                     }
 
                     CabinetVM.ConnectionState.DISCONNECTED -> {
-                        Loge.e("出厂配置 initSocket NavTouSingleActivity addSocketResultListener2 监 已断开连接：${Thread.currentThread().name} | state $")
+                        Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 已断开连接：${Thread.currentThread().name} | state $")
+                        BoxToolLogUtils.savePrintln("socketClient,DISCONNECTED")
                         cabinetVM.isDistClient = true
                         socketToast(true)
                         initVerSn("d")
-
                     }
 
                     CabinetVM.ConnectionState.CONNECTING -> {
-                        Loge.e("出厂配置 initSocket NavTouSingleActivity addSocketResultListener2 监 正在连接：${Thread.currentThread().name} | state $")
+                        Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 正在连接：${Thread.currentThread().name} | state $")
+                        BoxToolLogUtils.savePrintln("socketClient,CONNECTING")
                         initVerSn("i")
                     }
 
                     CabinetVM.ConnectionState.CONNECTED -> {
-                        Loge.e("出厂配置 initSocket NavTouSingleActivity addSocketResultListener2 监 已连接：${Thread.currentThread().name} | state $")
+                        Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 已连接：${Thread.currentThread().name} | state $")
+                        BoxToolLogUtils.savePrintln("socketClient,CONNECTED")
                         val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
                         val result = loginCount + 1
                         SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, result)
                         cabinetVM.toGoCmdLogin(result)//监听连接成功登录
                         initVerSn("c")
-
                     }
                 }
             }
@@ -405,7 +379,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
 
         }
         lifecycleScope.launch {
-            cabinetVM.incoming?.collect { bytes ->
+            cabinetVM?.incoming?.collect { bytes ->
                 socketToast(false)
                 initVerSn("s")
                 Loge.e("出厂配置 initSocket 流程 recv: ${String(bytes)}")
@@ -439,20 +413,42 @@ class NavTouSingleNewActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OPEN_DOOR -> {
                         val doorOpenModel = Gson().fromJson(json, DoorOpenBean::class.java)
+                        val doorGex = cabinetVM.doorGeX
+                        var a = 0
+                        var b = 0
+                        var c = 0
+                        var d = 0
+                        var e = 0
+                        var f = 0
+                        var setWeightBeforeOpen = "0.00"
+                        if (doorGex == CmdCode.GE1) {
+                            a = CmdCode.GE1
+                            b = CmdCode.GE11
+                            c = CmdCode.GE10
+                            d = CmdCode.GE12
+                            setWeightBeforeOpen = cabinetVM.curG1Weight ?: "0.00"
+
+                            e = CmdCode.CLEAR_OPEN_1_1
+                            f = CmdCode.CLEAR_QUERY_1_0
+                        }
+                        if (doorGex == CmdCode.GE2) {
+                            a = CmdCode.GE2
+                            b = CmdCode.GE21
+                            c = CmdCode.GE20
+                            d = CmdCode.GE22
+                            setWeightBeforeOpen = cabinetVM.curG2Weight ?: "0.00"
+
+                            e = CmdCode.CLEAR_OPEN_2_1
+                            f = CmdCode.CLEAR_QUERY_2_0
+                        }
                         val openType = doorOpenModel.openType
                         when (openType) {
                             1 -> {
-                                cabinetVM.startLockerDoorWorkflow(
-                                    doorOpenModel, cabinetVM.curG1Weight
-                                        ?: "0.00", CmdCode.GE1, CmdCode.GE11, CmdCode.GE10, CmdCode.GE12
-                                )
+                                cabinetVM.startLockerDoorWorkflow(doorOpenModel, setWeightBeforeOpen, a, b, c, d)
                             }
 
                             2 -> {
-                                cabinetVM.startLockerClearWorkflow(
-                                    doorOpenModel, cabinetVM.curG1Weight
-                                        ?: "0.00", CmdCode.GE1, CmdCode.CLEAR_OPEN_1_1, CmdCode.CLEAR_QUERY_1_0
-                                )
+                                cabinetVM.startLockerClearWorkflow(doorOpenModel, setWeightBeforeOpen, a, e, f)
                             }
                         }
                     }
@@ -531,7 +527,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                                 putBoolean(NavDeBugTypeSelfFragment.IS_SHOW, true)
                             }
                             Navigation.findNavController(
-                                this@NavTouSingleNewActivity, R.id.nav_host_fragment_single
+                                this@NavTouDoubleActivity, R.id.nav_host_fragment_double
                             ).navigate(R.id.action_start_debug_type_self, args)
 
                         } else {
@@ -542,14 +538,14 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                                 putBoolean(NavDeBugTypeFragment.IS_SHOW, true)
                             }
                             Navigation.findNavController(
-                                this@NavTouSingleNewActivity, R.id.nav_host_fragment_single
+                                this@NavTouDoubleActivity, R.id.nav_host_fragment_double
                             ).navigate(R.id.action_start_debug_type, args)
                         }
                     }
 
                     CmdValue.CMD_OTA -> {
                         val otaModel = Gson().fromJson(json, OtaBean::class.java)
-//                        cabinetVM.startDowChip(otaModel)
+                        cabinetVM.startDowChip(otaModel)
                     }
 
                     CmdValue.CMD_OTA_APK -> {
@@ -602,9 +598,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    FileProvider.getUriForFile(
-                        baseContext, "${baseContext.packageName}.fileProvider", file
-                    )
+                    FileProvider.getUriForFile(baseContext, "${baseContext.packageName}.fileProvider", file)
                 } else {
                     Uri.fromFile(file)
                 }
@@ -614,9 +608,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
             startActivity(intent)
         } catch (e: Throwable) {
             e.printStackTrace()
-            SnackbarUtils.show(
-                activity = this@NavTouSingleNewActivity, message = "安装失败", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
-            )
+            SnackbarUtils.show(activity = this@NavTouDoubleActivity, message = "安装失败", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
         }
     }
 
@@ -629,7 +621,6 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
         cabinetVM.cancelJobAgain()
-
     }
 
     override fun onDestroy() {
@@ -641,6 +632,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
         cabinetVM.cancelJobAgain()
+
     }
 
     private val cameraErrorListener = CameraErrorListener { status, index, text ->
@@ -651,7 +643,6 @@ class NavTouSingleNewActivity : AppCompatActivity() {
             if ("1" == index) {
                 cabinetVM.maptDoorFault[FaultType.FAULT_CODE_52] = false
             }
-
         } else {
             cabinetVM.insertInfoLog(LogEntity().apply {
                 msg = text
@@ -667,43 +658,41 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                 }
             }
         }
-
-
     }
 
-
     fun latestBusinessStatus() {
-        cabinetVM.cameraManagerNew.registerUsbReceiver()/*      lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                SerialPortSdk.flowBusinessSetup.collect {
-                    val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
-                    BoxToolLogUtils.savePrintln("业务流：返回的指令 -> $cmdText | ${it.cmdStatus} | $it")
-                    when (it.cmdByte) {
-                        SerialPortSdk.CMD0 -> {}
-                        SerialPortSdk.CMD1 -> {}
-                        SerialPortSdk.CMD2 -> {}
-                        SerialPortSdk.CMD3 -> {}
-                        SerialPortSdk.CMD4 -> {}
-                        SerialPortSdk.CMD5 -> {}
-                        SerialPortSdk.CMD6 -> {}
-                        SerialPortSdk.CMD7 -> {}
-                        SerialPortSdk.CMD8 -> {}
-                        SerialPortSdk.CMD9 -> {}
-                        SerialPortSdk.CMD10 -> {}
-                        SerialPortSdk.CMD11 -> {}
-                        SerialPortSdk.CMD16 -> {}
-                        SerialPortSdk.CMD17 -> {}
-                        SerialPortSdk.CMD18 -> {}
-                        SerialPortSdk.CMD19 -> {}
-                    }
-
-                }
-            }
-        }*/
+        cabinetVM.cameraManagerNew.registerUsbReceiver()
+//        lifecycleScope.launch {
+//            repeatOnLifecycle(Lifecycle.State.STARTED) {
+//                SerialPortSdk.flowBusinessSetup.collect {
+//                    val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
+//                    BoxToolLogUtils.savePrintln("业务流：返回的指令 -> $cmdText | ${it.cmdStatus} | $it")
+//                    when (it.cmdByte) {
+//                        SerialPortSdk.CMD0 -> {}
+//                        SerialPortSdk.CMD1 -> {}
+//                        SerialPortSdk.CMD2 -> {}
+//                        SerialPortSdk.CMD3 -> {}
+//                        SerialPortSdk.CMD4 -> {}
+//                        SerialPortSdk.CMD5 -> {}
+//                        SerialPortSdk.CMD6 -> {}
+//                        SerialPortSdk.CMD7 -> {}
+//                        SerialPortSdk.CMD8 -> {}
+//                        SerialPortSdk.CMD9 -> {}
+//                        SerialPortSdk.CMD10 -> {}
+//                        SerialPortSdk.CMD11 -> {}
+//                        SerialPortSdk.CMD16 -> {}
+//                        SerialPortSdk.CMD17 -> {}
+//                        SerialPortSdk.CMD18 -> {}
+//                        SerialPortSdk.CMD19 -> {}
+//                    }
+//
+//                }
+//            }
+//        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.chipStep.collect {
-                    Loge.i("升级流程：返回的指令 -> $it")
+                    Loge.e("升级流程：返回的指令 -> $it")
                     when (it) {
                         CabinetVM.UpgradeStep.IDLE -> {}
 
@@ -757,10 +746,6 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                                 msg = "升级进行中-$it"
                                 time = AppUtils.getDateYMDHMS()
                             })
-                            if (it == CabinetVM.UpgradeStep.RESTART_APP) {
-                                delay(3000)
-                                OSUtils.restartAppFrontDesk(this@NavTouSingleNewActivity)
-                            }
                         }
 
                     }
@@ -787,17 +772,17 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                             }
                         }
 
-
                         CabinetVM.LockerStep.WAITING_OPEN_DOOR -> {
                             Navigation.findNavController(
-                                this@NavTouSingleNewActivity, R.id.nav_host_fragment_single
+                                this@NavTouDoubleActivity, R.id.nav_host_fragment_single
                             ).navigate(R.id.action_start_delivery)
                             cabinetVM.takePhoto(1)
+
                         }
 
                         CabinetVM.LockerStep.WAITING_OPEN_CLEAR -> {
                             Navigation.findNavController(
-                                this@NavTouSingleNewActivity, R.id.nav_host_fragment_single
+                                this@NavTouDoubleActivity, R.id.nav_host_fragment_single
                             ).navigate(R.id.action_start_clear_door)
                             cabinetVM.takePhoto(1)
                         }
@@ -822,9 +807,20 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                         CabinetVM.LockerStep.CLOSE -> {
                             val openType = cabinetVM.remoteOpenType
                             cabinetVM.takePhoto(0)
-                            cabinetVM.startLockerEndWeight(
-                                cabinetVM.doorGeX, cabinetVM.curG1Weight ?: "0.00"
-                            )
+                            val curWeight = when (cabinetVM.doorGeX) {
+                                CmdCode.GE1 -> {
+                                    cabinetVM.curG1Weight ?: "0.00"
+                                }
+
+                                CmdCode.GE2 -> {
+                                    cabinetVM.curG2Weight ?: "0.00"
+                                }
+
+                                else -> {
+                                    cabinetVM.curG1Weight ?: "0.00"
+                                }
+                            }
+                            cabinetVM.startLockerEndWeight(cabinetVM.doorGeX, curWeight)
                             if (openType == 1) {
                                 cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_DELIVERY)
                             }
@@ -847,7 +843,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                             }
                         }
 
-                        CabinetVM.LockerStep.CAMERA_END -> {
+                        CabinetVM.LockerStep.CAMERA_END->{
                             cabinetVM.cameraManagerNew.destroy()
                         }
                     }
@@ -856,8 +852,10 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         }
     }
 
+
     fun generateRandomNumberString(length: Int): String {
         val digits = ('0'..'9').joinToString("")
         return (1..length).map { digits.random() }.joinToString("")
     }
+
 }

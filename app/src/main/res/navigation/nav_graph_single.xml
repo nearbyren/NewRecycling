@@ -8,7 +8,7 @@
     <!-- 单投口 子母投口 -->
     <fragment
         android:id="@+id/main_tou_fragment"
-        android:name="com.recycling.toolsapp.nav.NavTouSingleNewFragment"
+        android:name="com.recycling.toolsapp.nav.NavTouSingleFragment"
         android:label="fragmentMain"
         tools:layout="@layout/nav_tou_single_activity">
 

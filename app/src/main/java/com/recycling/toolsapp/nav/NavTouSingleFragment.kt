@@ -40,7 +40,7 @@ import java.io.File
  * 单投口
  */
 @AndroidEntryPoint
-class NavTouSingleNewFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBinding>() {
+class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBinding>() {
     // 关键点：通过 requireActivity() 获取 Activity 作用域的 ViewModel  // 确保共享实例
     private val cabinetVM: CabinetVM by viewModels(ownerProducer = { requireActivity() })
     override fun isAutoCloseEnabled(): Boolean = false

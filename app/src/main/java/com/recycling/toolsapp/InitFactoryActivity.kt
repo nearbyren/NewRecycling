@@ -22,8 +22,8 @@ import com.google.gson.Gson
 import com.recycling.toolsapp.fitsystembar.showIme
 import com.recycling.toolsapp.http.RepoImpl
 import com.recycling.toolsapp.model.LogEntity
-import com.recycling.toolsapp.nav.NavTouDoubleNewActivity
-import com.recycling.toolsapp.nav.NavTouSingleNewActivity
+import com.recycling.toolsapp.nav.NavTouDoubleActivity
+import com.recycling.toolsapp.nav.NavTouSingleActivity
 import com.recycling.toolsapp.socket.FactoryBean
 import com.recycling.toolsapp.socket.InitFactoryBean
 import com.recycling.toolsapp.utils.EntityType
@@ -132,7 +132,6 @@ class InitFactoryActivity : AppCompatActivity() {
         llConfirm = findViewById(R.id.ll_confirm)
         llConfirm2 = findViewById(R.id.ll_confirm2)
         actvInit?.setOnClickListener {
-            Loge.e("出厂配置 点击初始化 ")
             acetSn4?.let { it1 -> window.showIme(it1, false) }
             clickSubmit()
         }
@@ -208,7 +207,6 @@ class InitFactoryActivity : AppCompatActivity() {
 
         // 构建新的字符串，替换末尾三位数
         val newString = input.substring(0, length - 5) + randomNumber.toString().padStart(5, '0')
-        Loge.d("出厂化配置 getNew3 $newString")
         return newString
     }
 
@@ -226,7 +224,6 @@ class InitFactoryActivity : AppCompatActivity() {
 
         // 构建新的字符串，替换末尾三位数
         val newString = input.substring(0, length - 3) + randomNumber.toString().padStart(3, '0')
-        Loge.d("出厂配置 getNewSn $newString")
         return newString
     }
 
@@ -238,13 +235,10 @@ class InitFactoryActivity : AppCompatActivity() {
             val headers = mutableMapOf<String, String>()
             headers["token"] = BuildConfig.initToken
             Loge.e("获取socket连接 from ${Gson().toJson(from)} | headers $headers")
-            httpRepo.connectAddress(headers, from).onCompletion {
-                Loge.d("出厂配置 onCompletion $headers | $from")
-            }.onSuccess { initString ->
+            httpRepo.connectAddress(headers, from).onSuccess { initString ->
                 hideLoading(false, "初始化智能回收柜成功")
                 initString?.let { url ->
                     val socketUrl = initString.split(":")
-                    Loge.d("获取socket连接 onSuccess ${Thread.currentThread().name}| $socketUrl |  ${socketUrl.size} ")
                     toGoSubmit(sb, socketUrl[0], socketUrl[1].toInt())
                     cabinetVM.insertInfoLog(LogEntity().apply {
                         cmd = "connectAddress"
@@ -254,7 +248,6 @@ class InitFactoryActivity : AppCompatActivity() {
                 }
             }.onFailure { code, message ->
                 hideLoading(false, "获取socket连接 onFailure ${code} ${message}")
-                Loge.d("获取socket连接 onFailure $code $message")
                 cabinetVM.insertInfoLog(LogEntity().apply {
                     cmd = "connectAddress"
                     msg = "$code,$message"
@@ -354,7 +347,6 @@ class InitFactoryActivity : AppCompatActivity() {
             val getIccid = IccidOper.getInstance(AppUtils.getContext()).getIccid()
             val getImei = IccidOper.getInstance(AppUtils.getContext()).getIMEI()
             val getImsi = IccidOper.getInstance(AppUtils.getContext()).getIMSI()
-            Loge.d("出厂配置 getIccid $getIccid getImei $getImei getImsi $getImsi")
 
             //模拟测试
 //            val saveIccid = getNew5(getIccid)
@@ -386,15 +378,10 @@ class InitFactoryActivity : AppCompatActivity() {
             from["config"] = Gson().toJson(ifb)
             val headers = mutableMapOf<String, String>()
             headers["token"] = BuildConfig.initToken
-            Loge.e("出厂配置 from ${Gson().toJson(from)} | headers $headers")
-            httpRepo.issueDevice(headers, from).onCompletion {
-                Loge.d("出厂配置 onCompletion $headers | $from")
-            }.onSuccess { initString ->
-                hideLoading(false, "初始化智能回收柜成功")
+            httpRepo.issueDevice(headers, from).onSuccess { initString ->
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.init, true)
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.init_sn, postSn)
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION)
-                Loge.d("出厂配置 onSuccess ${Thread.currentThread().name} $initString")
                 cabinetVM.insertInfoLog(LogEntity().apply {
                     cmd = "issueDevice"
                     msg = "出厂化配置成功"
@@ -402,7 +389,6 @@ class InitFactoryActivity : AppCompatActivity() {
                 })
                 initSocket(mHost, mPort)
             }.onFailure { code, message ->
-                Loge.d("出厂配置 onFailure $code $message")
                 cabinetVM.insertInfoLog(LogEntity().apply {
                     cmd = "issueDevice"
                     msg = "$code,$message"
@@ -486,7 +472,6 @@ class InitFactoryActivity : AppCompatActivity() {
                 isConfirm2 = false
                 llConfirm?.isVisible = false
                 llConfirm2?.isVisible = false
-                Loge.d("出厂配置 sn变动 ")
                 if (!s.toString().matches(Regex("^[0-9]*$"))) {
                     error = "只允许数字"
                 }
@@ -515,64 +500,11 @@ class InitFactoryActivity : AppCompatActivity() {
     /***
      * 初始化连接socket
      */
-    private fun initSocket(
-        mHost: String? = BuildConfig.socketIP,
-        mPort: Int? = BuildConfig.socketPort
-    ) {
-      /*  cabinetVM.ioScope.launch {
-            SPreUtil.put(AppUtils.getContext(), SPreUtil.initSocket, true)
-            if (mHost != null && mPort != null) {
-                SocketManager.initializeSocketClient(host = mHost, port = mPort)
-            }
-            cabinetVM.vmClient = SocketManager.socketClient
-            cabinetVM.vmClient?.addSocketResultListener {
-                Loge.e("出厂配置 initSocket 连接状态: $it | ${Thread.currentThread().name} vmClient = ${cabinetVM.vmClient}")
-                BoxToolLogUtils.recordSocket(CmdValue.CONNECTING, "start2,")
-                when (it) {
-                    ConnectionState.START -> {
-                        Loge.e("出厂配置 initSocket InitFactoryActivity 监 开始：${Thread.currentThread().name} | state ")
-
-                    }
-
-                    ConnectionState.DISCONNECTED -> {
-                        Loge.e("出厂配置 initSocket InitFactoryActivity 监 已断开连接：${Thread.currentThread().name} | state ")
-                        cabinetVM.insertInfoLog(LogEntity().apply {
-                            cmd = "socket"
-                            msg = "socket断开连接"
-                            time = AppUtils.getDateYMDHMS()
-                        })
-                        socketToast("已断开连接")
-                    }
-
-                    ConnectionState.CONNECTING -> {
-                        Loge.e("出厂配置 initSocket InitFactoryActivity 监 正在连接：${Thread.currentThread().name} | state ")
-                    }
-
-                    ConnectionState.CONNECTED -> {
-                        Loge.e("出厂配置 initSocket InitFactoryActivity 监 已经连接：${Thread.currentThread().name} | state ")
-                        if (mHost != null) {
-                            SPreUtil.put(AppUtils.getContext(), SPreUtil.host, mHost)
-                        }
-                        if (mPort != null) {
-                            SPreUtil.put(AppUtils.getContext(), SPreUtil.port, mPort)
-                        }
-                        cabinetVM.vmClient?.deleteSocketResultListener()
-//                        startActivity(Intent(this@InitFactoryActivity, HomeActivity::class.java))
-                        toGoMain()
-                        finish()
-                    }
-                }
-            }
-            SocketManager.socketClient.start()
-            delay(500)
-            val state = cabinetVM.vmClient?.state?.value ?: ConnectionState.DISCONNECTED
-            Loge.e("出厂配置 当前线程：${Thread.currentThread().name} | state $state")
-            BoxToolLogUtils.recordSocket(CmdValue.CONNECTING, "init,${state.name}")
-        }*/
+    private fun initSocket(mHost: String? = BuildConfig.socketIP, mPort: Int? = BuildConfig.socketPort) {
         toGoMain(mHost!!,mPort!!)
     }
-    fun toGoMain( mHost: String = BuildConfig.socketIP,
-                  mPort: Int = BuildConfig.socketPort) {
+    private fun toGoMain(mHost: String = BuildConfig.socketIP,
+                         mPort: Int = BuildConfig.socketPort) {
         SPreUtil.put(AppUtils.getContext(), SPreUtil.initSocket, true)
         val typeGrid = SPreUtil[AppUtils.getContext(), SPreUtil.type_grid, -1]
         val b = Bundle()
@@ -582,20 +514,15 @@ class InitFactoryActivity : AppCompatActivity() {
         intent.putExtras(b)
         when (typeGrid) {
             1, 3 -> {
-                intent.setClass(this@InitFactoryActivity, NavTouSingleNewActivity::class.java)
+                intent.setClass(this@InitFactoryActivity, NavTouSingleActivity::class.java)
                 startActivity(intent)
             }
 
             2 -> {
-                intent.setClass(this@InitFactoryActivity, NavTouDoubleNewActivity::class.java)
+                intent.setClass(this@InitFactoryActivity, NavTouDoubleActivity::class.java)
                 startActivity(intent)
             }
         }
         finish()
-    }
-    private fun socketToast(text: String) {
-        cabinetVM.mainScope.launch {
-            Toast.makeText(AppUtils.getContext(), text, Toast.LENGTH_LONG).show()
-        }
     }
 }

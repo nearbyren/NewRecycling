@@ -39,7 +39,7 @@ import java.io.File
  * 双投口
  */
 @AndroidEntryPoint
-class NavTouDoubleNewFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBinding>() {
+class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBinding>() {
     // 关键点：通过 requireActivity() 获取 Activity 作用域的 ViewModel  // 确保共享实例
     private val cabinetVM: CabinetVM by viewModels(ownerProducer = { requireActivity() })
     private var downTime = 0L

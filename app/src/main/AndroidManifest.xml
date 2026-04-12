@@ -79,36 +79,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
-        <activity
-            android:name="com.recycling.toolsapp.HomeActivity"
-            android:configChanges="keyboard|keyboardHidden"
-            android:exported="true"
-            tools:ignore="Instantiatable">
-            <!--  <intent-filter>
-                  <action android:name="android.intent.action.MAIN" />
-                  <category android:name="android.intent.category.LAUNCHER" />
-              </intent-filter>
-
-              &lt;!&ndash; Deep Link Support &ndash;&gt;
-              <intent-filter>
-                  <action android:name="android.intent.action.VIEW" />
-
-                  <category android:name="android.intent.category.DEFAULT" />
-                  <category android:name="android.intent.category.BROWSABLE" />
-
-                  <data android:scheme="myapp" />
-              </intent-filter>-->
-        </activity>
         <activity
             android:name="com.recycling.toolsapp.InitFactoryActivity"
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
             tools:ignore="Instantiatable">
-            <!--     <intent-filter>
-                     <action android:name="android.intent.action.MAIN" />
-                     <category android:name="android.intent.category.LAUNCHER" />
-                 </intent-filter>-->
 
         </activity>
         <activity
@@ -124,34 +99,7 @@
         </activity>
 
         <activity
-            android:name="com.recycling.toolsapp.ui.test.Camera2RecordingPhotoActivity"
-            android:configChanges="keyboard|keyboardHidden"
-            android:exported="true"
-            android:theme="@style/CabinetLauncherTheme"
-            tools:ignore="Instantiatable">
-            <!--      <intent-filter>
-                      <action android:name="android.intent.action.MAIN" />
-                      <category android:name="android.intent.category.LAUNCHER" />
-                  </intent-filter>-->
-        </activity>
-        <activity
-            android:name="com.recycling.toolsapp.ui.test.DualCameraRecordingPhotoActivity"
-            android:configChanges="keyboard|keyboardHidden"
-            android:exported="true"
-            android:theme="@style/CabinetLauncherTheme"
-            tools:ignore="Instantiatable">
-            <!-- <intent-filter>
-                 <action android:name="android.intent.action.MAIN" />
-                 <category android:name="android.intent.category.LAUNCHER" />
-             </intent-filter>-->
-        </activity>
-        <activity
             android:name="com.recycling.toolsapp.nav.NavTouSingleActivity"
-            android:launchMode="singleTask"
-            android:exported="false"
-            android:windowSoftInputMode="stateHidden" />
-        <activity
-            android:name="com.recycling.toolsapp.nav.NavTouSingleNewActivity"
             android:launchMode="singleTask"
             android:exported="false"
             android:windowSoftInputMode="stateHidden" />
@@ -160,35 +108,6 @@
             android:exported="false"
             android:launchMode="singleTask"
             android:windowSoftInputMode="stateHidden" />
-        <activity
-            android:name="com.recycling.toolsapp.TestIDActivity"
-            android:configChanges="keyboard|keyboardHidden"
-            android:exported="true"
-            android:theme="@style/CabinetLauncherTheme"
-            tools:ignore="Instantiatable">
-            <!--   <intent-filter>
-                   <action android:name="android.intent.action.MAIN" />
-                   <category android:name="android.intent.category.LAUNCHER" />
-               </intent-filter>-->
-        </activity>
-
-        <activity
-            android:name=".MainActivity"
-            android:configChanges="orientation|screenSize"
-            android:exported="true"
-            android:screenOrientation="fullSensor">
-            <!-- <intent-filter>
-                 <action android:name="android.intent.action.MAIN" />
-
-                 <category android:name="android.intent.category.LAUNCHER" />
-             </intent-filter>-->
-        </activity>
-
-        <service
-            android:name=".utils.QiniuPushService"
-            android:exported="false"
-            android:foregroundServiceType="mediaProjection|dataSync" />
-
     </application>
 
 </manifest>

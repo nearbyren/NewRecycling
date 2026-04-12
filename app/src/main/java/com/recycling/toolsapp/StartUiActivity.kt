@@ -14,8 +14,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
 import com.recycling.toolsapp.http.RepoImpl
 import com.recycling.toolsapp.model.LogEntity
-import com.recycling.toolsapp.nav.NavTouDoubleNewActivity
-import com.recycling.toolsapp.nav.NavTouSingleNewActivity
+import com.recycling.toolsapp.nav.NavTouDoubleActivity
+import com.recycling.toolsapp.nav.NavTouSingleActivity
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.Loge
@@ -30,30 +30,27 @@ import nearby.lib.netwrok.response.SPreUtil
  */
 class StartUiActivity : AppCompatActivity() {
     private val cabinetVM: CabinetVM by viewModels()
-    var getCount = 1000
+    private var getCount = 1000
     private val httpRepo by lazy { RepoImpl() }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_start_ui)
         //这里http获取业务ID
-        CoroutineScope(Dispatchers.Main).launch {
-            val init = SPreUtil[AppUtils.getContext(), SPreUtil.init, false] as Boolean
-            if (init) {
-                getSocketUrl(false)
-            } else {
-                Loge.e("出厂配置 initSocket startUI 进入初始化")
-                startActivity(Intent(this@StartUiActivity, InitFactoryActivity::class.java))
-                finish()
-            }
+        val init = SPreUtil[AppUtils.getContext(), SPreUtil.init, false] as Boolean
+        if (init) {
+            getSocketUrl(false)
+        } else {
+            startActivity(Intent(this@StartUiActivity, InitFactoryActivity::class.java))
+            finish()
         }
 //        Loge.e("屏幕尺寸大小 start：${getScreenParams()}")
     }
+
     /***
      *获取屏幕尺寸和旋转角度
      */
     private fun getScreenParams(): String {
-        val displayManager =
-           getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
         val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY)
         val rotation = display.rotation
         val surfaceRotationDegrees = when (rotation) {
@@ -64,7 +61,7 @@ class StartUiActivity : AppCompatActivity() {
             else -> 0
         }
         val dm = DisplayMetrics()
-      windowManager.defaultDisplay.getMetrics(dm)
+        windowManager.defaultDisplay.getMetrics(dm)
         val heightPixels = dm.heightPixels
         val widthPixels = dm.widthPixels
         val xdpi = dm.xdpi
@@ -96,18 +93,18 @@ class StartUiActivity : AppCompatActivity() {
         )
         return stringBuffer.toString()
     }
-    private fun hideLoading(isShow: Boolean, text: String) {
+
+    private fun hideLoading( text: String) {
         cabinetVM.mainScope.launch {
             Toast.makeText(AppUtils.getContext(), text, Toast.LENGTH_LONG).show()
-//            cpbLoading?.isVisible = isShow
         }
     }
 
 
     @SuppressLint("SetTextI18n")
     private fun getSocketUrl(isDelay: Boolean) {
-        val postSn = SPreUtil.get(AppUtils.getContext(), SPreUtil.init_sn, "") as String
         cabinetVM.ioScope.launch {
+            val postSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""] as String
             if (isDelay) {
                 delay(5000)
             }
@@ -115,14 +112,9 @@ class StartUiActivity : AppCompatActivity() {
             from["sn"] = postSn
             val headers = mutableMapOf<String, String>()
             headers["token"] = BuildConfig.initToken
-            Loge.e("获取socket连接 from ${Gson().toJson(from)} | headers $headers")
-            httpRepo.connectAddress(headers, from).onCompletion {
-                Loge.d("出厂配置 onCompletion $headers | $from")
-            }.onSuccess { initString ->
-                hideLoading(false, "初始化智能回收柜成功")
+            httpRepo.connectAddress(headers, from).onSuccess { initString ->
                 initString?.let { url ->
                     val socketUrl = url.split(":")
-                    Loge.d("获取socket连接 onSuccess ${Thread.currentThread().name}| $socketUrl |  ${socketUrl.size} ")
 //                    initSocket(socketUrl[0], socketUrl[1].toInt())
                     initSocket(BuildConfig.socketIP, BuildConfig.socketPort)
                     cabinetVM.insertInfoLog(LogEntity().apply {
@@ -134,8 +126,7 @@ class StartUiActivity : AppCompatActivity() {
                 }
 
             }.onFailure { code, message ->
-                Loge.d("获取socket连接 onFailure $code $message")
-                showText("onCath ${code} ${message}")
+                showText("onCath $code $message")
                 cabinetVM.insertInfoLog(LogEntity().apply {
                     cmd = "connectAddress"
                     msg = "$code,$message"
@@ -143,8 +134,8 @@ class StartUiActivity : AppCompatActivity() {
                 })
                 repeatedly()
             }.onCatch { e ->
-                showText("onCath ${e.errorCode} ${e.errorMsg}")
-                hideLoading(false, "获取socket连接 onCatch ${e.errorMsg}")
+                showText("onCatch ${e.errorCode} ${e.errorMsg}")
+                hideLoading( "获取socket连接 onCatch ${e.errorMsg}")
                 cabinetVM.insertInfoLog(LogEntity().apply {
                     cmd = "connectAddress"
                     msg = "${e.errorCode},${e.errorMsg}"
@@ -162,17 +153,11 @@ class StartUiActivity : AppCompatActivity() {
         }
     }
 
-    private fun initSocket(
-        mHost: String? = BuildConfig.socketIP,
-        mPort: Int? = BuildConfig.socketPort,
-    ) {
-        toGoMain(mHost!!,mPort!!)
+    private fun initSocket(mHost: String? = BuildConfig.socketIP, mPort: Int? = BuildConfig.socketPort) {
+        toGoMain(mHost!!, mPort!!)
     }
 
-    fun toGoMain(
-        mHost: String = BuildConfig.socketIP,
-        mPort: Int = BuildConfig.socketPort
-    ) {
+    private fun toGoMain(mHost: String = BuildConfig.socketIP, mPort: Int = BuildConfig.socketPort) {
         if (mHost != null) {
             SPreUtil.put(AppUtils.getContext(), SPreUtil.host, mHost)
         }
@@ -181,18 +166,18 @@ class StartUiActivity : AppCompatActivity() {
         }
         val typeGrid = SPreUtil[AppUtils.getContext(), SPreUtil.type_grid, -1]
         val b = Bundle()
-        b.putString("host",mHost)
-        b.putInt("port",mPort)
+        b.putString("host", mHost)
+        b.putInt("port", mPort)
         val intent = Intent()
         intent.putExtras(b)
         when (typeGrid) {
             1, 3 -> {
-                intent.setClass(this@StartUiActivity, NavTouSingleNewActivity::class.java)
+                intent.setClass(this@StartUiActivity, NavTouSingleActivity::class.java)
                 startActivity(intent)
             }
 
             2 -> {
-                intent.setClass(this@StartUiActivity, NavTouDoubleNewActivity::class.java)
+                intent.setClass(this@StartUiActivity, NavTouDoubleActivity::class.java)
                 startActivity(intent)
             }
         }
@@ -201,8 +186,7 @@ class StartUiActivity : AppCompatActivity() {
 
     private fun showText(text: String) {
         cabinetVM.mainScope.launch {
-            Toast.makeText(AppUtils.getContext(), text, Toast.LENGTH_LONG)
-                .show()
+            Toast.makeText(AppUtils.getContext(), text, Toast.LENGTH_LONG).show()
         }
     }
 }

@@ -8,7 +8,7 @@
     <!-- 双投口 -->
     <fragment
         android:id="@+id/mainTouDoubleFragment"
-        android:name="com.recycling.toolsapp.nav.NavTouDoubleNewFragment"
+        android:name="com.recycling.toolsapp.nav.NavTouDoubleFragment"
         android:label="fragmentMain"
         tools:layout="@layout/nav_tou_double_activity">
 
