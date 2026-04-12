@@ -15,17 +15,17 @@ import java.text.SimpleDateFormat
 object BoxToolLogUtils {
     @SuppressLint("SimpleDateFormat")
     private val formatdate = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
+
     /***
      * 记录socket日志
      */
-    fun  recordSocket(type: String, json: String) {
+    fun recordSocket(type: String, json: String) {
         try {
             val builder = StringBuilder()
             val time = AppUtils.getDateYMDHMS()
             builder.append(time).append("\n").append(json).append('\n')
             val fileName = "socket-${type}---${AppUtils.getDateYMD()}.txt"
-            val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
+            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -50,14 +50,13 @@ object BoxToolLogUtils {
      * 流程日志
      */
 
-    fun  recordTask( text: String){
+    fun recordTask(text: String) {
         try {
             val builder = StringBuilder()
             val time = AppUtils.getDateYMDHMS()
             builder.append(time).append("\n").append(text).append('\n')
             val fileName = "a-task---${AppUtils.getDateYMD()}.txt"
-            val path =
-                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
+            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -77,14 +76,13 @@ object BoxToolLogUtils {
         }
     }
 
-    fun savePrintln( text: String){
+    fun savePrintln(text: String) {
         try {
             val builder = StringBuilder()
             val time = AppUtils.getDateYMDHMS()
             builder.append(time).append("\n").append(text).append('\n')
             val fileName = "a-task---${AppUtils.getDateYMD()}.txt"
-            val path =
-                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
+            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -103,14 +101,14 @@ object BoxToolLogUtils {
             Loge.d("BoxToolLogUtils recordLowerBox an error occured while writing file...$e")
         }
     }
-    fun saveCamera( text: String){
+
+    fun saveCamera(text: String) {
         try {
             val builder = StringBuilder()
             val time = AppUtils.getDateYMDHMS()
             builder.append(time).append("\n").append(text).append('\n')
             val fileName = "a-camera---${AppUtils.getDateYMD()}.txt"
-            val path =
-                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
+            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -129,13 +127,13 @@ object BoxToolLogUtils {
             Loge.d("BoxToolLogUtils recordLowerBox an error occured while writing file...$e")
         }
     }
+
     /***
      * 所有日志信息
      */
     fun listBoxInfoFiles(): List<String>? {
         return try {
-            val dir =
-                    File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box_crash")
+            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "socket_box_crash")
             if (dir.exists() && dir.isDirectory) {
                 dir.list()?.filter { File(dir, it).isFile }
             } else {
@@ -158,8 +156,7 @@ object BoxToolLogUtils {
 
         try {
             val fileName = "lower-receive-${typePort}---${AppUtils.getDateYMD()}.txt"
-            val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
+            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -190,8 +187,7 @@ object BoxToolLogUtils {
 
         try {
             val fileName = "lower-send-${typePort}---${AppUtils.getDateYMD()}.txt"
-            val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
+            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()
@@ -222,8 +218,7 @@ object BoxToolLogUtils {
 
         try {
             val fileName = "lower-send-status-${typePort}---${AppUtils.getDateYMD()}.txt"
-            val path =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
+            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
                 dirs.mkdirs()

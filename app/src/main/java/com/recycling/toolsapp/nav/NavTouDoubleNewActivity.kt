@@ -125,22 +125,20 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
         // 观察网络状态
         lifecycleScope.launch {
             networkStateManager.networkState.collect { state ->
+                cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,$state")
                 when (state) {
                     NetworkStateManager.NetworkState.Unknown -> {
                         Loge.e("网络测试 检测网络中...")
                         binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao0)
-                        cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,Unknown")
                     }
 
                     NetworkStateManager.NetworkState.Disconnected -> {
                         Loge.e("网络测试 网络已断开...")
                         binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao0)
-                        cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,Disconnected")
 
                     }
 
                     is NetworkStateManager.NetworkState.Connected -> {
-                        cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,Connected")
                         val status = when (state.type) {
                             NetworkStateManager.ConnectionType.WIFI -> "已连接WiFi"
                             NetworkStateManager.ConnectionType.CELLULAR -> "已连接移动网络"
@@ -351,11 +349,12 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
                 when (it) {
                     CabinetVM.ConnectionState.START -> {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 开始：${Thread.currentThread().name} | state $")
-
+                        BoxToolLogUtils.savePrintln("socketClient,START")
                     }
 
                     CabinetVM.ConnectionState.DISCONNECTED -> {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 已断开连接：${Thread.currentThread().name} | state $")
+                        BoxToolLogUtils.savePrintln("socketClient,DISCONNECTED")
                         cabinetVM.isDistClient = true
                         socketToast(true)
                         initVerSn("d")
@@ -363,11 +362,13 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
 
                     CabinetVM.ConnectionState.CONNECTING -> {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 正在连接：${Thread.currentThread().name} | state $")
+                        BoxToolLogUtils.savePrintln("socketClient,CONNECTING")
                         initVerSn("i")
                     }
 
                     CabinetVM.ConnectionState.CONNECTED -> {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 已连接：${Thread.currentThread().name} | state $")
+                        BoxToolLogUtils.savePrintln("socketClient,CONNECTED")
                         val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
                         val result = loginCount + 1
                         SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, result)
@@ -384,7 +385,6 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
                 socketToast(false)
                 initVerSn("s")
                 Loge.e("出厂配置 initSocket 流程 recv: ${String(bytes)}")
-                Loge.e("流程 recv: ${String(bytes)}")
                 val json = String(bytes)
                 val cmd = CommandParser.parseCommand(json)
 
@@ -402,7 +402,7 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
                             cabinetVM.saveSocketInitData(loginModel, false)
                         } else {
                             //这里继续延续登录
-                            cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "登录失败")
+                            BoxToolLogUtils.savePrintln("socketClient,登录失败")
                             cabinetVM.toGoAgainLogin()
                         }
 
@@ -600,9 +600,7 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    FileProvider.getUriForFile(
-                        baseContext, "${baseContext.packageName}.fileProvider", file
-                    )
+                    FileProvider.getUriForFile(baseContext, "${baseContext.packageName}.fileProvider", file)
                 } else {
                     Uri.fromFile(file)
                 }
@@ -612,9 +610,7 @@ class NavTouDoubleNewActivity : AppCompatActivity() {
             startActivity(intent)
         } catch (e: Throwable) {
             e.printStackTrace()
-            SnackbarUtils.show(
-                activity = this@NavTouDoubleNewActivity, message = "安装失败", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
-            )
+            SnackbarUtils.show(activity = this@NavTouDoubleNewActivity, message = "安装失败", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER)
         }
     }
 

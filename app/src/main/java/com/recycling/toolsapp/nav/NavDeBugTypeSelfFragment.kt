@@ -17,7 +17,9 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.Navigation
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.NavFragmentDebugTypeSelfBinding
@@ -59,8 +61,8 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
     }
 
     fun getIMEI(context: Context): String? {
-        val telephonyManager =
-            context.getSystemService(TELEPHONY_SERVICE) as TelephonyManager ?: return null
+        val telephonyManager = context.getSystemService(TELEPHONY_SERVICE) as TelephonyManager
+            ?: return null
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // 在 Android 8.0 及以上使用 getImei 方法
@@ -148,8 +150,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 v.clearFocus()  // 主动清除焦点
                 (v.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(
-                    v.windowToken,
-                    0
+                    v.windowToken, 0
                 )
                 handleNumberRange(this, minValue, maxValue, onValueChange)
                 true
@@ -325,7 +326,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
 
     fun gotoGetInfo() {
         cabinetVM.isLookState = true
-        cabinetVM.startQueryStatus(stateResult= { lowerMachines ->
+        cabinetVM.startQueryStatus(stateResult = { lowerMachines ->
             val builder1 = StringBuilder()
             val builder2 = StringBuilder()
             Loge.e("流程 testState  ${lowerMachines.size}")
@@ -361,12 +362,11 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
                     }
                 }
             }
-            binding.actvCabinetState1.text =
-                Html.fromHtml(builder1.toString(), Html.FROM_HTML_MODE_LEGACY)
-            binding.actvCabinetState2.text =
-                Html.fromHtml(builder2.toString(), Html.FROM_HTML_MODE_LEGACY)
+            binding.actvCabinetState1.text = Html.fromHtml(builder1.toString(), Html.FROM_HTML_MODE_LEGACY)
+            binding.actvCabinetState2.text = Html.fromHtml(builder2.toString(), Html.FROM_HTML_MODE_LEGACY)
         })
     }
+
     // 为View添加防抖点击扩展函数
     fun View.setDebouncedClickListener(
         debounceTime: Long = 3000L,
@@ -382,14 +382,13 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             }
         }
     }
+
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP_MR1)
     override fun initialize(savedInstanceState: Bundle?) {
-        val rodHinderValue1 =
-            SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue1, mRodHinderValue1] as Int
-        val rodHinderValue2 =
-            SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue2, mRodHinderValue2] as Int
+        val rodHinderValue1 = SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue1, mRodHinderValue1] as Int
+        val rodHinderValue2 = SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue2, mRodHinderValue2] as Int
         val typeGrid = SPreUtil[AppUtils.getContext(), SPreUtil.type_grid, -1]
-         arguments?.let { args ->
+        arguments?.let { args ->
             isIndex = args.getInt(IS_INDEX, -1)
             isShow = args.getBoolean(IS_SHOW, false)
             when (isIndex) {
@@ -475,8 +474,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         }
 
         binding.acetBoost.setupNumberRange(
-            minValue = EntityType.ROD_HINDER_MIN,
-            maxValue = EntityType.ROD_HINDER_MAX
+            minValue = EntityType.ROD_HINDER_MIN, maxValue = EntityType.ROD_HINDER_MAX
         ) { value ->
             binding.acetBoost.setText("$value")
             Loge.d("焦点消失后的值1: $value")
@@ -509,21 +507,19 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
 
         //内摄像头
         binding.actvInCamera.setOnClickListener {
-            Navigation.findNavController(it)
-                .navigate(R.id.action_start_camera_in)
+            Navigation.findNavController(it).navigate(R.id.action_start_camera_in)
         }
 
         //外摄像头
         binding.actvOutCamera.setOnClickListener {
-            Navigation.findNavController(it)
-                .navigate(R.id.action_start_camera_out)
+            Navigation.findNavController(it).navigate(R.id.action_start_camera_out)
         }
         //推杆开
         binding.mrbPushOpen.setOnClickListener {
             Loge.e("流程 mrbPushOpen $isCheckSwitch")
             if (isCheckSwitch) return@setOnClickListener
             MediaPlayerHelper.playAudioAsset(AppUtils.getContext(), "opendoor.wav")
-            val doorGeX  = if(currentGe == CmdCode.GE1) CmdCode.GE11 else CmdCode.GE21
+            val doorGeX = if (currentGe == CmdCode.GE1) CmdCode.GE11 else CmdCode.GE21
             cabinetVM.startTurnDoor(doorGeX)
             binding.mrbPushOpen.isChecked = true
             binding.mrbPushClose.isChecked = false
@@ -534,7 +530,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             Loge.e("流程 mrbPushClose $isCheckSwitch")
             if (isCheckSwitch) return@setOnClickListener
             MediaPlayerHelper.playAudioAsset(AppUtils.getContext(), "opendoor.wav")
-            val doorGeX  = if(currentGe == CmdCode.GE1) CmdCode.GE10 else CmdCode.GE20
+            val doorGeX = if (currentGe == CmdCode.GE1) CmdCode.GE10 else CmdCode.GE20
             cabinetVM.startTurnDoor(doorGeX)
             binding.mrbPushOpen.isChecked = false
             binding.mrbPushClose.isChecked = true
@@ -693,54 +689,64 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         }
 
         //清运锁状态
-        lifecycleScope.launch {
-            cabinetVM.getTestClearDoor.collect { result ->
-                if (result) {
-                    binding.mrbLockOpen.isChecked = true
-                    binding.mrbLockClose.isChecked = false
-                    cabinetVM.tipMessage("清运开门成功")
-                } else {
-                    binding.mrbLockOpen.isChecked = false
-                    binding.mrbLockClose.isChecked = true
-                    cabinetVM.tipMessage("清运开门失败")
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.getTestClearDoor.collect { result ->
+                    if (result == -1) return@collect
+                    if (result == 1) {
+                        binding.mrbLockOpen.isChecked = true
+                        binding.mrbLockClose.isChecked = false
+                        cabinetVM.tipMessage("清运开门成功")
+                    } else {
+                        binding.mrbLockOpen.isChecked = false
+                        binding.mrbLockClose.isChecked = true
+                        cabinetVM.tipMessage("清运开门失败")
+                    }
                 }
             }
         }
 
         //称重前校准操作
-        lifecycleScope.launch {
-            cabinetVM.getCaliBefore2.collect { result ->
-                binding.clWeight.isVisible = false
-                //校准完成复原点击按钮
-                binding.actvWeighing.isEnabled = true
-                if (result) {
-                    cabinetVM.tipMessage("校准前处理已完成，放入砝码，请选择校准类型")
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.getCaliBefore2.collect { result ->
+                    if (result == -1) return@collect
+                    binding.clWeight.isVisible = false
+                    //校准完成复原点击按钮
+                    binding.actvWeighing.isEnabled = true
+                    if (result == 1) {
+                        cabinetVM.tipMessage("校准前处理已完成，放入砝码，请选择校准类型")
 //                    setRbEnabled(true)
-                    setRbEnabled2(false, false)
-                    weightKg = 0
-                } else {
-                    cabinetVM.tipMessage("校准前处理未完成，请重新点击称重校准")
+                        setRbEnabled2(false, false)
+                        weightKg = 0
+                    } else {
+                        cabinetVM.tipMessage("校准前处理未完成，请重新点击称重校准")
 //                    setRbEnabled(false)
-                    setRbEnabled2(false, false)
-                    weightKg = -1
+                        setRbEnabled2(false, false)
+                        weightKg = -1
+                    }
                 }
+
             }
         }
 
         //称重效验结果
-        lifecycleScope.launch {
-            cabinetVM.getCaliResult.collect { result ->
-                if (result) {
-                    cabinetVM.tipMessage("校准完成")
-                    setRbEnabled2(false, true)
-                } else {
-                    cabinetVM.tipMessage("校准失败")
-                    setRbEnabled2(false, false)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.getCaliResult.collect { result ->
+                    if (result == -1) return@collect
+                    if (result == 1) {
+                        cabinetVM.tipMessage("校准完成")
+                        setRbEnabled2(false, true)
+                    } else {
+                        cabinetVM.tipMessage("校准失败")
+                        setRbEnabled2(false, false)
+                    }
+                    //校准完成复原点击按钮
+                    binding.actvWeighing.isEnabled = true
+                    binding.clWeight.isVisible = false
+                    weightKg = -1
                 }
-                //校准完成复原点击按钮
-                binding.actvWeighing.isEnabled = true
-                binding.clWeight.isVisible = false
-                weightKg = -1
             }
         }
     }
@@ -752,20 +758,16 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             var data = ""
             Loge.i("粘包测试", " click $click:")
             if (click == 1) {
-                data =
-                    "9B 00 02 82 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00".replace(
-                        " ",
-                        ""
-                    )
+                data = "9B 00 02 82 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00".replace(
+                    " ", ""
+                )
 //                data  = "9B 00 02 82 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 49 FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 61 9A 9B 00".replace(" ","")
                 ++click
             } else {
                 click = 1
-                data =
-                    "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 49 FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 61 9A".replace(
-                        " ",
-                        ""
-                    )
+                data = "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 49 FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 61 9A".replace(
+                    " ", ""
+                )
 //                data = "02 82 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 49 FF FF FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 61 9A".replace(" ","")
             }
 
@@ -830,8 +832,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
      */
     private fun processReceivedData(newData: ByteArray) {
         Loge.i(
-            "粘包测试",
-            "接232 测试新的方式 大小：${newData.size} 原始：${ByteUtils.toHexString(newData)}"
+            "粘包测试", "接232 测试新的方式 大小：${newData.size} 原始：${ByteUtils.toHexString(newData)}"
         )
         try {
 
@@ -840,8 +841,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             // 如果距离上次处理时间过长，清空缓冲区（避免处理残留的无效数据）
             if (currentTime - lastProcessTime > PROCESS_TIMEOUT && bufferNew232.size() > 0) {
                 Loge.i(
-                    "粘包测试",
-                    "接232 测试新的方式 处理超时，清空缓冲区残留数据: ${bufferNew232.size()}字节"
+                    "粘包测试", "接232 测试新的方式 处理超时，清空缓冲区残留数据: ${bufferNew232.size()}字节"
                 )
                 bufferNew232.reset()
             }
@@ -855,8 +855,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             var processedBytes = 0
             var currentIndex = 0
             Loge.i(
-                "粘包测试",
-                "接232 测试新的方式 processedBytes $processedBytes | currentIndex $currentIndex"
+                "粘包测试", "接232 测试新的方式 processedBytes $processedBytes | currentIndex $currentIndex"
             )
             while (currentIndex < currentBuffer.size) {
                 // 3. 查找帧头 (0x9B)
@@ -867,8 +866,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
                     break
                 }
                 Loge.i(
-                    "粘包测试",
-                    "接232 测试新的方式 headerIndex $headerIndex | size ${currentBuffer.size}"
+                    "粘包测试", "接232 测试新的方式 headerIndex $headerIndex | size ${currentBuffer.size}"
                 )
                 // 4. 检查是否有足够的数据获取长度字段 (header + 3)
                 if (headerIndex + DATA_POS_LENGTH >= currentBuffer.size) {
@@ -881,11 +879,9 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
                 val dataLength = currentBuffer[headerIndex + DATA_POS_LENGTH].toInt() and 0xFF
 
                 // 6. 计算完整包长度 (修正：6 + dataLength)
-                val totalLength =
-                    COMPLETE_PACKAGE + dataLength  // 帧头1 + 地址1 + 命令1 + 长度1 + 数据N + 校验码1 + 帧尾1
+                val totalLength = COMPLETE_PACKAGE + dataLength  // 帧头1 + 地址1 + 命令1 + 长度1 + 数据N + 校验码1 + 帧尾1
                 Loge.i(
-                    "粘包测试",
-                    "接232 测试新的方式 dataLength $dataLength | totalLength $totalLength"
+                    "粘包测试", "接232 测试新的方式 dataLength $dataLength | totalLength $totalLength"
                 )
                 // 7. 检查完整数据包
                 if (headerIndex + totalLength > currentBuffer.size) {
@@ -920,13 +916,11 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
                 currentIndex = headerIndex + totalLength
                 processedBytes = currentIndex
                 Loge.i(
-                    "粘包测试",
-                    "接232 测试新的方式 while 内 currentIndex ${currentIndex} | processedBytes $processedBytes"
+                    "粘包测试", "接232 测试新的方式 while 内 currentIndex ${currentIndex} | processedBytes $processedBytes"
                 )
             }
             Loge.i(
-                "粘包测试",
-                "接232 测试新的方式 while 外 processedBytes $processedBytes | size ${currentBuffer.size}"
+                "粘包测试", "接232 测试新的方式 while 外 processedBytes $processedBytes | size ${currentBuffer.size}"
             )
             // 13. 保存未处理数据到缓冲区
             bufferNew232.reset()
@@ -934,14 +928,12 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
                 val remainingData = currentBuffer.copyOfRange(processedBytes, currentBuffer.size)
                 bufferNew232.write(remainingData)
                 Loge.i(
-                    "粘包测试",
-                    "接232 测试新的方式 while 外 拷贝数据 ${ByteUtils.toHexString(remainingData)}"
+                    "粘包测试", "接232 测试新的方式 while 外 拷贝数据 ${ByteUtils.toHexString(remainingData)}"
                 )
                 // 调试信息：显示保留的未处理数据长度
                 if (remainingData.isNotEmpty()) {
                     Loge.i(
-                        "粘包测试",
-                        "接232 测试新的方式 保留未处理数据: ${remainingData.size} 字节"
+                        "粘包测试", "接232 测试新的方式 保留未处理数据: ${remainingData.size} 字节"
                     )
                 }
             }
@@ -962,8 +954,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
     private fun logBufferStatus(totalSize: Int, processedBytes: Int) {
         val remaining = totalSize - processedBytes
         Loge.i(
-            "粘包测试",
-            "接232 测试新的方式 缓冲区处理: 总共${totalSize}字节, 已处理${processedBytes}字节, 剩余${remaining}字节"
+            "粘包测试", "接232 测试新的方式 缓冲区处理: 总共${totalSize}字节, 已处理${processedBytes}字节, 剩余${remaining}字节"
         )
     }
 
@@ -1007,8 +998,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         val expectedTotalLength = 6 + dataLength
         if (packet.size != expectedTotalLength) {
             Loge.i(
-                "粘包测试",
-                "接232 测试新的方式 数据包长度不匹配: 期望=$expectedTotalLength, 实际=${packet.size}"
+                "粘包测试", "接232 测试新的方式 数据包长度不匹配: 期望=$expectedTotalLength, 实际=${packet.size}"
             )
             return false
         }
@@ -1048,8 +1038,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
     private fun handlePacket232(packet: ByteArray) {
         //此处进来的数据是没有帧尾 9B 00 0B 04 FF FF FF FF A6
         Loge.i(
-            "粘包测试",
-            "接232 测试新的方式 handlePacket232 处理数据 size ${packet.size} | ${
+            "粘包测试", "接232 测试新的方式 handlePacket232 处理数据 size ${packet.size} | ${
                 ByteUtils.toHexString(packet)
             }"
         )
@@ -1078,8 +1067,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             // 4. 校验数据包（可选，根据协议实现）
             if (!validateCheckCode(packet)) {
                 Loge.i(
-                    "粘包测试",
-                    "接232 测试新的方式 校验失败，丢弃包: ${ByteUtils.toHexString(packet)}"
+                    "粘包测试", "接232 测试新的方式 校验失败，丢弃包: ${ByteUtils.toHexString(packet)}"
                 )
                 currentPosition = frameEndIndex + 1
                 continue
@@ -1185,6 +1173,6 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
     }
 
     override fun onDestroy() {
-         super.onDestroy()
+        super.onDestroy()
     }
 }

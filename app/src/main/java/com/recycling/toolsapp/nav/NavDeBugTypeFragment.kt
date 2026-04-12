@@ -13,7 +13,9 @@ import android.widget.RadioGroup
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.Navigation
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.NavFragmentDebugTypeBinding
@@ -301,10 +303,8 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
     }
 
     override fun initialize(savedInstanceState: Bundle?) {
-        val rodHinderValue1 =
-            SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue1, mRodHinderValue1] as Int
-        val rodHinderValue2 =
-            SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue2, mRodHinderValue2] as Int
+        val rodHinderValue1 = SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue1, mRodHinderValue1] as Int
+        val rodHinderValue2 = SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue2, mRodHinderValue2] as Int
         binding.acivLogo.setOnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -581,54 +581,63 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
         }
 
         //清运锁状态
-        lifecycleScope.launch {
-            cabinetVM.getTestClearDoor.collect { result ->
-                if (result) {
-                    binding.mrbLockOpen.isChecked = true
-                    binding.mrbLockClose.isChecked = false
-                    cabinetVM.tipMessage("清运开门成功")
-                } else {
-                    binding.mrbLockOpen.isChecked = false
-                    binding.mrbLockClose.isChecked = true
-                    cabinetVM.tipMessage("清运开门失败")
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.getTestClearDoor.collect { result ->
+                    if (result == -1) return@collect
+                    if (result == 1) {
+                        binding.mrbLockOpen.isChecked = true
+                        binding.mrbLockClose.isChecked = false
+                        cabinetVM.tipMessage("清运开门成功")
+                    } else {
+                        binding.mrbLockOpen.isChecked = false
+                        binding.mrbLockClose.isChecked = true
+                        cabinetVM.tipMessage("清运开门失败")
+                    }
                 }
             }
         }
 
         //称重前校准操作
-        lifecycleScope.launch {
-            cabinetVM.getCaliBefore2.collect { result ->
-                binding.clWeight.isVisible = false
-                //校准完成复原点击按钮
-                binding.actvWeighing.isEnabled = true
-                if (result) {
-                    cabinetVM.tipMessage("校准前处理已完成，放入砝码，请选择校准类型")
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.getCaliBefore2.collect { result ->
+                    if (result == -1) return@collect
+                    binding.clWeight.isVisible = false
+                    //校准完成复原点击按钮
+                    binding.actvWeighing.isEnabled = true
+                    if (result == 1) {
+                        cabinetVM.tipMessage("校准前处理已完成，放入砝码，请选择校准类型")
 //                    setRbEnabled(true)
-                    setRbEnabled2(false, false)
-                    weightKg = 0
-                } else {
-                    cabinetVM.tipMessage("校准前处理未完成，请重新点击称重校准")
+                        setRbEnabled2(false, false)
+                        weightKg = 0
+                    } else {
+                        cabinetVM.tipMessage("校准前处理未完成，请重新点击称重校准")
 //                    setRbEnabled(false)
-                    setRbEnabled2(false, false)
-                    weightKg = -1
+                        setRbEnabled2(false, false)
+                        weightKg = -1
+                    }
                 }
             }
         }
 
         //称重效验结果
-        lifecycleScope.launch {
-            cabinetVM.getCaliResult.collect { result ->
-                if (result) {
-                    cabinetVM.tipMessage("校准完成")
-                    setRbEnabled2(false, true)
-                } else {
-                    cabinetVM.tipMessage("校准失败")
-                    setRbEnabled2(false, false)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.getCaliResult.collect { result ->
+                    if (result == -1) return@collect
+                    if (result == 1) {
+                        cabinetVM.tipMessage("校准完成")
+                        setRbEnabled2(false, true)
+                    } else {
+                        cabinetVM.tipMessage("校准失败")
+                        setRbEnabled2(false, false)
+                    }
+                    //校准完成复原点击按钮
+                    binding.actvWeighing.isEnabled = true
+                    binding.clWeight.isVisible = false
+                    weightKg = -1
                 }
-                //校准完成复原点击按钮
-                binding.actvWeighing.isEnabled = true
-                binding.clWeight.isVisible = false
-                weightKg = -1
             }
         }
     }

@@ -75,22 +75,22 @@ object CmdCode {
     const val GE_DEVICE_STATUS = 1
 
     /***
-     * 清运门一打开
+     * 清运门一打开 11
      */
     const val CLEAR_OPEN_1_1 = 11
 
     /***
-     * 清运门二打开
+     * 清运门二打开 21
      */
     const val CLEAR_OPEN_2_1 = 21
 
     /***
-     * 清运门一查询
+     * 清运门一查询 10
      */
     const val CLEAR_QUERY_1_0 = 10
 
     /***
-     * 清运门二查询
+     * 清运门二查询 20
      */
     const val CLEAR_QUERY_2_0 = 20
 
@@ -105,53 +105,53 @@ object CmdCode {
     const val GE2 = 2
 
     /***
-     * 默认
+     * 默认 -1
      */
     const val GE = -1
 
     /***
-     * 启动关格口一
+     * 启动关格口一 10
      */
     const val GE10 = 10
     /***
-     * 启动强制关格口一
+     * 启动强制关格口一 12
      */
     const val GE12 = 12
     /***
-     * 启动开格口一
+     * 启动开格口一 11
      */
     const val GE11 = 11
 
     /***
-     * 启动关格口二
+     * 启动关格口二 20
      */
     const val GE20 = 20
     /***
-     * 启动强制关格口二
+     * 启动强制关格口二 22
      */
     const val GE22 = 22
     /***
-     * 启动开格口二
+     * 启动开格口二 21
      */
     const val GE21 = 21
 
     /***
-     *内灯光 开
+     *内灯光 开 11
      */
     const val IN_LIGHTS_OPEN = 11
 
     /***
-     *内灯光 关
+     *内灯光 关 12
      */
     const val IN_LIGHTS_CLOSE = 12
 
     /***
-     *外灯光 开
+     *外灯光 开 21
      */
     const val OUT_LIGHTS_OPEN = 21
 
     /***
-     *外灯光 关
+     *外灯光 关 22
      */
     const val OUT_LIGHTS_CLOSE = 22
 

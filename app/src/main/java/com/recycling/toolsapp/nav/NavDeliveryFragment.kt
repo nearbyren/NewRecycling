@@ -183,9 +183,6 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
 
                         is DeliveryTimer.CountdownState.Error -> {
                             Loge.e("流程 deliveryState CountdownState")
-                            cabinetVM.saveRecordSocket(
-                                CmdValue.CONNECTING, "delivery,Finished Error"
-                            )
                             cabinetVM.tipMessage(state.message)
                         }
                     }

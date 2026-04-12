@@ -6,7 +6,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-         android:paddingTop="@dimen/dp_24"
+        android:paddingTop="@dimen/dp_24"
         android:paddingBottom="@dimen/dp_24"
         tools:ignore="MissingConstraints">
 
@@ -610,22 +610,6 @@
                     app:layout_constraintLeft_toLeftOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/cl_content2" />
 
-                <androidx.appcompat.widget.AppCompatTextView
-                    android:id="@+id/actv_reporting"
-                    android:layout_width="@dimen/dp_100"
-                    android:layout_height="@dimen/dp_32"
-                    android:layout_marginLeft="@dimen/dp_12"
-                    android:layout_marginTop="@dimen/dp_16"
-                    android:layout_marginBottom="@dimen/dp_16"
-                    android:background="@drawable/shape_input_delivery_bg"
-                    android:gravity="center"
-                    android:text="日志信息"
-                    android:textColor="@color/white"
-                    android:textSize="@dimen/sp_12"
-                    android:textStyle="bold"
-                    app:layout_constraintLeft_toLeftOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/actv_return" />
-
 
                 <androidx.appcompat.widget.AppCompatTextView
                     android:id="@+id/actv_get_state_desktop"
@@ -640,7 +624,7 @@
                     android:textColor="@color/white"
                     android:textSize="@dimen/sp_12"
                     android:textStyle="bold"
-                    app:layout_constraintLeft_toRightOf="@+id/actv_reporting"
+                    app:layout_constraintLeft_toLeftOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/actv_return" />
 
 
@@ -657,9 +641,9 @@
                     android:textColor="@color/white"
                     android:textSize="@dimen/sp_12"
                     android:textStyle="bold"
-
                     app:layout_constraintLeft_toRightOf="@+id/actv_get_state"
                     app:layout_constraintTop_toBottomOf="@+id/cl_content2" />
+
                 <!-- 查看柜体信息-->
                 <androidx.appcompat.widget.AppCompatTextView
                     android:id="@+id/actv_get_state"

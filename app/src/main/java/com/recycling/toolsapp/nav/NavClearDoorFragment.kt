@@ -109,7 +109,6 @@ class NavClearDoorFragment : BaseBindLazyTimeFragment<NavFragmentClearDoorBindin
 
                         ClearTimer.CountdownState.Finished -> {
                             Loge.e("流程 deliveryState 倒计时结束")
-                            cabinetVM.setFlowMonitorDoor(MonitorType.TYPE_110)
                         }
 
                         is ClearTimer.CountdownState.Error -> {

@@ -194,12 +194,12 @@ class SocketClient(
                 attempt = 0 // reset backoff after successful session
             } catch (e: CancellationException) {
                 Loge.e("出厂配置 initSocket SocketClient runMainLoop catch1 ${e.message} running $running")
-                BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, "socketClientrunMainLoop catch1 ${e.message} running $running")
+                BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, "socketClient,runMainLoop CancellationException ${e.message} running $running")
                 break
             } catch (e: Exception) {
                 // Swallow and backoff
                 Loge.e("出厂配置 initSocket SocketClient runMainLoop catch2 ${e.message} running $running")
-                BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, "socketClient,runMainLoop catch2 ${e.message} running $running")
+                BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, "socketClient,runMainLoop Exception ${e.message} running $running")
             } finally {
                 Loge.e("出厂配置 initSocket SocketClient runMainLoop finally running $running")
                 closeSocketQuietly()
@@ -300,7 +300,7 @@ class SocketClient(
             try {
                 val read = input.read(buffer)
                 if (read == -1) {
-                    BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, "Stream closed")
+                    BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, "SocketClient,readLoop Stream closed")
 //                    LiveBus.get(BusType.BUS_NET_MSG).post("读取不到socket数据 Stream closed")
                     throw IOException("Stream closed")
                 }

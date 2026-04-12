@@ -124,22 +124,21 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         // 观察网络状态
         lifecycleScope.launch {
             networkStateManager.networkState.collect { state ->
+                cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,$state")
                 when (state) {
                     NetworkStateManager.NetworkState.Unknown -> {
                         Loge.e("网络测试 检测网络中...")
                         binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao0)
-                        cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,Unknown")
+
                     }
 
                     NetworkStateManager.NetworkState.Disconnected -> {
                         Loge.e("网络测试 网络已断开...")
                         binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao0)
-                        cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,Disconnected")
 
                     }
 
                     is NetworkStateManager.NetworkState.Connected -> {
-                        cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,Connected")
                         val status = when (state.type) {
                             NetworkStateManager.ConnectionType.WIFI -> "已连接WiFi"
                             NetworkStateManager.ConnectionType.CELLULAR -> "已连接移动网络"
@@ -227,8 +226,9 @@ class NavTouSingleNewActivity : AppCompatActivity() {
         }
         telephonyManager?.listen(phoneStateListener, PhoneStateListener.LISTEN_SIGNAL_STRENGTHS)
         lifecycleScope.launch {
-            cabinetVM.isReadSignal.collect {
-                Loge.d("流程 接收信号值 $it")
+            cabinetVM.isReadSignal.collect { result ->
+                Loge.d("流程 接收信号值 $result")
+                if (result == -1) return@collect
                 getCurrentSignalStrength()
             }
         }
@@ -377,7 +377,6 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                 when (it) {
                     CabinetVM.ConnectionState.START -> {
                         Loge.e("出厂配置 initSocket NavTouSingleActivity addSocketResultListener2 监 开始：${Thread.currentThread().name} | state $")
-
                     }
 
                     CabinetVM.ConnectionState.DISCONNECTED -> {
@@ -412,7 +411,6 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                 socketToast(false)
                 initVerSn("s")
                 Loge.e("出厂配置 initSocket 流程 recv: ${String(bytes)}")
-                Loge.e("流程 recv: ${String(bytes)}")
                 val json = String(bytes)
                 val cmd = CommandParser.parseCommand(json)
 
@@ -430,7 +428,7 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                             cabinetVM.saveSocketInitData(loginModel, false)
                         } else {
                             //这里继续延续登录
-                            cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "登录失败")
+                            BoxToolLogUtils.savePrintln("socketClient,登录失败")
                             cabinetVM.toGoAgainLogin()
                         }
 
@@ -822,7 +820,9 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                         CabinetVM.LockerStep.CLOSE -> {
                             val openType = cabinetVM.remoteOpenType
                             cabinetVM.takePhoto(0)
-                            cabinetVM.startLockerEndWeight(cabinetVM.doorGeX,cabinetVM.curG1Weight?:"0.00")
+                            cabinetVM.startLockerEndWeight(
+                                cabinetVM.doorGeX, cabinetVM.curG1Weight ?: "0.00"
+                            )
                             if (openType == 1) {
                                 cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_DELIVERY)
                             }
