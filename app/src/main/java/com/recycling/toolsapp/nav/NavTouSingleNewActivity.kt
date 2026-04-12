@@ -843,7 +843,9 @@ class NavTouSingleNewActivity : AppCompatActivity() {
                             if (it == CabinetVM.LockerStep.FINISHED) {
                                 cabinetVM.deteServiceClose()
                             }
-//                            cabinetVM.cameraManagerNew.destroy()
+                        }
+                        CabinetVM.LockerStep.CAMERA_END->{
+                            cabinetVM.cameraManagerNew.destroy()
                         }
                     }
                 }

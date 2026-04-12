@@ -2862,7 +2862,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     // 定义业务状态，方便 UI 订阅显示
     enum class LockerStep {
-        IDLE, START, OPENING, WAITING_OPEN_DOOR, WAITING_OPEN_CLEAR, WEIGHT_TRACKING, CLICK_CLOSE, CLOSING, CLOSE, WAITING_CLOSE, FINISHED
+        IDLE, START, OPENING, WAITING_OPEN_DOOR, WAITING_OPEN_CLEAR, WEIGHT_TRACKING, CLICK_CLOSE, CLOSING, CLOSE, WAITING_CLOSE, FINISHED, CAMERA_END
     }
 
     // 建议将这些变量放在 ViewModel 中统一管理
@@ -3699,9 +3699,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         takePhotoUrl = fileOut.absolutePath
                     })
                 }
-
-                delay(500)
-                cameraManagerNew.destroy()
             }
 
             CmdCode.GE_CLOSE -> {
@@ -3742,7 +3739,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     })
                 }
                 delay(500)
-                cameraManagerNew.destroy()
             }
         }/**/
 
