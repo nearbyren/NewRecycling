@@ -48,7 +48,7 @@ class SerialVM : ViewModel() {
     private val extractor = FrameExtractor { packet ->
         responseWaiter?.complete(packet)
 //        directDeferred?.let {
-//            println("哈哈哈 接收 extractor 2 ${ByteUtils.toHexString(packet)}")
+//            Loge.e("哈哈哈 接收 extractor $packet")
 //            onDataReceived(packet)
 //        }
 

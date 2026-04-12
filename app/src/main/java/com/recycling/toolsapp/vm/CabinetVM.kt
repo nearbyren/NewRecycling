@@ -1713,7 +1713,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     private fun uploadPhoto(sn: String, transId: String, photoType: Int = -1, fileName: String, activeType: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            println("网络请求 拍照上传 进来 $sn $transId $photoType $fileName $activeType")
+            Loge.d("网络请求 拍照上传 进来 $sn $transId $photoType $fileName $activeType")
             if (activeType == "45") {
                 Loge.d("网络请求 拍照上传 延迟")
                 toGoTPSucces(transId)
@@ -1727,7 +1727,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val file = File(
                 AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.path + "/action/${fileName}"
             )
-            println("网络请求 拍照上传 进来 ${file.name} | ${file.absolutePath}")
+            Loge.e("网络请求 拍照上传 进来 ${file.name} | ${file.absolutePath}")
             post["file"] = file
             httpRepo.uploadPhoto(post).onSuccess { user ->
                 Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
@@ -3396,7 +3396,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     suspend fun startLockerEndWeight(doorGex: Int, toWeightAfterClosing: String) =
         withContext(Dispatchers.IO) {
-            println("进来刷新 startLockerEndWeight $doorGex $toWeightAfterClosing")
+            Loge.e("进来刷新 startLockerEndWeight $doorGex $toWeightAfterClosing")
             if (doorGex == CmdCode.GE1) {
                 setRefBusStaChannel(MonitorWeight().apply {
                     refreshType = RefBusType.REFRESH_TYPE_1
@@ -3953,7 +3953,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     private var containersJob: Job? = null
     fun cancelContainersStatusJob() {
-        println("验证方式 取消柜体查询")
+        Loge.e("验证方式 取消柜体查询")
         containersJob?.cancel()
         containersJob = null
     }
@@ -4220,7 +4220,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val chipStep11 = SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
             if (chipStep11.isFailure) throw Exception("查询版本失败: ${chipStep11.exceptionOrNull()?.message}")
             val stepStatus11 = chipStep11.getOrNull()?.chipVersion ?: SPreUtil.gversion
-            println("查询到的版本：$stepStatus11")
+            Loge.e("查询到的版本：$stepStatus11")
             SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, stepStatus11)
         }
     }
