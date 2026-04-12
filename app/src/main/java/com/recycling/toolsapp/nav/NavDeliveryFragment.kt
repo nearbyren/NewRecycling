@@ -93,7 +93,7 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                                 binding.tvMoneyValue.text = "$floatValue 元"
                                 //当前称重
                                 binding.tvWeightValue.text = "$resultWeight 公斤"
-                                BoxToolLogUtils.savePrintln("业务流：刷新当前页面数据重量：$resultWeight | 价格：$price")
+                                Loge.e("业务流：刷新当前页面数据重量：$resultWeight | 价格：$price")
 
                             } else {
                                 val wp = CalculationUtil.divideFloats(weightPercent.toString(), "100")
@@ -106,14 +106,14 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                                         binding.tvMoneyValue.text = "$floatValue 元"
                                         //当前称重
                                         binding.tvWeightValue.text = "$resultWeight 公斤"
-                                        BoxToolLogUtils.savePrintln("业务流：刷新当前页面数据重量：$resultWeight | 价格：$price")
+                                        Loge.e("业务流：刷新当前页面数据重量：$resultWeight | 价格：$price")
                                     } else {
                                         val floatValue = CalculationUtil.multiplyFloats(price, result)
                                         //当前金额
                                         binding.tvMoneyValue.text = "$floatValue 元"
                                         //当前称重
                                         binding.tvWeightValue.text = "$result 公斤"
-                                        BoxToolLogUtils.savePrintln("业务流：刷新当前页面数据重量：$resultWeight | 价格：$price")
+                                        Loge.e("业务流：刷新当前页面数据重量：$resultWeight | 价格：$price")
                                     }
                                 }
                             }

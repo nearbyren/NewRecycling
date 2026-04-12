@@ -3097,7 +3097,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     // --- 第四阶段：执行关门动作 ---
                     if (currentStep.value == LockerStep.CLICK_CLOSE) {
                         _currentStep.value = LockerStep.CLOSING
-                        BoxToolLogUtils.savePrintln("业务流：监测到关门信号，下发关门指令【${SendTurnText.fromStatus(closeType)}")
+                        BoxToolLogUtils.savePrintln("业务流：监测到关门信号，下发关门指令【${SendTurnText.fromStatus(closeType)}】")
                         val closeRes = SerialPortSdk.turnDoor(closeType)
                         if (closeRes.isFailure) throw Exception("业务流：关门指令发送失败")
                     }
@@ -3165,6 +3165,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 startContainersStatus() // 恢复全局状态轮询
                 startPollingFault()// 恢复全局异常检测
+//                deteServiceClose()//检测服务器是否完整下发关闭指令
             }
         }
     }
@@ -3319,6 +3320,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 startContainersStatus() // 恢复全局状态轮询
                 startPollingFault()// 恢复全局异常检测
+//                deteServiceClose()//检测服务器是否完整下发关闭指令
             }
         }
     }
@@ -3463,43 +3465,44 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
         deteServiceCloseJob = ioScope.launch {
             while (isActive) {
-                if (isRunning.getAndSet(true)) {
-                    BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 有业务在处理中")
-                    return@launch
-                }
-                val weights = DatabaseManager.queryWeightStatus(
-                    AppUtils.getContext(), EntityType.WEIGHT_TYPE_10
-                )
-                BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 当前未处理：${weights.isEmpty()}")
-                if (weights.isEmpty()) {
-                    cancelServiceClose()
-                }
-                weights.forEach { weight ->
-                    val doorClose = DoorCloseBean().apply {
-                        cmd = CmdValue.CMD_CLOSE_DOOR
-                        transId = weight.transId
-                        cabinId = weight.cabinId
-                        phoneNumber = ""
-                        //換算的重量
-                        curWeight = weight.curWeight
-                        //上称物品的重量
-                        changeWeight = weight.changeWeight
-                        refWeight = weight.refWeight
-
-                        //未上称物品前重量
-                        beforeUpWeight = weight.beforeUpWeight
-                        afterUpWeight = weight.afterUpWeight
-
-                        //已上称物品前重量
-                        beforeDownWeight = weight.beforeDownWeight
-                        afterDownWeight = weight.afterDownWeight
-
-                        timestamp = AppUtils.getDateYMDHMS()
+                if (!isRunning.getAndSet(true)) {
+                    val weights = DatabaseManager.queryWeightStatus(
+                        AppUtils.getContext(), EntityType.WEIGHT_TYPE_10
+                    )
+                    BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 当前未处理：${weights.isEmpty()}")
+                    if (weights.isEmpty()) {
+                        cancelServiceClose()
                     }
-                    val json = JsonBuilder.convertToJsonString(doorClose)
-                    sendText(json)
-                    BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 再次上报：${doorClose}")
+                    weights.forEach { weight ->
+                        val doorClose = DoorCloseBean().apply {
+                            cmd = CmdValue.CMD_CLOSE_DOOR
+                            transId = weight.transId
+                            cabinId = weight.cabinId
+                            phoneNumber = ""
+                            //換算的重量
+                            curWeight = weight.curWeight
+                            //上称物品的重量
+                            changeWeight = weight.changeWeight
+                            refWeight = weight.refWeight
+
+                            //未上称物品前重量
+                            beforeUpWeight = weight.beforeUpWeight
+                            afterUpWeight = weight.afterUpWeight
+
+                            //已上称物品前重量
+                            beforeDownWeight = weight.beforeDownWeight
+                            afterDownWeight = weight.afterDownWeight
+
+                            timestamp = AppUtils.getDateYMDHMS()
+                        }
+                        val json = JsonBuilder.convertToJsonString(doorClose)
+                        sendText(json)
+                        BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 再次上报：${doorClose}")
+                    }
+                }else{
+                    BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 有业务在处理中")
                 }
+
             }
         }
     }
@@ -3907,7 +3910,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     "其他"
                 }
             }
-            BoxToolLogUtils.savePrintln("业务流：刷新重量 更新成功 $row 业务类型【${text}】 ${openModel.transId} $weight")
+            BoxToolLogUtils.savePrintln("业务流：业务类型【${text}】刷新重量 $row ${openModel.transId} $weight")
             setRefBusStaChannel(MonitorWeight().apply {
                 refreshType = RefBusType.REFRESH_TYPE_1
                 weightBeforeOpenValue = weightBeforeOpen
