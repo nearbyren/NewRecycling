@@ -3125,7 +3125,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
                                 noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT, true)
                                 BoxToolLogUtils.savePrintln("业务流：门开后格口-门关故障 打开后的重量：$weightDuringOpening")
-                                throw Exception("业务流：门开后格口-门关故障: ${SendTurnText.fromStatus(doorStatus ?: -1)}")
+                                throw Exception("业务流：门开后格口-门关故障: ${SendTurnText.fromStatus(doorStatus)}")
                             }
                         }
                         // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
@@ -4197,7 +4197,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             BoxToolLogUtils.savePrintln("业务流：查询柜体状态 轮询已在运行")
             return
         }
-        queryStatusJob = viewModelScope.launch {
+        queryStatusJob = viewModelScope.launch(Dispatchers.IO) {
             while (isActive && isLookState) {
                 SerialPortSdk.queryStatus().onSuccess { result ->
                     stateResult(result.containers)

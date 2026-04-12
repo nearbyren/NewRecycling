@@ -485,6 +485,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         binding.actvGetStateClose.setOnClickListener {
             cabinetVM.isLookState = false
             binding.clZhuti.isVisible = false
+            cabinetVM.cancelStartQueryStatus()
         }
         binding.actvGetStateDesktop.setOnClickListener {
             toGoHome()
