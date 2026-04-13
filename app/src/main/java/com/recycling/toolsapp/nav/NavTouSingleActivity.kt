@@ -306,7 +306,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
     private fun initPort() {
         // 启动门控制系统
-        cabinetVM.startContainersStatus()
+//        cabinetVM.startContainersStatus()
         //启动检查故障
         cabinetVM.startPollingFault()
         ///启动查询版本
@@ -342,29 +342,7 @@ class NavTouSingleActivity : AppCompatActivity() {
             }
         }
         binding.tvNetwork.setOnClickListener {
-            val targetNumber = "172604022105219755278313"
-            val randomString = generateRandomNumberString(targetNumber.length)
-//            cabinetVM.startLockerDoorWorkflow(
-//                DoorOpenBean().apply {
-//                    cmd = "openDoor"
-//                    openType = 1
-//                    cabinId = "20251015171646408518"
-//                    transId = randomString
-//
-//                }, cabinetVM.curG1Weight
-//                    ?: "0.00", CmdCode.GE1, CmdCode.GE11, CmdCode.GE10, CmdCode.GE12
-//            )
-//            cabinetVM.startLockerClearWorkflow(
-//                DoorOpenBean().apply {
-//                    cmd = "openDoor"
-//                    openType = 2
-//                    cabinId = "20251015171646408518"
-//                    transId = randomString
-//
-//                }, cabinetVM.curG1Weight
-//                    ?: "0.00", CmdCode.GE1, CmdCode.CLEAR_OPEN_1_1, CmdCode.CLEAR_QUERY_1_0
-//            )
-//            cabinetVM.startUpgradeWorkflow()
+            cabinetVM.startUpgradeWorkflow()
         }
         //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
@@ -549,7 +527,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OTA -> {
                         val otaModel = Gson().fromJson(json, OtaBean::class.java)
-                        cabinetVM.startDowChip(otaModel)
+//                        cabinetVM.startDowChip(otaModel)
                     }
 
                     CmdValue.CMD_OTA_APK -> {

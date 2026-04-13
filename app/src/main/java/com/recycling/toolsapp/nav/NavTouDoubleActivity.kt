@@ -545,7 +545,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OTA -> {
                         val otaModel = Gson().fromJson(json, OtaBean::class.java)
-                        cabinetVM.startDowChip(otaModel)
+//                        cabinetVM.startDowChip(otaModel)
                     }
 
                     CmdValue.CMD_OTA_APK -> {
