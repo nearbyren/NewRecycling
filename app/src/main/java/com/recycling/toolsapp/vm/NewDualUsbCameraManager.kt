@@ -495,43 +495,52 @@ class NewDualUsbCameraManager(context: Context) {
 
     // ================== 水印处理 ==================
 
-    private fun addWatermarkToBytes(imageBytes: ByteArray, fileName: String, watermarkText: String, setColor: Int = Color.RED): String? {
-        val dir = File(
-            AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
-        )
-        if (!dir.exists()) dir.mkdirs()
-        val destFile = File(dir, fileName)
-
-        // 保持原画尺寸，禁用缩放
-        val options = BitmapFactory.Options().apply {
-            inMutable = true
-            inScaled = false
-        }
-        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options) ?: return null
-        val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = setColor
-            textSize = bitmap.width / 40f
-            setShadowLayer(3f, 2f, 2f, Color.BLACK) // 增加阴影增强可见度
-        }
-
-        val margin = bitmap.width * 0.02f
-        canvas.drawText(watermarkText, margin, margin + 40f, paint)
-
+    private fun addWatermarkToBytes(imageBytes: ByteArray, fileName: String, watermarkText: String): String? {
         return try {
-            FileOutputStream(destFile).use { out ->
-                // 写入磁盘
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-                out.flush() // 【核心修改】确保缓冲区数据强制刷入磁盘
+            val dir = File(
+                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
+            )
+            if (!dir.exists()) dir.mkdirs()
+            val destFile = File(dir, fileName)
+            val options = BitmapFactory.Options().apply {
+                inMutable = true
+                inScaled = false
+                // 建议使用 ARGB_8888 保证水印质量，如果是为了极致省内存可用 RGB_565
+                inPreferredConfig = Bitmap.Config.ARGB_8888
             }
+
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options) ?: return null
+            val canvas = Canvas(bitmap)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.RED
+                textSize = bitmap.width / 40f
+                setShadowLayer(3f, 2f, 2f, Color.BLACK)
+            }
+
+            val margin = bitmap.width * 0.02f
+            canvas.drawText(watermarkText, margin, margin + 40f, paint)
+
+            // 使用 use 扩展函数自动关闭流
+            FileOutputStream(destFile).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                out.flush() // 强行刷入物理磁盘
+                // 文件描述符同步，确保上传库读取时内容已完整
+                out.fd.sync()
+            }
+
             bitmap.recycle() // 及时回收内存
-            destFile.absolutePath
+
+            // 关键检查：确保文件真正存在且有大小
+            if (destFile.exists() && destFile.length() > 0) {
+                destFile.absolutePath
+            } else {
+                null
+            }
         } catch (e: Exception) {
-            BoxToolLogUtils.saveCamera("写入水印文件失败: ${e.message}")
+            BoxToolLogUtils.saveCamera("写入失败: ${e.message}")
             null
         }
     }
-
     // ================== 精确防误杀 USB 广播监听 ==================
 
     private val usbReceiver = object : BroadcastReceiver() {

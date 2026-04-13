@@ -24,7 +24,7 @@ class NavCameraOutFragment : BaseBindLazyTimeFragment<NavFragmentCameraOutBindin
     }
 
     private val cameraErrorListener =
-        NewDualUsbCameraManager.CameraErrorListener { status, index, text ,finalPath ->
+        NewDualUsbCameraManager.CameraErrorListener { status, index, text  ->
             if (!status) {
                 cabinetVM.tipMessage("摄像头【$index】$text")
             }
