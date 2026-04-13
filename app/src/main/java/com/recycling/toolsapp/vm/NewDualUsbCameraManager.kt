@@ -238,7 +238,23 @@ class NewDualUsbCameraManager(context: Context) {
     }
 
     // ================== 智能拍照控制 ==================
-
+    /**
+     * 将 CameraManager 的回调拍照转换为协程挂起函数
+     */
+    suspend fun takePictureSuspend(
+        cameraId: String,
+        switchType: Int,
+        inOut: String,
+        saveFile: File
+    ): File? = suspendCancellableCoroutine { cont ->
+        // 调用原有的回调方法
+        this.takePicture(cameraId, switchType, inOut, saveFile) { file ->
+            // 当回调触发时，恢复协程并返回 File
+            if (cont.isActive) {
+                cont.resume(file)
+            }
+        }
+    }
     /**
      * 智能拍照（防连击，支持休眠状态自动唤醒预热，拍完后保持预览运行）
      */

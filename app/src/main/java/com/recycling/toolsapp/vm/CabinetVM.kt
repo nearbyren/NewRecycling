@@ -98,6 +98,7 @@ import nearby.lib.netwrok.download.SingleDownloader
 import nearby.lib.netwrok.response.CorHttp
 import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.BusType
+import okhttp3.internal.wait
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -996,18 +997,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     containersDB.add(states)
                                     cur1Cabinld = states.cabinId ?: ""//初始化读取db格口编码
                                     curG1Weight = states.weigh.toString()
-                                    if (!oneInit) {
-                                        restartAppCloseDoor(CmdCode.GE1)
-                                    }
+//                                    if (!oneInit) {
+//                                        Loge.e("流程 toGoCmdOtaBin 进来了 1")
+//                                        restartAppCloseDoor(CmdCode.GE1)
+//                                    }
                                 }
 
                                 1 -> {
                                     containersDB.add(states)
                                     cur2Cabinld = states.cabinId ?: ""//初始化读取db格口编码
                                     curG2Weight = states.weigh.toString()
-                                    if (!oneInit) {
-                                        restartAppCloseDoor(CmdCode.GE2)
-                                    }
+//                                    if (!oneInit) {
+//                                        Loge.e("流程 toGoCmdOtaBin 进来了 2")
+//                                        restartAppCloseDoor(CmdCode.GE2)
+//                                    }
                                 }
                             }
                         }
@@ -1162,7 +1165,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     /****
      * @param path 存储路径·
-     * @param res 类型 1.首页 2.二维码 3.弹框图 维护 漫溢
+     * @param res 类型 1.首页 2.二维码 3.弹框图 维护 满溢
      * @param status 控制终端维护状态 -1.未运营 0.维护 1.正常
      */
     private fun downResBitmap(oneInit: Boolean, path: String, res: Int, status: Int) {
@@ -1605,17 +1608,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = "F1-20260404.bin"
+    var chipName = ""
 
     /***
      * 下载主芯片版本大小
      */
-    var chipDowV = 20260404
+    var chipDowV = 0
 
     /***
      * 当前主芯片版本大小
      */
-    var chipCurV = 20260401
+    var chipCurV = 0
 
     //统计能发送次数
     var sendFCount = 0
@@ -2424,12 +2427,25 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     suspend fun startDowChip(otaModel: OtaBean) = withContext(Dispatchers.IO) {
+        val ChipVersionValue = SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
+        if (ChipVersionValue.isFailure) {
+            tipMessage("业务流 查询版本失败:${ChipVersionValue.exceptionOrNull()?.message}")
+            return@withContext
+        }
+        val chipVersion = ChipVersionValue.getOrNull()?.chipVersion ?: SPreUtil.gversion
+        SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
+        Loge.e("流程 toGoCmdOtaBin 查询版本结束 $chipVersion")
+        delay(2000)
+        Loge.e("流程 toGoCmdOtaBin 查询版本结束 延迟结束 $chipVersion")
         val netVersion = otaModel.version ?: ""
         if (!TextUtils.isEmpty(netVersion)) {
             val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION] as Int
             val netVersion = netVersion.replace(".", "").toIntOrNull() ?: CmdCode.GJ_VERSION
             Loge.e("流程 toGoCmdOtaBin 添加资源 $gversion  $netVersion")
             if (netVersion > gversion && !isRunning.get()) {
+                cancelStartQueryStatus()
+                delay(10000)
+                Loge.e("流程 toGoCmdOtaBin 进来了 $gversion  $netVersion")
                 _chipStep.value = UpgradeStep.UPGRADE_DOW
                 chipCurV = gversion
                 chipDowV = netVersion
@@ -2773,7 +2789,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                                 _chipStep.value = UpgradeStep.SEND_FILE_FUALT
                                                 // 此处可以实现重试逻辑，或者抛出异常中断升级
                                             }
-
+                                            delay(5)
                                             // 方案 B 已经由 executeDirect 的返回速度决定了频率，
                                             // 这里如果下位机写 Flash 快，可以不 delay，或者只 delay(5)
                                         }
@@ -2888,7 +2904,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val openTypeBoolean = model.openType == 2
             //非清运指令则检测
             val toGo = if (!openTypeBoolean) {
-                //优先以服务器下方漫溢限制投递
+                //优先以服务器下方满溢限制投递
                 val overflowState1 = SPreUtil[AppUtils.getContext(), SPreUtil.overflowState1, false] as Boolean //网络下发
                 val overflowState2 = SPreUtil[AppUtils.getContext(), SPreUtil.overflowState2, false] as Boolean //网络下发
                 val overflowResult = when (doorGeX) {
@@ -3001,7 +3017,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLockerCheck(model)
                 val transId = model.transId ?: ""
                 val execution = checkStatusResult?.await()
-                BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 格口：$doorGex 当前重量：$setWeightBeforeOpen 漫溢：$execution | 运行：${isRunning.get()} |${transId}")
+                BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 格口：$doorGex 当前重量：$setWeightBeforeOpen 满溢：$execution | 运行：${isRunning.get()} |${transId}")
                 if (execution == false && isRunning.getAndSet(true)) {
                     return@launch
                 }
@@ -3039,6 +3055,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
                 // --- 第二阶段：轮询等待门开启 ---
                 _currentStep.value = LockerStep.WAITING_OPEN_DOOR
+                takePhoto(1)
                 BoxToolLogUtils.savePrintln("业务流：等待门物理状态变为【开启】")
                 // 使用 withTimeout 防止传感器故障导致协程永久挂起
                 withTimeout(20000) { // 20秒超时
@@ -3127,6 +3144,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     //每秒查询一次重量
                     delay(1000)
                 }
+                takePhoto(0)
                 _currentStep.value = LockerStep.WAITING_CLOSE
                 // --- 第六阶段：结算最终重量 ---
                 _currentStep.value = LockerStep.FINISHED
@@ -3137,6 +3155,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 toWeightAfterClosing = weightAfterClosing
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
                 BoxToolLogUtils.savePrintln("业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
+//                _currentStep.value = LockerStep.CAMERA_END
+
             } catch (e: TimeoutCancellationException) {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", true)
                 BoxToolLogUtils.savePrintln("业务流：操作超时，请检查柜门是否卡住")
@@ -3144,6 +3164,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
             } finally {
+                cameraManagerNew.destroy()
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
@@ -3208,6 +3229,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
                 // --- 第二阶段：轮询等待门开启 ---
                 BoxToolLogUtils.savePrintln("业务流：等待门物理状态变为【开启】")
+                takePhoto(1)
                 // 使用 withTimeout 防止传感器故障导致协程永久挂起
                 // 3分钟转换为毫秒
                 val timeoutOpenMillis = 3 * 60 * 1000
@@ -3281,6 +3303,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
                     delay(3000)
                 }
+                takePhoto(0)
                 _currentStep.value = LockerStep.WAITING_CLOSE
                 // --- 第六阶段：结算最终重量 ---
                 _currentStep.value = LockerStep.FINISHED
@@ -3290,6 +3313,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 toWeightAfterClosing = weightAfterClosing
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
                 BoxToolLogUtils.savePrintln("业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
+//                _currentStep.value = LockerStep.CAMERA_END
             } catch (e: TimeoutCancellationException) {
                 BoxToolLogUtils.savePrintln("业务流：操作超时，请检查柜门是否卡住")
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", true)
@@ -3297,6 +3321,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
             } finally {
+                cameraManagerNew.destroy()
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
@@ -3380,7 +3405,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
 
         //关闭摄像头释放资源
-        cameraManagerNew.destroy()
+//        cameraManagerNew.destroy()
     }
 
     /***
@@ -3626,85 +3651,162 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * @param switchType 0.关 1.开
      */
+//    suspend fun takePhoto(switchType: Int = -1) = withContext(Dispatchers.IO) {
+//        val transId = modelOpenBean?.transId ?: "transId"
+//        val setTransId = removeRetryPrefix(transId)
+//        val nameIn = "s-${setTransId}-i-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+//        val nameOut = "s-${setTransId}-o-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+//        val dir = File(
+//            AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
+//        )
+//        if (!dir.exists()) dir.mkdirs()
+//        val fileIn = File(dir, nameIn)
+//        val fileOut = File(dir, nameOut)
+//        when (switchType) {
+//            CmdCode.GE_OPEN -> {
+//                val taskIn = async {
+//                    cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
+//                        BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile ${toFile?.name}")
+//                        toFile?.name?.let {
+//                            uploadPhoto(curSn, setTransId, 0, it, switchType.toString())
+//                        }
+//                        toFile?.absolutePath?.let {
+//                            toGoInsertPhoto(setTransId, switchType.toString(), 0, it)
+//                        }
+//                        setRefBusStaChannel(MonitorWeight().apply {
+//                            refreshType = RefBusType.REFRESH_TYPE_4
+//                            takePhotoUrl = fileIn.absolutePath
+//                        })
+//                    }
+//                }
+//                val taskOut = async {
+//                    cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
+//                        BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile ${toFile?.name}")
+//                        toFile?.name?.let {
+//                            uploadPhoto(curSn, setTransId, 2, it, switchType.toString())
+//                        }
+//                        toFile?.absolutePath?.let {
+//                            toGoInsertPhoto(setTransId, switchType.toString(), 1, it)
+//                        }
+//                        setRefBusStaChannel(MonitorWeight().apply {
+//                            refreshType = RefBusType.REFRESH_TYPE_4
+//                            takePhotoUrl = fileOut.absolutePath
+//                        })
+//                    }
+//                }
+//                val resIn = taskIn.wait()
+//                val resOut = taskOut.wait()
+//            }
+//
+//            CmdCode.GE_CLOSE -> {
+//                cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
+//                    BoxToolLogUtils.saveCamera("拍照成功 关门 外 $toFile ${toFile?.name}")
+//                    toFile?.name?.let {
+//                        uploadPhoto(curSn, setTransId, 3, it, switchType.toString())
+//                    }
+//                    toFile?.absolutePath?.let {
+//                        toGoInsertPhoto(setTransId, switchType.toString(), 1, it)
+//                    }
+//                    setRefBusStaChannel(MonitorWeight().apply {
+//                        refreshType = RefBusType.REFRESH_TYPE_4
+//                        takePhotoUrl = fileOut.absolutePath
+//                    })
+//
+//                }
+//                delay(3000)
+//                cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
+//                    BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile ${toFile?.name}")
+//                    toFile?.name?.let {
+//                        uploadPhoto(curSn, setTransId, 1, it, switchType.toString())
+//                    }
+//                    toFile?.absolutePath?.let {
+//                        toGoInsertPhoto(
+//                            setTransId, switchType.toString(), 0, it
+//                        )
+//                    }
+//                    setRefBusStaChannel(MonitorWeight().apply {
+//                        refreshType = RefBusType.REFRESH_TYPE_4
+//                        takePhotoUrl = fileIn.absolutePath
+//                    })
+//                }
+//            }
+//        }/**/
+//
+//    }
+
+    /**
+     * 拍照业务逻辑
+     * @param switchType 业务类型 (开门/关门)
+     */
     suspend fun takePhoto(switchType: Int = -1) = withContext(Dispatchers.IO) {
         val transId = modelOpenBean?.transId ?: "transId"
         val setTransId = removeRetryPrefix(transId)
-        val nameIn = "s-${setTransId}-i-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-        val nameOut = "s-${setTransId}-o-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-        val dir = File(
-            AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
-        )
+
+        // 预定义路径
+        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
         if (!dir.exists()) dir.mkdirs()
-        val fileIn = File(dir, nameIn)
-        val fileOut = File(dir, nameOut)
+
+        val fileIn = File(dir, "s-${setTransId}-i-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg")
+        val fileOut = File(dir, "s-${setTransId}-o-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg")
+
         when (switchType) {
             CmdCode.GE_OPEN -> {
-                cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile ${toFile?.name}")
-                    toFile?.name?.let {
-                        uploadPhoto(curSn, setTransId, 0, it, switchType.toString())
-                    }
-                    toFile?.absolutePath?.let {
-                        toGoInsertPhoto(setTransId, switchType.toString(), 0, it)
-                    }
-                    setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = RefBusType.REFRESH_TYPE_4
-                        takePhotoUrl = fileIn.absolutePath
-                    })
-                }
+                // 1. 拍照：内景 (挂起直到拍照回调完成)
+                val resultIn = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+                handlePhotoBusiness(resultIn, setTransId, switchType, photoPos = 0)
 
-                delay(1500)
-                cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile ${toFile?.name}")
-                    toFile?.name?.let {
-                        uploadPhoto(curSn, setTransId, 2, it, switchType.toString())
-                    }
-                    toFile?.absolutePath?.let {
-                        toGoInsertPhoto(setTransId, switchType.toString(), 1, it)
-                    }
-                    setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = RefBusType.REFRESH_TYPE_4
-                        takePhotoUrl = fileOut.absolutePath
-                    })
-                }
+                // 2. 间隔 3 秒 (只有第一张处理完了才会开始计时)
+                delay(3000)
+
+                // 3. 拍照：外景
+                val resultOut = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+                handlePhotoBusiness(resultOut, setTransId, switchType, photoPos = 2)
             }
 
             CmdCode.GE_CLOSE -> {
-                cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 关门 外 $toFile ${toFile?.name}")
-                    toFile?.name?.let {
-                        uploadPhoto(curSn, setTransId, 3, it, switchType.toString())
-                    }
-                    toFile?.absolutePath?.let {
-                        toGoInsertPhoto(setTransId, switchType.toString(), 1, it)
-                    }
-                    setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = RefBusType.REFRESH_TYPE_4
-                        takePhotoUrl = fileOut.absolutePath
-                    })
+                // 1. 拍照：外景
+                val resultOut = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+                handlePhotoBusiness(resultOut, setTransId, switchType, photoPos = 3)
 
-                }
-                delay(1500)
-                cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile ${toFile?.name}")
-                    toFile?.name?.let {
-                        uploadPhoto(curSn, setTransId, 1, it, switchType.toString())
-                    }
-                    toFile?.absolutePath?.let {
-                        toGoInsertPhoto(
-                            setTransId, switchType.toString(), 0, it
-                        )
-                    }
-                    setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = RefBusType.REFRESH_TYPE_4
-                        takePhotoUrl = fileIn.absolutePath
-                    })
-                }
-                delay(500)
+                delay(3000)
+
+                // 2. 拍照：内景
+                val resultIn = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+                handlePhotoBusiness(resultIn, setTransId, switchType, photoPos = 1)
             }
-        }/**/
-
+        }
     }
+
+    /**
+     * 统一处理拍照后的上传、入库和 UI 刷新逻辑
+     * @param toFile 拍照生成的文件
+     * @param photoPos 0:开门内, 1:关门内, 2:开门外, 3:关门外 (根据你原逻辑对应)
+     */
+    private fun handlePhotoBusiness(toFile: File?, transId: String, switchType: Int, photoPos: Int) {
+        if (toFile == null || !toFile.exists()) {
+            BoxToolLogUtils.saveCamera("拍照失败或文件不存在: pos=$photoPos")
+            return
+        }
+
+        val fileName = toFile.name
+        val filePath = toFile.absolutePath
+
+        BoxToolLogUtils.saveCamera("开始处理照片业务: $fileName")
+
+        // 1. 执行上传
+        uploadPhoto(curSn, transId, photoPos, fileName, switchType.toString())
+
+        // 2. 写入本地数据库 (0 代表内景，1 代表外景)
+        val dbPos = if (photoPos == 0 || photoPos == 1) 0 else 1
+        toGoInsertPhoto(transId, switchType.toString(), dbPos, filePath)
+
+        // 3. 通知 UI 或轮询频道刷新
+        setRefBusStaChannel(MonitorWeight().apply {
+            refreshType = RefBusType.REFRESH_TYPE_4
+            takePhotoUrl = filePath
+        })
+    }
+
 
     suspend fun takePhotoRemote(photoModel: PhotoBean) = withContext(Dispatchers.IO) {
         if (_currentStep.value == LockerStep.IDLE && !isRunning.get()) {
@@ -3769,7 +3871,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         var refreshType: Int = -1,
         /** 格口几 */
         var doorGeX: Int = CmdCode.GE,
-        /** 漫溢 正常 故障 */
+        /** 满溢 正常 故障 */
         var warningContent: String = "",
         /** 拍照的路径 */
         var takePhotoUrl: String = "",
@@ -3937,7 +4039,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                     Loge.e("进来查询投递柜结果")
                     val size = containersDB.size
-//                    BoxToolLogUtils.savePrintln("业务流：startStatus onSuccess $result")
+                    Loge.e("业务流：startStatus onSuccess $result")
                     result.containers.withIndex().forEach { (index, lower) ->
                         when (index) {
                             0 -> {
@@ -4064,8 +4166,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
 
                     }
-                }.onFailure {
-                    BoxToolLogUtils.savePrintln("业务流： startStatus onFailure")
+                }.onFailure { e ->
+                    BoxToolLogUtils.savePrintln("业务流： startStatus onFailure ${e.message}")
                 }
                 delay(1000)
                 Loge.e("进来查询投递柜结束")
@@ -4144,6 +4246,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * 重启动app
      */
     private suspend fun restartAppCloseDoor(doorGeX: Int) = withContext(Dispatchers.IO) {
+        Loge.e("流程 toGoCmdOtaBin 进来了 restartAppCloseDoor")
         val code = when (doorGeX) {
             CmdCode.GE1 -> CmdCode.GE12
             CmdCode.GE2 -> CmdCode.GE22
@@ -4154,8 +4257,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
             BoxToolLogUtils.savePrintln("业务流：开启启动关门失败：${turnDoorStatusValue.exceptionOrNull()?.message}")
             return@withContext
         }
-        val doorStatus = turnDoorStatusValue.getOrNull()?.status?:-1
-        BoxToolLogUtils.savePrintln("业务流：重启动应用 等待门物理状态变为【${SendTurnText.fromStatus(doorStatus)}】")
+        val doorStatus = turnDoorStatusValue.getOrNull()?.status ?: -1
+        BoxToolLogUtils.savePrintln("业务流：重启动应用 等待门物理状态变为【$doorStatus】")
         if (doorStatus == CmdCode.GE_OPEN) {
             toGoOpenCloseAudio(CmdCode.GE_CLOSE)
             val turnDoor = SerialPortSdk.turnDoor(code)
@@ -4187,8 +4290,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
             while (isActive && isLookState) {
                 SerialPortSdk.queryStatus().onSuccess { result ->
                     stateResult(result.containers)
-                }.onFailure {
-                    BoxToolLogUtils.savePrintln("业务流： startStatus onFailure")
+                }.onFailure { e ->
+                    BoxToolLogUtils.savePrintln("业务流： startStatus onFailure ${e.message}")
                 }
             }
         }
@@ -4207,7 +4310,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val chipVersion = ChipVersionValue.getOrNull()?.chipVersion ?: SPreUtil.gversion
             SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
             BoxToolLogUtils.savePrintln("业务流：查询版本【$chipVersion】")
-
         }
     }
 
@@ -4403,6 +4505,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
         cancelStartQueryStatus()
         closeSock()
         closeAllScope()
+        cancelServiceClose()
+        cancelJobAgain()
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

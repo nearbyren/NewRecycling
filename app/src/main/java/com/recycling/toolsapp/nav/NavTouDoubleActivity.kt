@@ -776,7 +776,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             Navigation.findNavController(
                                 this@NavTouDoubleActivity, R.id.nav_host_fragment_single
                             ).navigate(R.id.action_start_delivery)
-                            cabinetVM.takePhoto(1)
+//                            cabinetVM.takePhoto(1)
 
                         }
 
@@ -784,7 +784,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             Navigation.findNavController(
                                 this@NavTouDoubleActivity, R.id.nav_host_fragment_single
                             ).navigate(R.id.action_start_clear_door)
-                            cabinetVM.takePhoto(1)
+//                            cabinetVM.takePhoto(1)
                         }
 
                         CabinetVM.LockerStep.WEIGHT_TRACKING -> {
@@ -806,7 +806,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
                         CabinetVM.LockerStep.CLOSE -> {
                             val openType = cabinetVM.remoteOpenType
-                            cabinetVM.takePhoto(0)
+//                            cabinetVM.takePhoto(0)
                             val curWeight = when (cabinetVM.doorGeX) {
                                 CmdCode.GE1 -> {
                                     cabinetVM.curG1Weight ?: "0.00"

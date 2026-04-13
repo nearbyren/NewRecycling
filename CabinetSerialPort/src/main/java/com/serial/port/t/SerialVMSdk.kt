@@ -72,6 +72,7 @@ class SerialVM : ViewModel() {
                 } catch (e: Exception) {
                     _portStatus.value = PortStatus.ERROR
                     Loge.i("我的数据 接收处理 物理链路断开，${retryDelay}ms 后尝试重连")
+                    BoxToolLogUtils.savePrintln("我的数据 接收处理 物理链路断开，${retryDelay}ms 后尝试重连")
                     closeStreams()
                     delay(retryDelay)
                     retryDelay = (retryDelay * 2).coerceAtMost(10000L) // 指数退避
@@ -102,6 +103,7 @@ class SerialVM : ViewModel() {
             try {
                 withContext(Dispatchers.IO) {
                     Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
+//                    BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
 //                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
                     fos?.write(data)
                     fos?.flush()
@@ -183,6 +185,7 @@ class SerialVM : ViewModel() {
             responseWaiter = waiter
             directAwaitingCmd = setCmd
             try {
+                BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
                 fos?.write(data)
                 fos?.flush()
                 // 挂起直到收到数据或超时
@@ -217,6 +220,7 @@ class SerialVM : ViewModel() {
                 withContext(Dispatchers.IO) {
                     Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
 //                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
+                    BoxToolLogUtils.sendOriginalLower(10, "${ByteUtils.toHexString(data)}")
                     fos?.write(data)
                     fos?.flush()
                 }

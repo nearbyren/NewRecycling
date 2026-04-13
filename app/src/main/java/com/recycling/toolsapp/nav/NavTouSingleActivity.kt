@@ -310,7 +310,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         //启动检查故障
         cabinetVM.startPollingFault()
         ///启动查询版本
-        cabinetVM.startChipVersion()
+//        cabinetVM.startChipVersion()
 //        cabinetVM.startUpgradeWorkflow()
     }
 
@@ -549,7 +549,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OTA -> {
                         val otaModel = Gson().fromJson(json, OtaBean::class.java)
-//                        cabinetVM.startDowChip(otaModel)
+                        cabinetVM.startDowChip(otaModel)
                     }
 
                     CmdValue.CMD_OTA_APK -> {
@@ -792,14 +792,14 @@ class NavTouSingleActivity : AppCompatActivity() {
                             Navigation.findNavController(
                                 this@NavTouSingleActivity, R.id.nav_host_fragment_single
                             ).navigate(R.id.action_start_delivery)
-                            cabinetVM.takePhoto(1)
+//                            cabinetVM.takePhoto(1)
                         }
 
                         CabinetVM.LockerStep.WAITING_OPEN_CLEAR -> {
                             Navigation.findNavController(
                                 this@NavTouSingleActivity, R.id.nav_host_fragment_single
                             ).navigate(R.id.action_start_clear_door)
-                            cabinetVM.takePhoto(1)
+//                            cabinetVM.takePhoto(1)
                         }
 
                         CabinetVM.LockerStep.WEIGHT_TRACKING -> {
@@ -821,7 +821,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                         CabinetVM.LockerStep.CLOSE -> {
                             val openType = cabinetVM.remoteOpenType
-                            cabinetVM.takePhoto(0)
+//                            cabinetVM.takePhoto(0)
                             cabinetVM.startLockerEndWeight(
                                 cabinetVM.doorGeX, cabinetVM.curG1Weight ?: "0.00"
                             )
@@ -845,10 +845,11 @@ class NavTouSingleActivity : AppCompatActivity() {
                             if (it == CabinetVM.LockerStep.FINISHED) {
                                 cabinetVM.deteServiceClose()
                             }
+//                            cabinetVM.cameraManagerNew.destroy()
                         }
 
                         CabinetVM.LockerStep.CAMERA_END -> {
-                            cabinetVM.cameraManagerNew.destroy()
+//                            cabinetVM.cameraManagerNew.destroy()
                         }
                     }
                 }
