@@ -306,7 +306,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
     private fun initPort() {
         // 启动门控制系统
-//        cabinetVM.startContainersStatus()
+        cabinetVM.startContainersStatus()
         //启动检查故障
         cabinetVM.startPollingFault()
         ///启动查询版本
@@ -527,7 +527,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OTA -> {
                         val otaModel = Gson().fromJson(json, OtaBean::class.java)
-//                        cabinetVM.startDowChip(otaModel)
+                        cabinetVM.startDowChip(otaModel)
                     }
 
                     CmdValue.CMD_OTA_APK -> {

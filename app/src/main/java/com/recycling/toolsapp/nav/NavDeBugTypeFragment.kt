@@ -341,7 +341,7 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
                 }
             }
         }
-        initDoorStatus()
+//        initDoorStatus()
         binding.actvLeft.setOnClickListener {
             currentGe = CmdCode.GE1
             binding.actvLeft.isSelected = true
