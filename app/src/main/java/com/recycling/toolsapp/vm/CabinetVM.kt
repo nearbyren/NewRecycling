@@ -997,20 +997,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     containersDB.add(states)
                                     cur1Cabinld = states.cabinId ?: ""//初始化读取db格口编码
                                     curG1Weight = states.weigh.toString()
-//                                    if (!oneInit) {
-//                                        Loge.e("流程 toGoCmdOtaBin 进来了 1")
-//                                        restartAppCloseDoor(CmdCode.GE1)
-//                                    }
+                                    if (!oneInit) {
+                                        Loge.e("流程 toGoCmdOtaBin 进来了 1")
+                                        restartAppCloseDoor(CmdCode.GE1)
+                                    }
                                 }
 
                                 1 -> {
                                     containersDB.add(states)
                                     cur2Cabinld = states.cabinId ?: ""//初始化读取db格口编码
                                     curG2Weight = states.weigh.toString()
-//                                    if (!oneInit) {
-//                                        Loge.e("流程 toGoCmdOtaBin 进来了 2")
-//                                        restartAppCloseDoor(CmdCode.GE2)
-//                                    }
+                                    if (!oneInit) {
+                                        Loge.e("流程 toGoCmdOtaBin 进来了 2")
+                                        restartAppCloseDoor(CmdCode.GE2)
+                                    }
                                 }
                             }
                         }
@@ -1608,12 +1608,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = "f1-20260409.bin"
+    var chipName = "f1-20260410.bin"
 
     /***
      * 下载主芯片版本大小
      */
-    var chipDowV = 20260409
+    var chipDowV = 20260410
 
     /***
      * 当前主芯片版本大小
@@ -2427,7 +2427,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     fun startDowChip(otaModel: OtaBean) {
-        ioScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val ChipVersionValue = SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
             if (ChipVersionValue.isFailure) {
                 tipMessage("业务流 查询版本失败:${ChipVersionValue.exceptionOrNull()?.message}")
@@ -2444,8 +2444,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 val netVersion = netVersion.replace(".", "").toIntOrNull() ?: CmdCode.GJ_VERSION
                 Loge.e("流程 toGoCmdOtaBin 添加资源 $gversion  $netVersion")
                 if (netVersion > gversion && !isRunning.get()) {
-                    cancelStartQueryStatus()
-                    delay(10000)
+                    cancelContainersStatusJob()
+                    delay(5000)
                     Loge.e("流程 toGoCmdOtaBin 进来了 $gversion  $netVersion")
                     _chipStep.value = UpgradeStep.UPGRADE_DOW
                     chipCurV = gversion
@@ -2693,18 +2693,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     fun startUpgradeWorkflow() {
-        ioScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 Loge.d("流程 芯片升级 startUpgradeWorkflow  ")
                 val chipStep7 = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
                 chipStep7.onSuccess { bytes ->
                     // 解析 Payload (逻辑同你之前的代码)
                     val payload = ProtocolCodec.getSafePayload(bytes)
+                    BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep7 onSuccess = ${payload?.size}")
                     if (payload?.size == 3) {
                         _chipStep.value = UpgradeStep.ENTER_STATUS
                     }
                 }.onFailure { e ->
                     Loge.d("流程 芯片升级 chipStep7 = ${e.message} ")
+                    BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep7 = ${e.message} ")
                     _chipStep.value = UpgradeStep.ENTER_STATUS_FUALT
                     return@launch
                 }
@@ -2736,6 +2738,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             }
                         }.onFailure { e ->
                             Loge.d("流程 芯片升级 chipStep8 = ${e.message} ")
+                            BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep8 = ${e.message} ")
                             _chipStep.value = UpgradeStep.QUERY_STATUS_FUALT
                             return@launch
                         }
@@ -2770,7 +2773,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         // 升级中的文件发送循环
                                         while (isActive && conutSendByte < sendBLFile.size) {
                                             val sendByte = sendBLFile[conutSendByte]
-                                            Loge.d("流程 芯片升级 发送第$sendFCount 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
+                                            Loge.d("流程 芯片升级 发送第 $conutSendByte 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
 
                                             // 直接调用，不排队，速度最快
                                             val result = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD18, sendByte)
@@ -2779,27 +2782,29 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                                 val payload = ProtocolCodec.getSafePayload(bytes)
                                                 if (payload != null && payload.contentEquals(sendByte)) {
                                                     // 校验成功，发下一包
-                                                    sendFCount++
                                                     conutSendByte++
                                                 } else {
                                                     // 校验失败逻辑...
+                                                    BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep8 conutSendByte = $conutSendByte ")
                                                     _chipStep.value = UpgradeStep.SEND_FILE_FUALT
                                                 }
                                             }.onFailure { e ->
                                                 Loge.d("流程 芯片升级 文件發送失敗 = ${e.message} ")
                                                 _chipStep.value = UpgradeStep.SEND_FILE_FUALT
+                                                BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep8 = ${e.message} ")
                                                 // 此处可以实现重试逻辑，或者抛出异常中断升级
                                             }
-                                            delay(1000)
+//                                            delay(1000)
                                             // 方案 B 已经由 executeDirect 的返回速度决定了频率，
                                             // 这里如果下位机写 Flash 快，可以不 delay，或者只 delay(5)
                                         }
                                         Loge.d("流程 芯片升级 ${sendBLFile.size} = ${sendFCount} ")
-                                        if (sendBLFile.size == sendFCount) {
+                                        if (sendBLFile.size == conutSendByte) {
                                             _chipStep.value = UpgradeStep.SEND_FILE
                                         }
                                     } else {
                                         _chipStep.value = UpgradeStep.SEND_FILE_FUALT
+                                        BoxToolLogUtils.savePrintln("流程 芯片升级 封装好数据 没有文件数据")
                                         Loge.d("流程 芯片升级 封装好数据 没有文件数据")
                                         return@launch
                                     }
@@ -2819,6 +2824,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             }.onFailure { e ->
                                 _chipStep.value = UpgradeStep.SEND_FILE_END_FUALT
                                 Loge.d("流程 芯片升级 chipStep9 = ${e.message} ")
+                                BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep9 = ${e.message} ")
                                 return@launch
                             }
                         }
@@ -2852,6 +2858,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             }.onFailure { e ->
                                 _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                 Loge.d("流程 芯片升级 chipStep10 = ${e.message} ")
+                                BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep10 = ${e.message} ")
                                 return@launch
                             }
                         }

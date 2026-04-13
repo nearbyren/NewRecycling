@@ -635,7 +635,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
     }
 
-    private val cameraErrorListener = CameraErrorListener { status, index, text ->
+    private val cameraErrorListener = CameraErrorListener { status, index, text ,finalPath ->
         if (status) {
             if ("0" == index) {
                 cabinetVM.maptDoorFault[FaultType.FAULT_CODE_51] = false
@@ -841,10 +841,10 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             if (it == CabinetVM.LockerStep.FINISHED) {
                                 cabinetVM.deteServiceClose()
                             }
+                            cabinetVM.cameraManagerNew.destroy()
                         }
 
                         CabinetVM.LockerStep.CAMERA_END->{
-                            cabinetVM.cameraManagerNew.destroy()
                         }
                     }
                 }

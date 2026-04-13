@@ -103,10 +103,9 @@ class SerialVM : ViewModel() {
             try {
                 withContext(Dispatchers.IO) {
                     Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
-//                    BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
-//                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
+                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
                     fos?.write(data)
-                    fos?.flush()
+//                    fos?.flush()//此处代码会导致发数据会存在接收不到回来的数据
                 }
                 // 挂起直到收到数据或超时
                 val response = withTimeout(timeout) { waiter.await() }
@@ -187,7 +186,7 @@ class SerialVM : ViewModel() {
             try {
                 BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
                 fos?.write(data)
-                fos?.flush()
+//                fos?.flush()//此处代码会导致发数据会存在接收不到回来的数据
                 // 挂起直到收到数据或超时
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)
@@ -222,7 +221,7 @@ class SerialVM : ViewModel() {
 //                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
                     BoxToolLogUtils.sendOriginalLower(10, "${ByteUtils.toHexString(data)}")
                     fos?.write(data)
-                    fos?.flush()
+//                    fos?.flush()//此处代码会导致发数据会存在接收不到回来的数据
                 }
                 // 挂起直到收到数据或超时
                 val response = withTimeout(timeout) { waiter.await() }

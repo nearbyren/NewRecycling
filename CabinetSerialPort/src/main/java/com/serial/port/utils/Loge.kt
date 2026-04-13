@@ -12,8 +12,8 @@ object Loge {
     var tag = "log-android"
 
     @JvmField
-//    var isDebug = true
-    var isDebug = BuildConfig.DEBUG
+    var isDebug = true
+//    var isDebug = BuildConfig.DEBUG
 
 
     @JvmStatic
