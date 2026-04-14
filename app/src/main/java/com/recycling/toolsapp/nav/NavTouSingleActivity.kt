@@ -758,6 +758,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.OPENING -> {
+                            cabinetVM.takePhoto(1)
                             BoxToolLogUtils.savePrintln("业务流：插入数据")
                             val openType = cabinetVM.remoteOpenType
                             if (openType == 1) {
@@ -767,21 +768,41 @@ class NavTouSingleActivity : AppCompatActivity() {
 
 
                         CabinetVM.LockerStep.WAITING_OPEN_DOOR -> {
-                            Navigation.findNavController(
-                                this@NavTouSingleActivity, R.id.nav_host_fragment_single
-                            ).navigate(R.id.action_start_delivery)
 //                            cabinetVM.takePhoto(1)
+                            val openType = cabinetVM.remoteOpenType
+                            if (openType == 1) {
+                                Navigation.findNavController(
+                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                                ).navigate(R.id.action_start_delivery)
+                            }
+
                         }
 
                         CabinetVM.LockerStep.WAITING_OPEN_CLEAR -> {
-                            Navigation.findNavController(
-                                this@NavTouSingleActivity, R.id.nav_host_fragment_single
-                            ).navigate(R.id.action_start_clear_door)
 //                            cabinetVM.takePhoto(1)
+                            val openType = cabinetVM.remoteOpenType
+                            if (openType == 2) {
+                                Navigation.findNavController(
+                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                                ).navigate(R.id.action_start_clear_door)
+                            }
+                            BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
                         }
 
                         CabinetVM.LockerStep.WEIGHT_TRACKING -> {
+                            val openType = cabinetVM.remoteOpenType
+                            if (openType == 1) {
+                                Navigation.findNavController(
+                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                                ).navigate(R.id.action_start_delivery)
+                            }
+                            if (openType == 2) {
+                                Navigation.findNavController(
+                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                                ).navigate(R.id.action_start_clear_door)
+                            }
                             BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
+
                         }
 
                         CabinetVM.LockerStep.CLICK_CLOSE -> {
@@ -822,17 +843,17 @@ class NavTouSingleActivity : AppCompatActivity() {
                             if (it == CabinetVM.LockerStep.FINISHED) {
                                 cabinetVM.deteServiceClose()
                             }
-                            cabinetVM.cameraManagerNew.destroy()
                         }
 
                         CabinetVM.LockerStep.CAMERA_END -> {
-//                            cabinetVM.cameraManagerNew.destroy()
+                          
                         }
                     }
                 }
             }
         }
     }
+
 
     fun generateRandomNumberString(length: Int): String {
         val digits = ('0'..'9').joinToString("")

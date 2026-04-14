@@ -117,6 +117,8 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                                     }
                                 }
                             }
+                            binding.tvOperation.isEnabled = true
+                            binding.tvOperation.text = "点击关闭仓门"
                         }
 
                         3 -> {
@@ -125,21 +127,21 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                         }
 
                         4 -> {
-                            val bitmaps = cabinetVM.deliveryBitmap
-                            bitmaps.forEach { bit->
-                                val iv = AppCompatImageView(requireActivity()).apply {
-                                    layoutParams = LinearLayoutCompat.LayoutParams(
-                                        LinearLayoutCompat.LayoutParams.MATCH_PARENT, LinearLayoutCompat.LayoutParams.WRAP_CONTENT
-                                    ).apply {
-                                        setMargins(0, 0, 0, 20)
-                                    }
-                                    scaleType = ImageView.ScaleType.FIT_CENTER
-                                    adjustViewBounds = true  // 允许根据图片比例调整边界
-                                }
-                                iv.setImageBitmap(bit)
-                                binding.llPhoto.addView(iv)
-                                binding.llPhoto.invalidate()
-                            }
+//                            val bitmaps = cabinetVM.deliveryBitmap
+//                            bitmaps.forEach { bit->
+//                                val iv = AppCompatImageView(requireActivity()).apply {
+//                                    layoutParams = LinearLayoutCompat.LayoutParams(
+//                                        LinearLayoutCompat.LayoutParams.MATCH_PARENT, LinearLayoutCompat.LayoutParams.WRAP_CONTENT
+//                                    ).apply {
+//                                        setMargins(0, 0, 0, 20)
+//                                    }
+//                                    scaleType = ImageView.ScaleType.FIT_CENTER
+//                                    adjustViewBounds = true  // 允许根据图片比例调整边界
+//                                }
+//                                iv.setImageBitmap(bit)
+//                                binding.llPhoto.addView(iv)
+//                                binding.llPhoto.invalidate()
+//                            }
                         }
                     }
                 }

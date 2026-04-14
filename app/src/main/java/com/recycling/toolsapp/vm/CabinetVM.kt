@@ -3069,7 +3069,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 BoxToolLogUtils.savePrintln("业务流：正在执行开门动作【${SendTurnText.fromStatus(openType)}】 开门前重量:$weightBeforeOpen")
                 dbBeforeWeight(weightBeforeOpen, model)
-                takePhoto(1)
+
                 val turnDoor = SerialPortSdk.turnDoor(openType)
                 if (turnDoor.isFailure) throw Exception("开门指令发送失败: ${turnDoor.exceptionOrNull()?.message}")
                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
@@ -3080,7 +3080,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 withTimeout(20000) { // 20秒超时
                     while (isActive) {
                         val doorStatus = SerialPortSdk.turnDoorStatus(doorGex).getOrNull()?.status
-                        BoxToolLogUtils.savePrintln("业务流：门开动作等待门物理状态变为【${SendTurnText.fromStatus(doorStatus ?: -1)}】")
+                        BoxToolLogUtils.savePrintln("业务流：门开动作等待门物理状态变为 1 【${doorStatus }】")
                         if (doorStatus == CmdCode.GE_OPEN) {
                             setRefBusStaChannel(MonitorWeight().apply {
                                 refreshType = RefBusType.REFRESH_TYPE_3
@@ -3099,7 +3099,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
 //                            noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT, true)
                             BoxToolLogUtils.savePrintln("业务流：门开前格口-门开故障 打开后的重量：$weightBeforeOpen")
-                            throw Exception("业务流：门开前格口-门开故障: ${SendTurnText.fromStatus(doorStatus)}")
+                            throw Exception("业务流：门开前格口-门开故障: 3 ${doorStatus}")
                         }
                         delay(500)
                     }
@@ -3135,7 +3135,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     if (currentStep.value == LockerStep.CLOSING) {
                         withTimeout(60000) { // 30秒超时
                             val doorStatus = SerialPortSdk.turnDoorStatus(doorGex).getOrNull()?.status
-                            BoxToolLogUtils.savePrintln("业务流：门关动作等待门物理状态变为【${SendTurnText.fromStatus(doorStatus ?: -1)}】")
+                            BoxToolLogUtils.savePrintln("业务流：门关动作等待门物理状态变为 0【${doorStatus}】")
                             if (doorStatus == CmdCode.GE_CLOSE) {
 //                                noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_NORMAL, false)
                                 _currentStep.value = LockerStep.CLOSE
@@ -3155,7 +3155,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
 //                                noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT, true)
                                 BoxToolLogUtils.savePrintln("业务流：门开后格口-门关故障 打开后的重量：$weightDuringOpening")
-                                throw Exception("业务流：门开后格口-门关故障: ${SendTurnText.fromStatus(doorStatus)}")
+                                throw Exception("业务流：门开后格口-门关故障: 3 ${doorStatus}")
                             }
                         }
                         // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
@@ -3258,7 +3258,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         val doorClearStatus = SerialPortSdk.openQueryClear(queryType).getOrNull()
                         val clearType = doorClearStatus?.clearType ?: 0
                         val doorStatus = doorClearStatus?.status ?: 0
-                        BoxToolLogUtils.savePrintln("业务流：门未开等待门物理状态变为【${SendClearText.fromStatus(clearType)}】|【${SendClearText.fromStatus(doorStatus)}")
+                        BoxToolLogUtils.savePrintln("业务流：门未开等待门物理状态变为  0 1 【${clearType}】|【${doorStatus}】")
                         if (clearType == CmdCode.GE_CLOSE && doorStatus == CmdCode.GE_OPEN) {
                             _currentStep.value = LockerStep.WAITING_OPEN_CLEAR
                             val weightAfterOpeningCmd = SerialPortSdk.queryWeight(doorGex)
@@ -3275,10 +3275,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             BoxToolLogUtils.savePrintln("业务流：门开前清运-门开故障 3分钟内未收到开门状态 强制退出循环 门故障 打开前的重量：$weightBeforeOpen")
                             throw Exception("业务流：门开前清运-门开故障 3分钟内未收到开门状态 强制退出循环 门故障 打开前的重量：$weightBeforeOpen")
                         }
-                        delay(1000)
+                        delay(3000)
                     }
                 }
-
+                delay(1000)
                 // --- 第三阶段：监测重量变化 ---
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
                 BoxToolLogUtils.savePrintln("业务流：门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
@@ -3302,7 +3302,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         val doorClearStatus = SerialPortSdk.openQueryClear(queryType).getOrNull()
                         val clearType = doorClearStatus?.clearType ?: 0
                         val doorStatus = doorClearStatus?.status ?: 0
-                        BoxToolLogUtils.savePrintln("业务流：门开后等待门物理状态变为【${SendClearText.fromStatus(clearType)}】|【${SendClearText.fromStatus(doorStatus)}")
+                        BoxToolLogUtils.savePrintln("业务流：门开后等待门物理状态变为 0 0 【${clearType}】|【${doorStatus}】")
                         if (clearType == CmdCode.GE_CLOSE && doorStatus == CmdCode.GE_CLOSE) {
                             _currentStep.value = LockerStep.CLOSE
                             DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
@@ -3339,7 +3339,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
             } finally {
-                cameraManagerNew.destroy()
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
@@ -3693,34 +3692,34 @@ class CabinetVM @Inject constructor() : ViewModel() {
         when (switchType) {
             1 -> {
                 val toFile1 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
-                toFile1?.let { filePath ->
-                    deliveryBitmap.add(BitmapFactory.decodeFile(filePath.toString()))
-                }
+//                toFile1?.let { filePath ->
+//                    deliveryBitmap.add(BitmapFactory.decodeFile(filePath.toString()))
+//                }
                 BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
                 toFile1?.name?.let {
                     uploadPhoto(
                         curSn, setTransId, 0, it, switchType.toString()
                     )
-                    setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = RefBusType.REFRESH_TYPE_4
-                        takePhotoUrl = fileIn.absolutePath
-                    })
+//                    setRefBusStaChannel(MonitorWeight().apply {
+//                        refreshType = RefBusType.REFRESH_TYPE_4
+//                        takePhotoUrl = fileIn.absolutePath
+//                    })
                 }
 
                 delay(3000)
                 val toFile2 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
                 BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
-                toFile2?.let { filePath ->
-                    deliveryBitmap.add(BitmapFactory.decodeFile(filePath.toString()))
-                }
+//                toFile2?.let { filePath ->
+//                    deliveryBitmap.add(BitmapFactory.decodeFile(filePath.toString()))
+//                }
                 toFile2?.name?.let {
                     uploadPhoto(
                         curSn, setTransId, 2, it, switchType.toString()
                     )
-                    setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = RefBusType.REFRESH_TYPE_4
-                        takePhotoUrl = fileOut.absolutePath
-                    })
+//                    setRefBusStaChannel(MonitorWeight().apply {
+//                        refreshType = RefBusType.REFRESH_TYPE_4
+//                        takePhotoUrl = fileOut.absolutePath
+//                    })
                 }
             }
 
