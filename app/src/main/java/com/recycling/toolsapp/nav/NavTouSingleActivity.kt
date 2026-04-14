@@ -17,10 +17,14 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ReportFragment.Companion.reportFragment
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.Navigation
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.fragment.findNavController
 import com.cabinet.toolsapp.tools.bus.FlowBus
 import com.cabinet.toolsapp.tools.bus.ResEvent
 import com.google.android.material.snackbar.Snackbar
@@ -501,27 +505,36 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_DEBUG -> {
                         if (BuildConfig.DEBUG) {
-
-                            val args: Bundle = Bundle().apply {
-                                putInt(
-                                    NavDeBugTypeSelfFragment.IS_INDEX, NavDeBugTypeSelfFragment.IS_LEFT
-                                )
-                                putBoolean(NavDeBugTypeSelfFragment.IS_SHOW, true)
-                            }
-                            Navigation.findNavController(
+                            val navController = Navigation.findNavController(
                                 this@NavTouSingleActivity, R.id.nav_host_fragment_single
-                            ).navigate(R.id.action_start_debug_type_self, args)
-
+                            )
+                            if (navController.currentDestination?.id != R.id.action_start_debug_type_self) {
+                                val args: Bundle = Bundle().apply {
+                                    putInt(
+                                        NavDeBugTypeSelfFragment.IS_INDEX, NavDeBugTypeSelfFragment.IS_LEFT
+                                    )
+                                    putBoolean(NavDeBugTypeSelfFragment.IS_SHOW, true)
+                                }
+                                Navigation.findNavController(
+                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                                ).navigate(R.id.action_start_debug_type_self, args)
+                            }
                         } else {
-                            val args: Bundle = Bundle().apply {
-                                putInt(
-                                    NavDeBugTypeFragment.IS_INDEX, NavDeBugTypeFragment.IS_LEFT
-                                )
-                                putBoolean(NavDeBugTypeFragment.IS_SHOW, true)
-                            }
-                            Navigation.findNavController(
+                            val navController = Navigation.findNavController(
                                 this@NavTouSingleActivity, R.id.nav_host_fragment_single
-                            ).navigate(R.id.action_start_debug_type, args)
+                            )
+                            if (navController.currentDestination?.id != R.id.action_start_debug_type) {
+                                val args: Bundle = Bundle().apply {
+                                    putInt(
+                                        NavDeBugTypeFragment.IS_INDEX, NavDeBugTypeFragment.IS_LEFT
+                                    )
+                                    putBoolean(NavDeBugTypeFragment.IS_SHOW, true)
+                                }
+                                Navigation.findNavController(
+                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                                ).navigate(R.id.action_start_debug_type, args)
+                            }
+
                         }
                     }
 
@@ -602,7 +615,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         super.onDetachedFromWindow()
         Loge.e("流程 home onDestroy")
         networkStateManager.stopMonitoring()
-        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
+//        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
         cabinetVM.stopAll()
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
@@ -614,7 +627,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         super.onDestroy()
         Loge.e("流程 home onDestroy")
         networkStateManager.stopMonitoring()
-        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
+//        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
         cabinetVM.stopAll()
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
@@ -651,7 +664,10 @@ class NavTouSingleActivity : AppCompatActivity() {
 
 
     fun latestBusinessStatus() {
-        cabinetVM.cameraManagerNew.registerUsbReceiver()/*      lifecycleScope.launch {
+//        cabinetVM.cameraManagerNew.registerUsbReceiver()
+
+
+        /*      lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 SerialPortSdk.flowBusinessSetup.collect {
                     val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
@@ -752,46 +768,27 @@ class NavTouSingleActivity : AppCompatActivity() {
                     when (it) {
                         CabinetVM.LockerStep.IDLE -> {}
                         CabinetVM.LockerStep.START -> {
-                            cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_MOBILE)
                             BoxToolLogUtils.savePrintln("业务流：开启相机拍照")
-                            cabinetVM.cameraManagerNew.autoStartUsbCameras(true, binding.textureIn!!, binding.textureOut!!, delayMs = 3000, listener = cameraErrorListener)
                         }
 
                         CabinetVM.LockerStep.OPENING -> {
-                            cabinetVM.takePhoto(1)
                             BoxToolLogUtils.savePrintln("业务流：插入数据")
                             val openType = cabinetVM.remoteOpenType
                             if (openType == 1) {
                                 cabinetVM.playVoice(1)
                             }
-                            if (openType == 1) {
-                                Navigation.findNavController(
-                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
-                                ).navigate(R.id.action_start_delivery)
-                            }
-                            if (openType == 2) {
-                                Navigation.findNavController(
-                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
-                                ).navigate(R.id.action_start_clear_door)
-                            }
                         }
 
 
                         CabinetVM.LockerStep.WAITING_OPEN_DOOR -> {
-//                            cabinetVM.takePhoto(1)
-                            val openType = cabinetVM.remoteOpenType
-
 
                         }
 
                         CabinetVM.LockerStep.WAITING_OPEN_CLEAR -> {
-//                            cabinetVM.takePhoto(1)
-
                             BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
                         }
 
                         CabinetVM.LockerStep.WEIGHT_TRACKING -> {
-
                             BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
 
                         }
@@ -810,41 +807,84 @@ class NavTouSingleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.CLOSE -> {
-                            val openType = cabinetVM.remoteOpenType
+                            BoxToolLogUtils.savePrintln("业务流：检测已关闭")
                             cabinetVM.startLockerEndWeight(
                                 cabinetVM.doorGeX, cabinetVM.curG1Weight ?: "0.00"
                             )
-                            if (openType == 1) {
-                                cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_DELIVERY)
-                            }
-                            if (openType == 2) {
-                                cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_CLEAR_DOOR)
-                            }
+
                         }
 
                         CabinetVM.LockerStep.WAITING_CLOSE, CabinetVM.LockerStep.FINISHED -> {
                             BoxToolLogUtils.savePrintln("业务流：上报关闭")
-                            val openType = cabinetVM.remoteOpenType
-                            if (openType == 1) {
-                                cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_DELIVERY)
-                            }
-                            if (openType == 2) {
-                                cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_CLEAR_DOOR)
-                            }
                             if (it == CabinetVM.LockerStep.FINISHED) {
                                 cabinetVM.deteServiceClose()
                             }
                         }
 
                         CabinetVM.LockerStep.CAMERA_END -> {
-                          
+
+                        }
+                    }
+                }
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.currentUiStep.collect {
+                    BoxToolLogUtils.savePrintln("业务流：当前步骤UI -> $it")
+                    val navController = Navigation.findNavController(
+                        this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                    )
+                    when (it) {
+                        CabinetVM.LockerUiStep.IDLE -> {}
+
+                        CabinetVM.LockerUiStep.DELIVERY_START -> {
+                            if (navController.currentDestination?.id != R.id.action_start_delivery) {
+                                    Navigation.findNavController(
+                                        this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                                    ).navigate(R.id.action_start_delivery)
+                            }
+                        }
+
+                        CabinetVM.LockerUiStep.DELIVERY_END -> {
+                            navController.navigateUp()
+                        }
+
+                        CabinetVM.LockerUiStep.CLEAR_START -> {
+                            if (navController.currentDestination?.id != R.id.action_start_clear_door) {
+                                Navigation.findNavController(
+                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                                ).navigate(R.id.action_start_clear_door)
+                            }
+
+                         }
+                        CabinetVM.LockerUiStep.CLEAR_END -> {
+                            navController.navigateUp()
+                         }
+                        CabinetVM.LockerUiStep.MOBILE_END -> {
+                            navController.navigateUp()
+                        }
+                    }
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.cameraLifecycleEvent.collect { op ->
+                    when (op) {
+                        CabinetVM.CameraOp.START -> {
+                            // 只负责这一件事：把硬件和 UI 绑定起来
+                            cabinetVM.cameraManagerNew.startDualCamerasParallel( binding.textureIn!!, binding.textureOut!!, false, listener = cameraErrorListener)
+                        }
+                        CabinetVM.CameraOp.DESTROY -> {
+                            cabinetVM.cameraManagerNew.destroy()
                         }
                     }
                 }
             }
         }
     }
-
 
     fun generateRandomNumberString(length: Int): String {
         val digits = ('0'..'9').joinToString("")

@@ -98,6 +98,13 @@ import nearby.lib.netwrok.download.SingleDownloader
 import nearby.lib.netwrok.response.CorHttp
 import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.BusType
+import okhttp3.Headers
+import okhttp3.Headers.Companion.headersOf
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.internal.wait
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -896,7 +903,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             //保存格口信息
             Loge.e("获取socket初始化数据 开始保存格口信息 开始")
             val stateBox = mutableListOf<StateEntity>()
-            var setVolume = 10
+            var setVolume = 2
             loginModel.config.list?.let { lattices ->
                 lattices.withIndex().forEach { (index, lattice) ->
                     Loge.e("获取socket初始化数据 当前格口：${index} /价格：${lattice.price}")
@@ -948,7 +955,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         weightMonitor = lattice.weight
                         time = AppUtils.getDateYMDHMS()
                     }
-                    setVolume = lattice.volume
+//                    setVolume = lattice.volume
                     val queryLattice = lattice.cabinId?.let { cabinId ->
                         DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cabinId)
                     }
@@ -1613,12 +1620,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = "f1-20260410.bin"
+    var chipName = "f1-20260409.bin"
 
     /***
      * 下载主芯片版本大小
      */
-    var chipDowV = 20260410
+    var chipDowV = 20260409
 
     /***
      * 当前主芯片版本大小
@@ -1722,7 +1729,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 上传拍照
      */
-    private fun uploadPhoto(sn: String, transId: String, photoType: Int = -1, fileName: String, activeType: String) {
+    private fun uploadPhoto(sn: String, transId: String, photoType: String , filePath: File, activeType: String) {
         viewModelScope.launch(Dispatchers.IO) {
             if (activeType == "45") {
                 Loge.d("网络请求 拍照上传 延迟")
@@ -1730,15 +1737,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 delay(3000)
 
             }
+            delay(3000) // 强制等待文件索引在 OS 层完成沉降
 
-            val dir = File(AppUtils.getContext().cacheDir, "action")
-//            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-            val file = File(dir, fileName)
             val post = mutableMapOf<String, Any>()
             post["sn"] = sn
             post["transId"] = transId
             post["photoType"] = photoType
-            post["file"] = file
+            post["file"] = filePath
             httpRepo.uploadPhoto(post).onSuccess { user ->
                 Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
                 insertInfoLog(LogEntity().apply {
@@ -2726,11 +2731,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val file2 = FileMdUtil.matchNewFile2("bin", chipName)
                     val fileType = byteArrayOf(0xf1.toByte())
                     val filSize = file2?.length()?.toInt() ?: 0
-                    filSize.let { size ->
-                        if (size < 0) return@let
+                    if (filSize != 0) {
                         //软件大小
-                        val sizeByte = HexConverter.intToByteArray(size)
-                        Loge.d("流程 芯片升级 filSize = $size | sizeByte = ${ByteUtils.toHexString(sizeByte)}")
+                        val sizeByte = HexConverter.intToByteArray(filSize)
+                        Loge.d("流程 芯片升级 filSize = $filSize | sizeByte = ${ByteUtils.toHexString(sizeByte)}")
                         //软件版本
                         val vByte = HexConverter.intToByteArray(chipDowV)
                         Loge.d("流程 芯片升级 chipMasterV = $chipDowV vByte = ${ByteUtils.toHexString(vByte)}")
@@ -2740,7 +2744,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         Loge.d("流程 芯片升级 crcByte = ${ByteUtils.toHexString(crcByte)}")
                         val sendByte = HexConverter.combineByteArrays(fileType, sizeByte, vByte, crcByte)
                         val sendResult = HexConverter.combineByteArrays(byteArrayOf(0xA1.toByte(), 0xA2.toByte(), 0xA3.toByte()), sendByte)
+                        Loge.d("流程 芯片升级 crcByte = 发送1")
                         val chipStep8 = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD8, sendResult)
+                        Loge.d("流程 芯片升级 crcByte = 发送2")
                         chipStep8.onSuccess { bytes ->
                             // 解析 Payload (逻辑同你之前的代码)
                             val payload = ProtocolCodec.getSafePayload(bytes)
@@ -2809,7 +2815,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             // 方案 B 已经由 executeDirect 的返回速度决定了频率，
                                             // 这里如果下位机写 Flash 快，可以不 delay，或者只 delay(5)
                                         }
-                                        Loge.d("流程 芯片升级 ${sendBLFile.size} = ${sendFCount} ")
+                                        Loge.d("流程 芯片升级 ${sendBLFile.size} = ${conutSendByte} ")
                                         if (sendBLFile.size == conutSendByte) {
                                             _chipStep.value = UpgradeStep.SEND_FILE
                                         }
@@ -2873,6 +2879,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 return@launch
                             }
                         }
+
+                    } else {
+
                     }
                 }
             } catch (e: Exception) {
@@ -2881,22 +2890,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // 初始化
     val cameraManagerNew = NewDualUsbCameraManager(AppUtils.getContext())
 
-
-    enum class UiCloseStep {
-        IDLE, CLOSE_DELIVERY, CLOSE_MOBILE, CLOSE_CLEAR_DOOR
-    }
-
-    // 建议将这些变量放在 ViewModel 中统一管理
-    private val _uiCloseStep = MutableStateFlow(UiCloseStep.IDLE)
-    val uiCloseStep = _uiCloseStep.asStateFlow()
-    fun setFlowUiCloseStep(step: UiCloseStep) {
-        _uiCloseStep.value = step
-    }
 
     // 定义业务状态，方便 UI 订阅显示
     enum class LockerStep {
@@ -2909,6 +2907,260 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun setFlowCurrentStep(step: LockerStep) {
         _currentStep.value = step
     }
+
+    enum class LockerUiStep {
+        IDLE, DELIVERY_START, DELIVERY_END, CLEAR_START, CLEAR_END, MOBILE_END
+    }
+
+
+    // 使用 SharedFlow，replay = 0 保证它不是粘性的
+    private val _currentUiStep = MutableSharedFlow<LockerUiStep>(replay = 0)
+    val currentUiStep = _currentUiStep.asSharedFlow()
+
+    fun setCurrentUiStep(i: LockerUiStep) {
+        viewModelScope.launch {
+            _currentUiStep.emit(i)
+        }
+    }
+
+    enum class LockerCameraStep {
+        IDLE, CAMERA_STSRT, CAMERA_OPEN, CAMERA_CLOSE, CAMERA_DESTRY
+    }
+
+    //
+//    private val _currentCameraStep = MutableSharedFlow<LockerCameraStep>(replay = 0)
+//    val currentCameraStep = _currentCameraStep.asSharedFlow()
+//    fun setCurrentCameraStep(i: LockerCameraStep) {
+//        viewModelScope.launch {
+//            _currentCameraStep.emit(i)
+//        }
+//    }
+// 1. 定义通道
+    private val photoActionChannel = Channel<Int>(Channel.UNLIMITED)
+
+    init {
+        // 2. 开启一个专用的串行协程，处理拍照队列
+        viewModelScope.launch(Dispatchers.IO) {
+            for (switchType in photoActionChannel) {
+                // 这里是串行的！执行完一次循环才会处理下一个 type
+                executePhotoWorkflow(switchType)
+            }
+        }
+    }
+
+    // 3. 外部调用的接口
+    fun enqueuePhotoAction(switchType: Int) {
+        photoActionChannel.trySend(switchType)
+    }
+
+    // 只负责控制相机的“生”与“死”
+    private val _cameraLifecycleEvent = MutableSharedFlow<CameraOp>(replay = 0)
+    val cameraLifecycleEvent = _cameraLifecycleEvent.asSharedFlow()
+
+    enum class CameraOp { START, DESTROY }
+
+    // 业务流中调用：
+    fun startWorkflow() {
+        // 1. 先让 Activity 把相机开起来，画面挂载到 TextureView
+        viewModelScope.launch {
+            _cameraLifecycleEvent.emit(CameraOp.START)
+        }
+    }
+
+    fun executePhotoWorkflow(switchType: Int) {
+        viewModelScope.launch {
+            val ids = cameraManagerNew.getExternalCameraIds()
+            if (ids.size < 2) return@launch
+            val transId = modelOpenBean?.transId ?: "transId"
+            postTransId = transId
+            val setTransId = removeRetryPrefix(transId)
+            val a = if (switchType == 1) 0 else 3
+            val b = if (switchType == 1) 2 else 1
+            val e = if (a == 0) 1 else 3
+            val f = if (b == 2) 2 else 4
+            val nameIn = "${e}i${a}${setTransId}.jpg"
+            val nameOut = "${f}o${b}${setTransId}.jpg"
+            val dir = File(AppUtils.getContext().cacheDir, "action")
+//        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+            if (!dir.exists()) dir.mkdirs()
+            val fileIn = File(dir, nameIn)
+            val fileOut = File(dir, nameOut)
+            val requests = listOf(
+                NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn), NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut)
+            )
+
+            // 同时开始拍照并等待全部完成
+            val results = cameraManagerNew.takePicturesParallel(requests)
+
+            withContext(Dispatchers.IO){
+                // results 里的文件顺序与 requests 一致
+                results.forEach { file ->
+                    if (file != null) {
+                        // 1. 定义外部存储的中转路径 (建议使用 App 私有的外部目录，不需要权限申请)
+
+                        val photoType = extractThirdChar(file.name).toString()
+                        uploadPhoto(curSn, setTransId, photoType, file, switchType.toString())
+
+
+//                        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+//                        if (!dir.exists()) dir.mkdirs()
+//                        val photoType = extractThirdChar(file.name).toString()
+//                        // 2. 复制文件（添加时间戳避免并发重名）
+//                        val tempFile = File(dir, "${file.name}")
+//
+//                        try {
+//                            // 执行物理拷贝
+//                            file.copyTo(tempFile, overwrite = true)
+//
+//                            delay(1000)
+//                            // 3. 提取参数
+////                            val photoType = extractFourthValue(tempFile.name).toString()
+//
+//                            BoxToolLogUtils.saveCamera("中转检查: 原始大小 ${file.length()} | 中转大小 ${tempFile.length()}")
+//
+//                            // 4. 从中转文件上传
+//                            uploadPhoto(curSn, setTransId, photoType, tempFile, switchType.toString())
+//
+//                            // 5. 【关键】上传完或延迟后记得清理中转文件，防止撑爆空间
+////                            viewModelScope.launch(Dispatchers.IO) {
+////                                delay(30000) // 延迟30秒确保 OkHttp 彻底读完
+//////                                if (tempFile.exists()) tempFile.delete()
+////                            }
+//
+//                        } catch (e: Exception) {
+//                            BoxToolLogUtils.saveCamera("中转拷贝失败: ${e.message}")
+//                        }
+
+                        delay(2000) // 双摄间隔 1s，减轻网络带宽压力
+                    }
+                }
+            }
+        }
+    }
+    // 简单上传函数
+    fun uploadPhoto2(
+        curSn: String,
+        setTransId: String,
+        photoType: String,
+        file: File,
+        switchType: String
+    ) {
+
+        viewModelScope.launch(Dispatchers.IO) {
+
+        // 创建客户端
+        val client = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build()
+
+        // 构建请求体
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("sn", curSn)
+            .addFormDataPart("transId", setTransId)
+            .addFormDataPart("photoType", photoType)
+            .addFormDataPart("switchType", switchType)
+            .addPart(
+                headersOf("Content-Disposition", "form-data; name=\"file\"; filename=\"${file.name}\""),
+                file.asRequestBody("image/jpeg".toMediaTypeOrNull())
+            )
+            .build()
+
+        // 创建请求（替换成你的上传地址）
+        val request = Request.Builder()
+            .url("http://112.91.141.155:10088/api/device/upload/photo")  // 修改为你的接口地址
+            .post(requestBody)
+            .build()
+
+        // 执行请求
+        try {
+            val response = client.newCall(request).execute()
+            if (response.isSuccessful) {
+                println("上传拍照路径 上传成功: ${file.name}")
+                println("上传拍照路径 响应: ${response.body?.string()}")
+            } else {
+                println("上传拍照路径 上传失败: ${file.name} - ${response.code}")
+            }
+            response.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            println("上传拍照路径 上传异常: ${file.name} - ${e.message}")
+        }
+    }
+    }
+    // 4. 核心拍照与上传逻辑（将原 takePhoto 内容移到这里）
+//    private suspend fun executePhotoWorkflow(switchType: Int) {
+//        println("哈哈哈哈 $switchType")
+//        val transId = modelOpenBean?.transId ?: "transId"
+//        postTransId = transId
+//        val setTransId = removeRetryPrefix(transId)
+//        val a = if (switchType == 1) 0 else 3
+//        val b = if (switchType == 1) 2 else 1
+//        val e = if (a == 0) 1 else 3
+//        val f = if (b == 2) 2 else 4
+//        val nameIn = "$e-i-$switchType-$a-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+//        val nameOut = "$f-o-$switchType-$b-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+//        val dir = File(AppUtils.getContext().cacheDir, "action")
+////        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+//        if (!dir.exists()) dir.mkdirs()
+//        val fileIn = File(dir, nameIn)
+//        val fileOut = File(dir, nameOut)
+//        when (switchType) {
+//            1 -> {
+//                val toFile1 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+//                if (toFile1 != null && toFile1.exists()) {
+//                    BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
+//                    uploadPhoto(curSn, setTransId, 0, toFile1.absolutePath, switchType.toString())
+//                }
+//                delay(3000)
+//                val toFile2 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+//                if (toFile2 != null && toFile2.exists()) {
+//                    BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
+//                    uploadPhoto(curSn, setTransId, 0, toFile2.absolutePath, switchType.toString())
+//                }
+//
+////                val ids = cameraManagerNew.getExternalCameraIds()
+////                println("进入拍照环节。。。。。${ids.size}")
+//////                if (ids.size < 2){
+//////                    return
+//////                }
+////                // 准备文件
+////                val fileMap = mapOf(
+////                    ids[0] to fileIn,
+////                    ids[1] to fileOut
+////                )
+////
+////                // 并行拍照：等待两张都拍完（由于是并行，总时间约等于一张的时间）
+////                val results = cameraManagerNew.takeDualPictureSuspend(switchType, fileMap)
+////                println("进入拍照环节。。。。。${results.size}")
+////                // 并发上传
+////                results.forEach { (cameraId, file) ->
+////                    if (file != null) {
+////                        uploadPhoto(curSn, setTransId, 0, file.absolutePath, switchType.toString())
+////                    }
+////                }
+//            }
+//
+//            0 -> {
+//                val toFile1 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+//                if (toFile1 != null && toFile1.exists()) {
+//                    BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
+//                    uploadPhoto(curSn, setTransId, 0, toFile1.absolutePath, switchType.toString())
+//                }
+//                delay(3000)
+//                val toFile2 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+//                if (toFile2 != null && toFile2.exists()) {
+//                    BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
+//                    uploadPhoto(curSn, setTransId, 0, toFile2.absolutePath, switchType.toString())
+//                }
+//            }
+//
+//            else -> {}
+//        }
+//
+//    }
 
     var checkStatusResult: Deferred<Boolean>? = null
 
@@ -3040,6 +3292,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 if (execution == false && isRunning.getAndSet(true)) {
                     return@launch
                 }
+                startWorkflow()
+                setCurrentUiStep(LockerUiStep.MOBILE_END)
                 // 1. 核心状态初始化
                 cancelPollingFaultJob()
                 cancelContainersStatusJob()
@@ -3049,7 +3303,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 remoteOpenType = model.openType
                 setPhotoTransId = transId
                 _currentStep.value = LockerStep.START
-
+                delay(1000)
+                enqueuePhotoAction(1)
                 var weightBeforeOpen = setWeightBeforeOpen   // 开门前重量
                 var weightAfterOpening = "0"  // 确认开门瞬间重量
                 var weightDuringOpening = "0" // 过程中最后一次重量
@@ -3057,7 +3312,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                 // --- 第一阶段：下发开门 ---
                 _currentStep.value = LockerStep.OPENING
-                delay(2000)
+                setCurrentUiStep(LockerUiStep.DELIVERY_START)
                 // 记录“准备开门前”的初始重量（作为参考）
                 val weightBeforeOpenCmd = SerialPortSdk.queryWeight(doorGex)
                 if (weightBeforeOpenCmd.isFailure) throw Exception("业务流 开门前重量 获取重量指令失败: ${weightBeforeOpenCmd.exceptionOrNull()?.message}")
@@ -3069,18 +3324,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 BoxToolLogUtils.savePrintln("业务流：正在执行开门动作【${SendTurnText.fromStatus(openType)}】 开门前重量:$weightBeforeOpen")
                 dbBeforeWeight(weightBeforeOpen, model)
-
                 val turnDoor = SerialPortSdk.turnDoor(openType)
                 if (turnDoor.isFailure) throw Exception("开门指令发送失败: ${turnDoor.exceptionOrNull()?.message}")
                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
                 // --- 第二阶段：轮询等待门开启 ---
                 _currentStep.value = LockerStep.WAITING_OPEN_DOOR
+
                 BoxToolLogUtils.savePrintln("业务流：等待门物理状态变为【开启】")
                 // 使用 withTimeout 防止传感器故障导致协程永久挂起
                 withTimeout(20000) { // 20秒超时
                     while (isActive) {
                         val doorStatus = SerialPortSdk.turnDoorStatus(doorGex).getOrNull()?.status
-                        BoxToolLogUtils.savePrintln("业务流：门开动作等待门物理状态变为 1 【${doorStatus }】")
+                        BoxToolLogUtils.savePrintln("业务流：门开动作等待门物理状态变为 1 【${doorStatus}】")
                         if (doorStatus == CmdCode.GE_OPEN) {
                             setRefBusStaChannel(MonitorWeight().apply {
                                 refreshType = RefBusType.REFRESH_TYPE_3
@@ -3104,7 +3359,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         delay(500)
                     }
                 }
-
                 // --- 第三阶段：监测重量变化 ---
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
                 BoxToolLogUtils.savePrintln("业务流：门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
@@ -3121,11 +3375,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, defaultWeight, openModel = model, flowEnd = false)
                     if (currentStep.value == LockerStep.CLOSE) {
                         BoxToolLogUtils.savePrintln("业务流：门已经关闭 跳出查询重量 ")
+                        enqueuePhotoAction(0)
                         break
                     }
                     // --- 第四阶段：执行关门动作 ---
                     if (currentStep.value == LockerStep.CLICK_CLOSE) {
-                        takePhoto(0)
                         _currentStep.value = LockerStep.CLOSING
                         BoxToolLogUtils.savePrintln("业务流：监测到关门信号，下发关门指令【${SendTurnText.fromStatus(closeType)}】")
                         val closeRes = SerialPortSdk.turnDoor(closeType)
@@ -3167,7 +3421,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                 _currentStep.value = LockerStep.WAITING_CLOSE
                 // --- 第六阶段：结算最终重量 ---
-                _currentStep.value = LockerStep.FINISHED
+
                 delay(3000) // 等待机械震动停止，获取更准的重量
                 val weightAfterClosingCmd = SerialPortSdk.queryWeight(doorGex)
                 if (weightAfterClosingCmd.isFailure) throw Exception("业务流 彻底关门后重量 获取重量指令失败: ${weightAfterClosingCmd.exceptionOrNull()?.message}")
@@ -3175,7 +3429,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 toWeightAfterClosing = weightAfterClosing
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
                 BoxToolLogUtils.savePrintln("业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
-//                _currentStep.value = LockerStep.CAMERA_END
+                _currentStep.value = LockerStep.FINISHED
             } catch (e: TimeoutCancellationException) {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", true)
                 BoxToolLogUtils.savePrintln("业务流：操作超时，请检查柜门是否卡住")
@@ -3183,6 +3437,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
             } finally {
+                _cameraLifecycleEvent.emit(CameraOp.DESTROY)
+                endCameraUploadPhoto()
+                //保持门要关闭
+                restartAppCloseDoor(doorGex)
+                setCurrentUiStep(LockerUiStep.DELIVERY_END)
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
@@ -3195,12 +3454,14 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     curG2Weight = toWeightAfterClosing
                     startLockerEndWeight(CmdCode.GE2, curG2Weight ?: "0.00")
                 }
+
                 startContainersStatus() // 恢复全局状态轮询
                 startPollingFault()// 恢复全局异常检测
 //                deteServiceClose()//检测服务器是否完整下发关闭指令
             }
         }
     }
+
 
     /***
      * @param model 服务器下发开门
@@ -3221,16 +3482,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 modelOpenBean = model
                 remoteOpenType = model.openType
                 _currentStep.value = LockerStep.START
+                startWorkflow()
+                delay(1000)
+                enqueuePhotoAction(1)
                 doorGeX = doorGex
-
                 var weightBeforeOpen = setWeightBeforeOpen   // 开门前重量
                 var weightAfterOpening = "0"  // 确认开门瞬间重量
                 var weightDuringOpening = "0" // 过程中最后一次重量
                 var weightAfterClosing = "0"  // 彻底关门后重量
-                takePhoto(1)
                 // --- 第一阶段：下发开门 ---
                 _currentStep.value = LockerStep.OPENING
-                delay(2000)
+                setCurrentUiStep(LockerUiStep.CLEAR_START)
                 // 记录“准备开门前”的初始重量（作为参考）
                 val weightBeforeOpenCmd = SerialPortSdk.queryWeight(doorGex)
                 if (weightBeforeOpenCmd.isFailure) throw Exception("业务流 开门前重量 获取重量指令失败: ${weightBeforeOpenCmd.exceptionOrNull()?.message}")
@@ -3247,7 +3509,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
                 // --- 第二阶段：轮询等待门开启 ---
                 BoxToolLogUtils.savePrintln("业务流：等待门物理状态变为【开启】")
-
                 // 使用 withTimeout 防止传感器故障导致协程永久挂起
                 // 3分钟转换为毫秒
                 val timeoutOpenMillis = 3 * 60 * 1000
@@ -3261,6 +3522,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         BoxToolLogUtils.savePrintln("业务流：门未开等待门物理状态变为  0 1 【${clearType}】|【${doorStatus}】")
                         if (clearType == CmdCode.GE_CLOSE && doorStatus == CmdCode.GE_OPEN) {
                             _currentStep.value = LockerStep.WAITING_OPEN_CLEAR
+                            enqueuePhotoAction(0)
                             val weightAfterOpeningCmd = SerialPortSdk.queryWeight(doorGex)
                             if (weightAfterOpeningCmd.isFailure) throw Exception("业务流 确认开门瞬间重量 获取重量指令失败: ${weightAfterOpeningCmd.exceptionOrNull()?.message}")
                             weightAfterOpening = weightAfterOpeningCmd.getOrNull()?.weight.toString()
@@ -3305,6 +3567,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         BoxToolLogUtils.savePrintln("业务流：门开后等待门物理状态变为 0 0 【${clearType}】|【${doorStatus}】")
                         if (clearType == CmdCode.GE_CLOSE && doorStatus == CmdCode.GE_CLOSE) {
                             _currentStep.value = LockerStep.CLOSE
+
                             DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
                             return@withTimeout
                         }
@@ -3321,7 +3584,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
                     delay(3000)
                 }
-                takePhoto(0)
                 _currentStep.value = LockerStep.WAITING_CLOSE
                 // --- 第六阶段：结算最终重量 ---
                 _currentStep.value = LockerStep.FINISHED
@@ -3332,6 +3594,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
                 BoxToolLogUtils.savePrintln("业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
 //                _currentStep.value = LockerStep.CAMERA_END
+
             } catch (e: TimeoutCancellationException) {
                 BoxToolLogUtils.savePrintln("业务流：操作超时，请检查柜门是否卡住")
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", true)
@@ -3339,6 +3602,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
             } finally {
+                _cameraLifecycleEvent.emit(CameraOp.DESTROY)
+                setCurrentUiStep(LockerUiStep.CLEAR_END)
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
@@ -3368,8 +3633,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         //关闭流程界面
         when (openType) {
             1 -> {
-                setFlowUiCloseStep(UiCloseStep.CLOSE_MOBILE)
-                setFlowUiCloseStep(UiCloseStep.CLOSE_DELIVERY)
+
                 if (message.contains("业务流：门开前格口-门开故障")) {
                     when (doorGex) {
                         CmdCode.GE1 -> {
@@ -3382,6 +3646,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                 }
                 if (message.contains("业务流：门开后格口-门关故障")) {
+                    setCurrentUiStep(LockerUiStep.DELIVERY_END)
                     when (doorGex) {
                         CmdCode.GE1 -> {
                             maptDoorFault[FaultType.FAULT_CODE_110] = true
@@ -3391,11 +3656,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             maptDoorFault[FaultType.FAULT_CODE_120] = true
                         }
                     }
+                    viewModelScope.launch {
+                        //保持门要关闭
+                        restartAppCloseDoor(doorGex)
+                    }
                 }
             }
 
             2 -> {
-                setFlowUiCloseStep(UiCloseStep.CLOSE_CLEAR_DOOR)
+
                 if (message.contains("业务流：门开前清运-门开故障")) {
                     when (doorGex) {
                         CmdCode.GE1 -> {
@@ -3408,6 +3677,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                 }
                 if (message.contains("业务流：门开后清运-门关故障")) {
+                    setCurrentUiStep(LockerUiStep.CLEAR_END)
                     when (doorGex) {
                         CmdCode.GE1 -> {
                             maptDoorFault[FaultType.FAULT_CODE_410] = true
@@ -3664,87 +3934,129 @@ class CabinetVM @Inject constructor() : ViewModel() {
             input
         }
     }
-    //拍照前 Before taking 拍照后 After taking
+//拍照前 Before taking 拍照后 After taking
     /***
      * @param switchType 0.关 1.开
      */
 
 
     var deliveryBitmap = mutableListOf<Bitmap>()
-    //拍照前 Before taking 拍照后 After taking
+//拍照前 Before taking 拍照后 After taking
     /***
      * @param switchType 0.关 1.开`
      */
-    var setTransId: String = ""
-    suspend fun takePhoto(switchType: Int = -1) = withContext(Dispatchers.IO) {
-        val transId = modelOpenBean?.transId ?: "transId"
-        setTransId = transId
-        val setTransId = removeRetryPrefix(transId)
-        val a = if (switchType == 1) 0 else 3
-        val b = if (switchType == 1) 2 else 1
-        val nameIn = "i-$switchType-$a-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-        val nameOut = "o-$switchType-$b-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-        val dir = File(AppUtils.getContext().cacheDir, "action")
-//        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-        if (!dir.exists()) dir.mkdirs()
-        val fileIn = File(dir, nameIn)
-        val fileOut = File(dir, nameOut)
-        when (switchType) {
-            1 -> {
-                val toFile1 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
-//                toFile1?.let { filePath ->
-//                    deliveryBitmap.add(BitmapFactory.decodeFile(filePath.toString()))
+    var postTransId: String = ""
+    fun takePhoto(switchType: Int = -1) {
+//        viewModelScope.async {
+//            val transId = modelOpenBean?.transId ?: "transId"
+//            postTransId = transId
+//            val setTransId = removeRetryPrefix(transId)
+//            val a = if (switchType == 1) 0 else 3
+//            val b = if (switchType == 1) 2 else 1
+//            val e = if (a == 0) 1 else 3
+//            val f = if (b == 2) 2 else 4
+//            val nameIn = "$e-i-$switchType-$a-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+//            val nameOut = "$f-o-$switchType-$b-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+//            val dir = File(AppUtils.getContext().cacheDir, "action")
+////        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+//            if (!dir.exists()) dir.mkdirs()
+//            val fileIn = File(dir, nameIn)
+//            val fileOut = File(dir, nameOut)
+//            when (switchType) {
+//                1 -> {
+//                    val toFile1 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+//                    if (toFile1 != null && toFile1.exists()) {
+//                        BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
+////                    uploadPhoto(curSn, setTransId, 0, toFile1.absolutePath, switchType.toString())
+//                    }
+//                    delay(3000)
+//                    val toFile2 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+//                    if (toFile2 != null && toFile2.exists()) {
+//                        BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
+////                    uploadPhoto(curSn, setTransId, 0, toFile2.absolutePath, switchType.toString())
+//                    }
 //                }
-                BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
-                toFile1?.name?.let {
-                    uploadPhoto(
-                        curSn, setTransId, 0, it, switchType.toString()
-                    )
-//                    setRefBusStaChannel(MonitorWeight().apply {
-//                        refreshType = RefBusType.REFRESH_TYPE_4
-//                        takePhotoUrl = fileIn.absolutePath
-//                    })
-                }
-
-                delay(3000)
-                val toFile2 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
-                BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
-//                toFile2?.let { filePath ->
-//                    deliveryBitmap.add(BitmapFactory.decodeFile(filePath.toString()))
+//
+//                0 -> {
+//                    val toFile1 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+//                    if (toFile1 != null && toFile1.exists()) {
+//                        BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
+////                    uploadPhoto(curSn, setTransId, 0, toFile1.absolutePath, switchType.toString())
+//                    }
+//                    delay(3000)
+//                    val toFile2 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+//                    if (toFile2 != null && toFile2.exists()) {
+//                        BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
+////                    uploadPhoto(curSn, setTransId, 0, toFile2.absolutePath, switchType.toString())
+//                    }
 //                }
-                toFile2?.name?.let {
-                    uploadPhoto(
-                        curSn, setTransId, 2, it, switchType.toString()
-                    )
-//                    setRefBusStaChannel(MonitorWeight().apply {
-//                        refreshType = RefBusType.REFRESH_TYPE_4
-//                        takePhotoUrl = fileOut.absolutePath
-//                    })
-                }
-            }
-
-            0 -> {
-                val toFile1 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
-                BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
-                toFile1?.name?.let {
-                    uploadPhoto(
-                        curSn, setTransId, 3, it, switchType.toString()
-                    )
-                }
-                delay(3000)
-                val toFile2 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
-                BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
-                toFile2?.name?.let {
-                    uploadPhoto(
-                        curSn, setTransId, 1, it, switchType.toString()
-                    )
-                }
-            }
-
-            else -> {}
-        }
+//
+//                else -> {}
+//            }
+//        }
     }
 
+
+    fun getSortedFilesByNumberPrefix(): List<String> {
+        val dir = File(AppUtils.getContext().cacheDir, "action")
+
+        if (!dir.exists() || !dir.isDirectory) {
+            return emptyList()
+        }
+
+        return dir.listFiles()?.filter { it.isFile }?.mapNotNull { file ->
+            // 提取文件名中 "-" 前的数字部分
+            val fileName = file.name
+            val dashIndex = fileName.indexOf('-')
+            if (dashIndex > 0) {
+                val numberStr = fileName.substring(0, dashIndex)
+                val number = numberStr.toIntOrNull()
+                number?.let { it to file }
+            } else null
+        }?.sortedBy { it.first }  // 按数字排序
+            ?.map { it.second.absolutePath }  // 返回完整路径
+            ?: emptyList()
+    }
+
+    fun extractFourthValue(fileName: String): String? {
+        val parts = fileName.split('_')
+        return if (parts.size >= 3) {
+            parts[2] // 索引从0开始，所以第4个是索引3
+        } else null
+    }
+
+    fun extractThirdChar(fileName: String): String? {
+        return if (fileName.length >= 3) {
+            fileName[2].toString() // 索引2，第三个字符
+        } else null
+    }
+    fun endCameraUploadPhoto() {
+//        viewModelScope.launch(Dispatchers.IO) {
+//            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+//            if (!dir.exists()) dir.mkdirs()
+//            dir.listFiles().forEach { postFile ->
+//
+//                val photoType = extractFourthValue(postFile.name).toString()
+//                Loge.d("网络请求 拍照上传 $photoType 文件大小：${postFile.length()} ")
+//                val post = mutableMapOf<String, Any>()
+//                post["sn"] = curSn
+//                post["transId"] = postTransId
+//                post["photoType"] = photoType
+//                post["file"] = postFile
+//                Loge.d("网络请求 拍照上传 post $post")
+//                httpRepo.uploadPhoto(post).onSuccess { user ->
+//                    Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
+//                }.onFailure { code, message ->
+//                    Loge.d("网络请求 拍照上传 onFailure $code $message")
+//
+//                }.onCatch { e ->
+//                    Loge.d("网络请求 拍照上传 onCatch ${e.errorMsg}")
+//                }
+//                delay(2000)
+//            }
+//        }
+
+    }
 
     /**
      * 拍照业务逻辑
@@ -3807,7 +4119,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         BoxToolLogUtils.saveCamera("开始处理照片业务: $fileName")
 
         // 1. 执行上传
-        uploadPhoto(curSn, transId, photoPos, fileName, switchType.toString())
+//        uploadPhoto(curSn, transId, photoPos, fileName, switchType.toString())
 
         // 2. 写入本地数据库 (0 代表内景，1 代表外景)
         val dbPos = if (photoPos == 0 || photoPos == 1) 0 else 1

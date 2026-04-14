@@ -36,25 +36,6 @@ class NavClearDoorFragment : BaseBindLazyTimeFragment<NavFragmentClearDoorBindin
     }
 
     private fun latestBusiness() {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.uiCloseStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：关闭页面 清运页=-> $it")
-                    when (it) {
-                        CabinetVM.UiCloseStep.IDLE -> {}
-                        CabinetVM.UiCloseStep.CLOSE_DELIVERY -> {
-                        }
-
-                        CabinetVM.UiCloseStep.CLOSE_MOBILE -> {
-                        }
-
-                        CabinetVM.UiCloseStep.CLOSE_CLEAR_DOOR -> {
-                            super.performCloseAction()
-                        }
-                    }
-                }
-            }
-        }
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaStateFlow.collect {

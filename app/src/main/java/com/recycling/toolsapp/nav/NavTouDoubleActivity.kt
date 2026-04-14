@@ -616,7 +616,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
         super.onDetachedFromWindow()
         Loge.e("流程 home onDestroy")
         networkStateManager.stopMonitoring()
-        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
+//        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
         cabinetVM.stopAll()
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
@@ -627,7 +627,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
         super.onDestroy()
         Loge.e("流程 home onDestroy")
         networkStateManager.stopMonitoring()
-        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
+//        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
         cabinetVM.stopAll()
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
@@ -661,7 +661,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
     }
 
     fun latestBusinessStatus() {
-        cabinetVM.cameraManagerNew.registerUsbReceiver()
+//        cabinetVM.cameraManagerNew.registerUsbReceiver()
 //        lifecycleScope.launch {
 //            repeatOnLifecycle(Lifecycle.State.STARTED) {
 //                SerialPortSdk.flowBusinessSetup.collect {
@@ -758,11 +758,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                     BoxToolLogUtils.savePrintln("业务流：当前步骤 -> $it")
                     when (it) {
                         CabinetVM.LockerStep.IDLE -> {}
-                        CabinetVM.LockerStep.START -> {
-                            cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_MOBILE)
-                            BoxToolLogUtils.savePrintln("业务流：开启相机拍照")
-                            cabinetVM.cameraManagerNew.autoStartUsbCameras(true, binding.textureIn!!, binding.textureOut!!, delayMs = 3000, listener = cameraErrorListener)
-                        }
+                        CabinetVM.LockerStep.START -> {}
 
                         CabinetVM.LockerStep.OPENING -> {
                             BoxToolLogUtils.savePrintln("业务流：插入数据")
@@ -773,18 +769,11 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.WAITING_OPEN_DOOR -> {
-                            Navigation.findNavController(
-                                this@NavTouDoubleActivity, R.id.nav_host_fragment_single
-                            ).navigate(R.id.action_start_delivery)
-//                            cabinetVM.takePhoto(1)
 
                         }
 
                         CabinetVM.LockerStep.WAITING_OPEN_CLEAR -> {
-                            Navigation.findNavController(
-                                this@NavTouDoubleActivity, R.id.nav_host_fragment_single
-                            ).navigate(R.id.action_start_clear_door)
-//                            cabinetVM.takePhoto(1)
+
                         }
 
                         CabinetVM.LockerStep.WEIGHT_TRACKING -> {
@@ -821,27 +810,10 @@ class NavTouDoubleActivity : AppCompatActivity() {
                                 }
                             }
                             cabinetVM.startLockerEndWeight(cabinetVM.doorGeX, curWeight)
-                            if (openType == 1) {
-                                cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_DELIVERY)
-                            }
-                            if (openType == 2) {
-                                cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_CLEAR_DOOR)
-                            }
                         }
 
                         CabinetVM.LockerStep.WAITING_CLOSE, CabinetVM.LockerStep.FINISHED -> {
                             BoxToolLogUtils.savePrintln("业务流：上报关闭")
-                            val openType = cabinetVM.remoteOpenType
-                            if (openType == 1) {
-                                cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_DELIVERY)
-                            }
-                            if (openType == 2) {
-                                cabinetVM.setFlowUiCloseStep(CabinetVM.UiCloseStep.CLOSE_CLEAR_DOOR)
-                            }
-                            if (it == CabinetVM.LockerStep.FINISHED) {
-                                cabinetVM.deteServiceClose()
-                            }
-                            cabinetVM.cameraManagerNew.destroy()
                         }
 
                         CabinetVM.LockerStep.CAMERA_END->{

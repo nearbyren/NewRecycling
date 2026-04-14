@@ -84,25 +84,6 @@ class NavMobileFragment : BaseBindLazyTimeFragment<NavFragmentMobileBinding>() {
             binding.clCastLeft.isVisible = true
             binding.clCastRight.isVisible = true
         }
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.uiCloseStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：关闭页面 手机页面-> $it")
-                    when (it) {
-                        CabinetVM.UiCloseStep.IDLE -> {}
-                        CabinetVM.UiCloseStep.CLOSE_DELIVERY -> {
-                        }
-
-                        CabinetVM.UiCloseStep.CLOSE_MOBILE -> {
-                            super.performCloseAction()
-                        }
-
-                        CabinetVM.UiCloseStep.CLOSE_CLEAR_DOOR -> {
-                        }
-                    }
-                }
-            }
-        }
         //左投口
         binding.acivCastLeftLogo.setOnClickListener {
             SPreUtil.put(AppUtils.getContext(), SPreUtil.mobileDoorGeX, 1)
