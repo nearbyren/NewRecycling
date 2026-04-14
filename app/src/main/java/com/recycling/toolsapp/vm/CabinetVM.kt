@@ -3049,7 +3049,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 remoteOpenType = model.openType
                 setPhotoTransId = transId
                 _currentStep.value = LockerStep.START
-                delay(1000)
+
                 var weightBeforeOpen = setWeightBeforeOpen   // 开门前重量
                 var weightAfterOpening = "0"  // 确认开门瞬间重量
                 var weightDuringOpening = "0" // 过程中最后一次重量
@@ -3057,7 +3057,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                 // --- 第一阶段：下发开门 ---
                 _currentStep.value = LockerStep.OPENING
-
+                delay(2000)
                 // 记录“准备开门前”的初始重量（作为参考）
                 val weightBeforeOpenCmd = SerialPortSdk.queryWeight(doorGex)
                 if (weightBeforeOpenCmd.isFailure) throw Exception("业务流 开门前重量 获取重量指令失败: ${weightBeforeOpenCmd.exceptionOrNull()?.message}")
@@ -3222,7 +3222,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 remoteOpenType = model.openType
                 _currentStep.value = LockerStep.START
                 doorGeX = doorGex
-                delay(1000)
+
                 var weightBeforeOpen = setWeightBeforeOpen   // 开门前重量
                 var weightAfterOpening = "0"  // 确认开门瞬间重量
                 var weightDuringOpening = "0" // 过程中最后一次重量
@@ -3230,7 +3230,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 takePhoto(1)
                 // --- 第一阶段：下发开门 ---
                 _currentStep.value = LockerStep.OPENING
-
+                delay(2000)
                 // 记录“准备开门前”的初始重量（作为参考）
                 val weightBeforeOpenCmd = SerialPortSdk.queryWeight(doorGex)
                 if (weightBeforeOpenCmd.isFailure) throw Exception("业务流 开门前重量 获取重量指令失败: ${weightBeforeOpenCmd.exceptionOrNull()?.message}")

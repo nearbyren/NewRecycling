@@ -117,8 +117,6 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                                     }
                                 }
                             }
-                            binding.tvOperation.isEnabled = true
-                            binding.tvOperation.text = "点击关闭仓门"
                         }
 
                         3 -> {
