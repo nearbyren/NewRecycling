@@ -156,7 +156,7 @@ class NewDualUsbCameraManager(context: Context) {
                 if (view1 != null) {
                     BoxToolLogUtils.saveCamera("启动第一个 USB 摄像头: ${usbIds[0]}")
                     openSingleCamera(usbIds[0], view1, startPaused)
-                }else{
+                } else {
                     if (usbIds.size >= 2 && view2 != null) {
                         BoxToolLogUtils.saveCamera("启动第二个 USB 摄像头: ${usbIds[1]}")
                         openSingleCamera(usbIds[1], view2, startPaused)
@@ -208,8 +208,7 @@ class NewDualUsbCameraManager(context: Context) {
      */
     fun resumePreview(cameraId: String? = null) {
         val targets = if (cameraId != null) listOfNotNull(cameras[cameraId]) else cameras.values
-        targets.withIndex()
-            .forEach { (index, holder) -> resumeSingleCamera(index.toString(), holder) }
+        targets.withIndex().forEach { (index, holder) -> resumeSingleCamera(index.toString(), holder) }
     }
 
     private fun resumeSingleCamera(index: String, holder: CameraHolder) {
@@ -238,23 +237,14 @@ class NewDualUsbCameraManager(context: Context) {
     }
 
     // ================== 智能拍照控制 ==================
-    /**
-     * 将 CameraManager 的回调拍照转换为协程挂起函数
-     */
-    suspend fun takePictureSuspend(
-        cameraId: String,
-        switchType: Int,
-        inOut: String,
-        saveFile: File
-    ): File? = suspendCancellableCoroutine { cont ->
-        // 调用原有的回调方法
-        this.takePicture(cameraId, switchType, inOut, saveFile) { file ->
-            // 当回调触发时，恢复协程并返回 File
-            if (cont.isActive) {
-                cont.resume(file)
+    suspend fun takePictureSuspend(cameraId: String, switchType: Int, inOut: String, saveFile: File): File? =
+        suspendCancellableCoroutine { cont ->
+            // 调用你原来的回调方法
+            this.takePicture(cameraId, switchType, inOut, saveFile) { file ->
+                if (cont.isActive) cont.resume(file)
             }
         }
-    }
+
     /**
      * 智能拍照（防连击，支持休眠状态自动唤醒预热，拍完后保持预览运行）
      */
@@ -304,59 +294,106 @@ class NewDualUsbCameraManager(context: Context) {
     private suspend fun captureImageSuspend(cameraId: String, inOut: String, switchType: Int = -1, holder: CameraHolder, saveFile: File): File? =
         suspendCancellableCoroutine { cont ->
             try {
-                val builder =
-                    holder.device?.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+                val builder = holder.device?.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
                 builder?.addTarget(holder.reader!!.surface)
 
                 holder.reader?.setOnImageAvailableListener({ reader ->
-                    try {
-                        val img = reader.acquireLatestImage()
-                        if (img == null) {
-                            if (cont.isActive) cont.resume(null)
-                            return@setOnImageAvailableListener
-                        }
+                    // 立即停止监听，防止重复回调
+                    reader.setOnImageAvailableListener(null, null)
 
-                        val buffer = img.planes[0].buffer
-                        val bytes = ByteArray(buffer.remaining())
-                        buffer.get(bytes)
-                        img.close()
+                    val img = reader.acquireLatestImage()
+                    if (img == null) {
+                        if (cont.isActive) cont.resume(null)
+                        return@setOnImageAvailableListener
+                    }
 
-                        // 单次拍照完必须移除监听器，防内存泄漏和连击崩溃
-                        reader.setOnImageAvailableListener(null, null)
+                    val buffer = img.planes[0].buffer
+                    val bytes = ByteArray(buffer.remaining())
+                    buffer.get(bytes)
+                    img.close()
 
-                        // 切到 IO 线程处理图片加水印和本地保存
-                        CoroutineScope(Dispatchers.IO).launch {
+                    // 使用 IO 协程确保处理过程不阻塞主线程，且 resume 逻辑同步
+                    scope.launch(Dispatchers.IO) {
+                        try {
                             val text = when (switchType) {
                                 1 -> "投递前"
                                 0 -> "投递后"
                                 else -> "远程拍照"
                             }
-                            val watermarkText = "$text-$inOut-${AppUtils.getDateYMDHMS2()}"
-                            val finalPath = addWatermarkToBytes(bytes, saveFile.name, watermarkText)
+                            val watermarkText = "$text-$inOut-${com.serial.port.utils.AppUtils.getDateYMDHMS2()}"
+
+                            // 调用改良后的保存方法
+                            val finalPath = saveImageWithWatermarkSync(bytes, saveFile, watermarkText)
+
                             if (cont.isActive) {
-                                val resultFile = if (finalPath != null) File(finalPath) else null
-                                BoxToolLogUtils.saveCamera("拍照完成：$cameraId, 路径：$finalPath, 大小：${resultFile?.length() ?: 0}")
-                                cameraErrorListener?.cameraStatus(finalPath != null, cameraId, "拍照完成")
-                                // 恢复外部挂起函数，返回 File 对象
-                                cont.resume(resultFile)
+                                if (finalPath != null) {
+                                    val resultFile = File(finalPath)
+                                    if (resultFile.exists() && resultFile.length() > 0) {
+                                        BoxToolLogUtils.saveCamera("[$cameraId] 物理落盘成功: $finalPath (${resultFile.length()} bytes)")
+                                        cameraErrorListener?.cameraStatus(true, cameraId, "拍照完成")
+                                        cont.resume(resultFile)
+                                    } else {
+                                        cont.resume(null)
+                                    }
+                                } else {
+                                    cont.resume(null)
+                                }
                             }
+                        } catch (e: Exception) {
+                            BoxToolLogUtils.saveCamera("处理图片异常: ${e.message}")
+                            if (cont.isActive) cont.resume(null)
                         }
-                    } catch (e: Exception) {
-                        cameraErrorListener?.cameraStatus(false, cameraId, "拍照${cameraId}存储图片失败")
-                        BoxToolLogUtils.saveCamera("Image Reader 读取异常: ${e.message}")
-                        if (cont.isActive) cont.resume(null)
                     }
                 }, holder.handler)
 
                 holder.session?.capture(builder!!.build(), null, holder.handler)
 
             } catch (e: Exception) {
-                cameraErrorListener?.cameraStatus(false, cameraId, "拍照${cameraId}存储图片异常")
-                BoxToolLogUtils.saveCamera("Capture Request 下发失败: ${e.message}")
                 if (cont.isActive) cont.resume(null)
             }
         }
 
+    private fun saveImageWithWatermarkSync(imageBytes: ByteArray, destFile: File, watermarkText: String): String? {
+        return try {
+            // 1. 解码
+            val options = BitmapFactory.Options().apply {
+                inMutable = true
+                inScaled = false
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
+                ?: return null
+
+            // 2. 绘图
+            val canvas = Canvas(bitmap)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.RED
+                textSize = bitmap.width / 40f
+                setShadowLayer(3f, 2f, 2f, Color.BLACK)
+            }
+            val margin = bitmap.width * 0.02f
+            canvas.drawText(watermarkText, margin, margin + 40f, paint)
+
+            // 3. 写入并物理同步
+            // 注意：destFile 应该在 cacheDir 下，避免权限问题
+            if (destFile.exists()) destFile.delete()
+
+            FileOutputStream(destFile).use { out ->
+                // 建议质量设为 90，100 会导致文件体积剧增且无明显画质提升
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                out.flush()
+                // 【核心】强制将内核缓冲区数据同步到存储介质，确保文件流彻底关闭且释放占用
+                out.fd.sync()
+            }
+
+            // 4. 回收内存
+            bitmap.recycle()
+            destFile.absolutePath
+        } catch (e: Exception) {
+            BoxToolLogUtils.saveCamera("水印写入失败: ${e.message}")
+            null
+        }
+    }
     // ================== 核心初始化 ==================
 
     private fun getExternalCameraIds(): List<String> {
@@ -368,8 +405,7 @@ class NewDualUsbCameraManager(context: Context) {
                         manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING)
                     }"
                 )
-                if (manager.getCameraCharacteristics(id)
-                        .get(CameraCharacteristics.LENS_FACING) != null) {
+                if (manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) != null) {
                     externalIds.add(id)
                 }
             }
@@ -399,8 +435,7 @@ class NewDualUsbCameraManager(context: Context) {
                 val captureSize = Size(1280, 720)
                 val previewSize = Size(640, 480) // 预览使用低分辨率，省带宽
 
-                holder.reader =
-                    ImageReader.newInstance(captureSize.width, captureSize.height, ImageFormat.JPEG, 2)
+                holder.reader = ImageReader.newInstance(captureSize.width, captureSize.height, ImageFormat.JPEG, 2)
 
                 manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                     override fun onOpened(camera: CameraDevice) {
@@ -462,8 +497,7 @@ class NewDualUsbCameraManager(context: Context) {
 
                     // 核心修复：工业级 USB 摄像头大多数是定焦（Fixed-focus），盲目设置自动对焦会导致底层崩溃
                     val characteristics = manager.getCameraCharacteristics(holder.cameraId)
-                    val afModes =
-                        characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES)
+                    val afModes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES)
                     if (afModes != null && afModes.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)) {
                         builder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
                     } else {
@@ -495,52 +529,43 @@ class NewDualUsbCameraManager(context: Context) {
 
     // ================== 水印处理 ==================
 
-    private fun addWatermarkToBytes(imageBytes: ByteArray, fileName: String, watermarkText: String): String? {
+    private fun addWatermarkToBytes(imageBytes: ByteArray, fileName: String, watermarkText: String, setColor: Int = Color.RED): String? {
+        val dir = File(AppUtils.getContext().cacheDir, "action")
+//        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+        if (!dir.exists()) dir.mkdirs()
+        val destFile = File(dir, fileName)
+
+        // 保持原画尺寸，禁用缩放
+        val options = BitmapFactory.Options().apply {
+            inMutable = true
+            inScaled = false
+        }
+        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
+            ?: return null
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = setColor
+            textSize = bitmap.width / 40f
+            setShadowLayer(3f, 2f, 2f, Color.BLACK) // 增加阴影增强可见度
+        }
+
+        val margin = bitmap.width * 0.02f
+        canvas.drawText(watermarkText, margin, margin + 40f, paint)
+
         return try {
-            val dir = File(
-                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
-            )
-            if (!dir.exists()) dir.mkdirs()
-            val destFile = File(dir, fileName)
-            val options = BitmapFactory.Options().apply {
-                inMutable = true
-                inScaled = false
-                // 建议使用 ARGB_8888 保证水印质量，如果是为了极致省内存可用 RGB_565
-                inPreferredConfig = Bitmap.Config.ARGB_8888
-            }
-
-            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options) ?: return null
-            val canvas = Canvas(bitmap)
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.RED
-                textSize = bitmap.width / 40f
-                setShadowLayer(3f, 2f, 2f, Color.BLACK)
-            }
-
-            val margin = bitmap.width * 0.02f
-            canvas.drawText(watermarkText, margin, margin + 40f, paint)
-
-            // 使用 use 扩展函数自动关闭流
             FileOutputStream(destFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-                out.flush() // 强行刷入物理磁盘
-                // 文件描述符同步，确保上传库读取时内容已完整
-                out.fd.sync()
+                // 写入磁盘
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+//                out.flush() // 【核心修改】确保缓冲区数据强制刷入磁盘
             }
-
             bitmap.recycle() // 及时回收内存
-
-            // 关键检查：确保文件真正存在且有大小
-            if (destFile.exists() && destFile.length() > 0) {
-                destFile.absolutePath
-            } else {
-                null
-            }
+            destFile.absolutePath
         } catch (e: Exception) {
-            BoxToolLogUtils.saveCamera("写入失败: ${e.message}")
+            BoxToolLogUtils.saveCamera("写入水印文件失败: ${e.message}")
             null
         }
     }
+
     // ================== 精确防误杀 USB 广播监听 ==================
 
     private val usbReceiver = object : BroadcastReceiver() {
@@ -550,8 +575,7 @@ class NewDualUsbCameraManager(context: Context) {
             when (intent.action) {
                 UsbManager.ACTION_USB_DEVICE_DETACHED -> {
                     // 核心修复：只拦截 USB 视频设备（摄像头）。拔除U盘、鼠标键盘等外设时不误杀相机进程。
-                    val isVideoDevice =
-                        device?.deviceClass == UsbConstants.USB_CLASS_VIDEO || device?.deviceClass == UsbConstants.USB_CLASS_MISC
+                    val isVideoDevice = device?.deviceClass == UsbConstants.USB_CLASS_VIDEO || device?.deviceClass == UsbConstants.USB_CLASS_MISC
 
                     if (isVideoDevice) {
                         BoxToolLogUtils.saveCamera("检测到 USB 摄像头拔出 [${device?.productName}], 紧急释放资源")

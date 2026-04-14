@@ -799,7 +799,6 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                         CabinetVM.LockerStep.CLOSE -> {
                             val openType = cabinetVM.remoteOpenType
-//                            cabinetVM.takePhoto(0)
                             cabinetVM.startLockerEndWeight(
                                 cabinetVM.doorGeX, cabinetVM.curG1Weight ?: "0.00"
                             )
@@ -823,7 +822,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                             if (it == CabinetVM.LockerStep.FINISHED) {
                                 cabinetVM.deteServiceClose()
                             }
-//                            cabinetVM.cameraManagerNew.destroy()
+                            cabinetVM.cameraManagerNew.destroy()
                         }
 
                         CabinetVM.LockerStep.CAMERA_END -> {

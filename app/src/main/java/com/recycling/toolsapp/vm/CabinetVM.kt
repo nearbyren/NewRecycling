@@ -109,6 +109,7 @@ import java.net.Socket
 import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.math.min
 import kotlin.math.pow
@@ -404,6 +405,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val transId = adminOverflowModel.transId ?: ""
             if (autoCalcOverflow == 0 && overflowState == 1) {
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState, true)
+                SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowStateValue, overflowState)
                 when (cabinId) {
                     cur1Cabinld -> {
                         SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState1, false)
@@ -416,6 +418,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         maptDoorFault[FaultType.FAULT_CODE_2120] = true
                     }
                 }
+            } else if (autoCalcOverflow == 0 && overflowState == 0) {
+                SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState, true)
+                SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowStateValue, overflowState)
             } else {
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState, false)
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState1, false)
@@ -1719,21 +1724,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     private fun uploadPhoto(sn: String, transId: String, photoType: Int = -1, fileName: String, activeType: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            Loge.d("网络请求 拍照上传 进来 $sn $transId $photoType $fileName $activeType")
             if (activeType == "45") {
                 Loge.d("网络请求 拍照上传 延迟")
                 toGoTPSucces(transId)
                 delay(3000)
 
             }
+
+            val dir = File(AppUtils.getContext().cacheDir, "action")
+//            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+            val file = File(dir, fileName)
             val post = mutableMapOf<String, Any>()
             post["sn"] = sn
             post["transId"] = transId
             post["photoType"] = photoType
-            val file = File(
-                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.path + "/action/${fileName}"
-            )
-            Loge.e("网络请求 拍照上传 进来 ${file.name} | ${file.absolutePath}")
             post["file"] = file
             httpRepo.uploadPhoto(post).onSuccess { user ->
                 Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
@@ -2264,8 +2268,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val setIr1 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr1, -1] as Int
                     val setIr2 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr2, -1] as Int
                     val overflowState = SPreUtil[AppUtils.getContext(), SPreUtil.overflowState, false] as Boolean
+                    val overflowStateValue = SPreUtil[AppUtils.getContext(), SPreUtil.overflowStateValue, 1] as Int
                     // 构建JSON对象
-                    val jsonObject = getDeviceWeightChange(CmdValue.CMD_HEART_BEAT, stateList, setSignal, setIr1, setIr2, overflowState)
+                    val jsonObject = getDeviceWeightChange(CmdValue.CMD_HEART_BEAT, stateList, setSignal, setIr1, setIr2, overflowState, overflowStateValue)
                     Loge.e("执行重量变动 心跳")
                     if (!isRunning.get()) {
                         val result1 = WeightChangeStorage(AppUtils.getContext()).get("key_weight1")
@@ -2278,7 +2283,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             if (result2 == "success") {
                                 devWeiChaMapSend[1] = false
                             }
-                            val weightChange = getDeviceWeightChange(CmdValue.CMD_PERIPHERAL_STATUS, stateList, setSignal, setIr1, setIr2, overflowState)
+                            val weightChange = getDeviceWeightChange(CmdValue.CMD_PERIPHERAL_STATUS, stateList, setSignal, setIr1, setIr2, overflowState, overflowStateValue)
                             Loge.e("执行重量变动 数据 $weightChange ")
                             sendText(weightChange.toString())
                             saveRecordSocket(CmdValue.CONNECTING, "weight, 1：${devWeiChaMapCun[0]} | 2：${devWeiChaMapCun[1]}")
@@ -2296,7 +2301,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    private fun getDeviceWeightChange(cmd: String, stateList: List<StateEntity>, setSignal: Int, setIr1: Int, setIr2: Int, overflowState: Boolean): JsonObject {
+    private fun getDeviceWeightChange(cmd: String, stateList: List<StateEntity>, setSignal: Int, setIr1: Int, setIr2: Int, overflowState: Boolean, overflowStateValue: Int): JsonObject {
         return JsonBuilder.build {
             addProperty("cmd", cmd)
             addProperty("signal", setSignal)
@@ -2319,7 +2324,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             }
                         }
                         val curGWeight = state.weigh
-                        if (overflowState && curGWeight > curGTotal) {
+                        if (overflowState) {
+                            if (overflowStateValue == 1) {
+                                addProperty("capacity", 2)
+                            } else if (overflowStateValue == 0) {
+                                addProperty("capacity", 0)
+                            }
+                        } else if (curGWeight > curGTotal) {
                             addProperty("capacity", 2)
                         } else {
                             addProperty("capacity", state.capacity)
@@ -3058,7 +3069,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 BoxToolLogUtils.savePrintln("业务流：正在执行开门动作【${SendTurnText.fromStatus(openType)}】 开门前重量:$weightBeforeOpen")
                 dbBeforeWeight(weightBeforeOpen, model)
-                takePhoto2(1)
+                takePhoto(1)
                 val turnDoor = SerialPortSdk.turnDoor(openType)
                 if (turnDoor.isFailure) throw Exception("开门指令发送失败: ${turnDoor.exceptionOrNull()?.message}")
                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
@@ -3114,7 +3125,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                     // --- 第四阶段：执行关门动作 ---
                     if (currentStep.value == LockerStep.CLICK_CLOSE) {
-                        takePhoto2(0)
+                        takePhoto(0)
                         _currentStep.value = LockerStep.CLOSING
                         BoxToolLogUtils.savePrintln("业务流：监测到关门信号，下发关门指令【${SendTurnText.fromStatus(closeType)}】")
                         val closeRes = SerialPortSdk.turnDoor(closeType)
@@ -3165,7 +3176,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
                 BoxToolLogUtils.savePrintln("业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
 //                _currentStep.value = LockerStep.CAMERA_END
-
             } catch (e: TimeoutCancellationException) {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", true)
                 BoxToolLogUtils.savePrintln("业务流：操作超时，请检查柜门是否卡住")
@@ -3173,7 +3183,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
             } finally {
-                cameraManagerNew.destroy()
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
@@ -3660,103 +3669,81 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * @param switchType 0.关 1.开
      */
+
+
+    var deliveryBitmap = mutableListOf<Bitmap>()
     //拍照前 Before taking 拍照后 After taking
     /***
-     * @param switchType 0.关 1.开
+     * @param switchType 0.关 1.开`
      */
+    var setTransId: String = ""
     suspend fun takePhoto(switchType: Int = -1) = withContext(Dispatchers.IO) {
         val transId = modelOpenBean?.transId ?: "transId"
+        setTransId = transId
         val setTransId = removeRetryPrefix(transId)
-        val nameIn = "s-${setTransId}-i-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-        val nameOut = "s-${setTransId}-o-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-        val dir = File(
-            AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
-        )
+        val a = if (switchType == 1) 0 else 3
+        val b = if (switchType == 1) 2 else 1
+        val nameIn = "i-$switchType-$a-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+        val nameOut = "o-$switchType-$b-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+        val dir = File(AppUtils.getContext().cacheDir, "action")
+//        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
         if (!dir.exists()) dir.mkdirs()
         val fileIn = File(dir, nameIn)
         val fileOut = File(dir, nameOut)
         when (switchType) {
             1 -> {
-                cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile ${toFile?.name}")
-                    toFile?.name?.let {
-                        uploadPhoto(
-                            curSn, setTransId, 0, it, switchType.toString()
-                        )
-                    }
-                    toFile?.absolutePath?.let {
-                        toGoInsertPhoto(
-                            setTransId, switchType.toString(), 0, it
-                        )
-                    }
+                val toFile1 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+                toFile1?.let { filePath ->
+                    deliveryBitmap.add(BitmapFactory.decodeFile(filePath.toString()))
+                }
+                BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
+                toFile1?.name?.let {
+                    uploadPhoto(
+                        curSn, setTransId, 0, it, switchType.toString()
+                    )
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = RefBusType.REFRESH_TYPE_4
                         takePhotoUrl = fileIn.absolutePath
                     })
                 }
 
-                delay(5000)
-                cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile ${toFile?.name}")
-                    toFile?.name?.let {
-                        uploadPhoto(
-                            curSn, setTransId, 2, it, switchType.toString()
-                        )
-                    }
-                    toFile?.absolutePath?.let {
-                        toGoInsertPhoto(
-                            setTransId, switchType.toString(), 1, it
-                        )
-                    }
+                delay(3000)
+                val toFile2 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+                BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
+                toFile2?.let { filePath ->
+                    deliveryBitmap.add(BitmapFactory.decodeFile(filePath.toString()))
+                }
+                toFile2?.name?.let {
+                    uploadPhoto(
+                        curSn, setTransId, 2, it, switchType.toString()
+                    )
                     setRefBusStaChannel(MonitorWeight().apply {
                         refreshType = RefBusType.REFRESH_TYPE_4
                         takePhotoUrl = fileOut.absolutePath
                     })
-
-
                 }
             }
 
             0 -> {
-                cameraManagerNew.takePicture("1", switchType, "外", fileOut) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile ${toFile?.name}")
-                    toFile?.name?.let {
-                        uploadPhoto(
-                            curSn, setTransId, 3, it, switchType.toString()
-                        )
-                    }
-                    toFile?.absolutePath?.let {
-                        toGoInsertPhoto(
-                            setTransId, switchType.toString(), 1, it
-                        )
-                    }
-                    setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = RefBusType.REFRESH_TYPE_4
-                        takePhotoUrl = fileOut.absolutePath
-                    })
-
+                val toFile1 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+                BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
+                toFile1?.name?.let {
+                    uploadPhoto(
+                        curSn, setTransId, 3, it, switchType.toString()
+                    )
                 }
                 delay(3000)
-                cameraManagerNew.takePicture("0", switchType, "内", fileIn) { toFile ->
-                    BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile ${toFile?.name}")
-                    toFile?.name?.let {
-                        uploadPhoto(
-                            curSn, setTransId, 1, it, switchType.toString()
-                        )
-                    }
-                    toFile?.absolutePath?.let {
-                        toGoInsertPhoto(
-                            setTransId, switchType.toString(), 0, it
-                        )
-                    }
-                    setRefBusStaChannel(MonitorWeight().apply {
-                        refreshType = RefBusType.REFRESH_TYPE_4
-                        takePhotoUrl = fileIn.absolutePath
-                    })
+                val toFile2 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+                BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
+                toFile2?.name?.let {
+                    uploadPhoto(
+                        curSn, setTransId, 1, it, switchType.toString()
+                    )
                 }
             }
-        }/**/
 
+            else -> {}
+        }
     }
 
 
@@ -3764,45 +3751,45 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * 拍照业务逻辑
      * @param switchType 业务类型 (开门/关门)
      */
-    suspend fun takePhoto2(switchType: Int = -1) = withContext(Dispatchers.IO) {
-        val transId = modelOpenBean?.transId ?: "transId"
-        val setTransId = removeRetryPrefix(transId)
-
-        // 预定义路径
-        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-        if (!dir.exists()) dir.mkdirs()
-
-        val fileIn = File(dir, "s-${setTransId}-i-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg")
-        val fileOut = File(dir, "s-${setTransId}-o-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg")
-
-        when (switchType) {
-            CmdCode.GE_OPEN -> {
-                // 1. 拍照：内景 (挂起直到拍照回调完成)
-                val resultIn = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
-                println("测试我来了 ¥")
-                handlePhotoBusiness(resultIn, setTransId, switchType, photoPos = 0)
-
-                // 2. 间隔 3 秒 (只有第一张处理完了才会开始计时)
-                delay(8000)
-
-                // 3. 拍照：外景
-                val resultOut = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
-                handlePhotoBusiness(resultOut, setTransId, switchType, photoPos = 2)
-            }
-
-            CmdCode.GE_CLOSE -> {
-                // 1. 拍照：外景
-                val resultOut = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
-                handlePhotoBusiness(resultOut, setTransId, switchType, photoPos = 3)
-
-                delay(3000)
-
-                // 2. 拍照：内景
-                val resultIn = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
-                handlePhotoBusiness(resultIn, setTransId, switchType, photoPos = 1)
-            }
-        }
-    }
+//    suspend fun takePhoto2(switchType: Int = -1) = withContext(Dispatchers.IO) {
+//        val transId = modelOpenBean?.transId ?: "transId"
+//        val setTransId = removeRetryPrefix(transId)
+//
+//        // 预定义路径
+//        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+//        if (!dir.exists()) dir.mkdirs()
+//
+//        val fileIn = File(dir, "s-${setTransId}-i-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg")
+//        val fileOut = File(dir, "s-${setTransId}-o-$switchType-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg")
+//
+//        when (switchType) {
+//            CmdCode.GE_OPEN -> {
+//                // 1. 拍照：内景 (挂起直到拍照回调完成)
+//                val resultIn = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+//                println("测试我来了 ¥")
+//                handlePhotoBusiness(resultIn, setTransId, switchType, photoPos = 0)
+//
+//                // 2. 间隔 3 秒 (只有第一张处理完了才会开始计时)
+//                delay(8000)
+//
+//                // 3. 拍照：外景
+//                val resultOut = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+//                handlePhotoBusiness(resultOut, setTransId, switchType, photoPos = 2)
+//            }
+//
+//            CmdCode.GE_CLOSE -> {
+//                // 1. 拍照：外景
+//                val resultOut = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+//                handlePhotoBusiness(resultOut, setTransId, switchType, photoPos = 3)
+//
+//                delay(3000)
+//
+//                // 2. 拍照：内景
+//                val resultIn = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+//                handlePhotoBusiness(resultIn, setTransId, switchType, photoPos = 1)
+//            }
+//        }
+//    }
 
     /**
      * 统一处理拍照后的上传、入库和 UI 刷新逻辑
@@ -3836,57 +3823,57 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
 
     suspend fun takePhotoRemote(photoModel: PhotoBean) = withContext(Dispatchers.IO) {
-        if (_currentStep.value == LockerStep.IDLE && !isRunning.get()) {
-            delay(1000)
-            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-            if (!dir.exists()) dir.mkdirs()
-            when (photoModel.photoType) {
-                -1 -> {
-                    val setTransId = modelOpenBean?.transId ?: "transId"
-                    val nameIn = "s-${setTransId}-$45-i-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-                    val nameOut = "s-${setTransId}-$45-o-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-                    val fileIn = File(dir, nameIn)
-                    val fileOut = File(dir, nameOut)
-
-                    cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
-                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
-                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
-                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 0, it) }
-                    }
-                    delay(5000)
-                    cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
-                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
-                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
-                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 1, it) }
-                    }
-                }
-
-                4 -> {
-
-                    val setTransId = modelOpenBean?.transId ?: "transId"
-                    val nameIn = "${setTransId}-$45-in-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-                    val fileIn = File(dir, nameIn)
-                    cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
-                        BoxToolLogUtils.saveCamera("拍照成功 远程 内 $toFile ${toFile?.name}")
-                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
-                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 0, it) }
-                    }
-
-                }
-
-                5 -> {
-                    val setTransId = modelOpenBean?.transId ?: "transId"
-                    val nameOut = "${setTransId}-$45-out-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-                    val fileOut = File(dir, nameOut)
-                    cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
-                        BoxToolLogUtils.saveCamera("拍照成功 远程 外 $toFile ${toFile?.name}")
-                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
-                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 1, it) }
-                    }
-                }
-            }
-
-        }
+//        if (_currentStep.value == LockerStep.IDLE && !isRunning.get()) {
+//            delay(1000)
+//            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+//            if (!dir.exists()) dir.mkdirs()
+//            when (photoModel.photoType) {
+//                -1 -> {
+//                    val setTransId = modelOpenBean?.transId ?: "transId"
+//                    val nameIn = "s-${setTransId}-$45-i-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
+//                    val nameOut = "s-${setTransId}-$45-o-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
+//                    val fileIn = File(dir, nameIn)
+//                    val fileOut = File(dir, nameOut)
+//
+//                    cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
+//                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
+//                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
+//                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 0, it) }
+//                    }
+//                    delay(5000)
+//                    cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
+//                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
+//                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
+//                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 1, it) }
+//                    }
+//                }
+//
+//                4 -> {
+//
+//                    val setTransId = modelOpenBean?.transId ?: "transId"
+//                    val nameIn = "${setTransId}-$45-in-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
+//                    val fileIn = File(dir, nameIn)
+//                    cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
+//                        BoxToolLogUtils.saveCamera("拍照成功 远程 内 $toFile ${toFile?.name}")
+//                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
+//                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 0, it) }
+//                    }
+//
+//                }
+//
+//                5 -> {
+//                    val setTransId = modelOpenBean?.transId ?: "transId"
+//                    val nameOut = "${setTransId}-$45-out-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
+//                    val fileOut = File(dir, nameOut)
+//                    cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
+//                        BoxToolLogUtils.saveCamera("拍照成功 远程 外 $toFile ${toFile?.name}")
+//                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
+//                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 1, it) }
+//                    }
+//                }
+//            }
+//
+//        }
     }
 
     // 使用 Channel 或 LiveData 传递结果
@@ -4039,6 +4026,42 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
 
     private var containersDB = mutableListOf<StateEntity>()
+
+
+    fun getI1PrefixJpgFiles(): List<String> {
+        return try {
+            val dir = File(
+                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
+            )
+            if (!dir.exists() || !dir.isDirectory) {
+                return emptyList()
+            }
+
+            val files = dir.listFiles()
+            if (files.isNullOrEmpty()) {
+                return emptyList()
+            }
+
+            files.filter { file ->
+                file.isFile
+            }.map { it.absolutePath }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    private fun isImageFile(fileName: String): Boolean {
+        val lowerName = fileName.lowercase()
+        return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")
+    }
+
+
+    fun extractThirdValue(input: String): String? {
+        val parts = input.split("-")
+        return if (parts.size > 2) parts[2] else null
+    }
+
 
     private var containersJob: Job? = null
     fun cancelContainersStatusJob() {

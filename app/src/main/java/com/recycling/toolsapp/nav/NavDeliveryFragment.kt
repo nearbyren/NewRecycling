@@ -125,18 +125,21 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                         }
 
                         4 -> {
-                            val iv = AppCompatImageView(requireActivity()).apply {
-                                layoutParams = LinearLayoutCompat.LayoutParams(
-                                    LinearLayoutCompat.LayoutParams.MATCH_PARENT, LinearLayoutCompat.LayoutParams.WRAP_CONTENT
-                                ).apply {
-                                    setMargins(0, 0, 0, 20)
+                            val bitmaps = cabinetVM.deliveryBitmap
+                            bitmaps.forEach { bit->
+                                val iv = AppCompatImageView(requireActivity()).apply {
+                                    layoutParams = LinearLayoutCompat.LayoutParams(
+                                        LinearLayoutCompat.LayoutParams.MATCH_PARENT, LinearLayoutCompat.LayoutParams.WRAP_CONTENT
+                                    ).apply {
+                                        setMargins(0, 0, 0, 20)
+                                    }
+                                    scaleType = ImageView.ScaleType.FIT_CENTER
+                                    adjustViewBounds = true  // 允许根据图片比例调整边界
                                 }
-                                scaleType = ImageView.ScaleType.FIT_CENTER
-                                adjustViewBounds = true  // 允许根据图片比例调整边界
+                                iv.setImageBitmap(bit)
+                                binding.llPhoto.addView(iv)
+                                binding.llPhoto.invalidate()
                             }
-                            Glide.with(requireActivity()).load(taskPhotoPath).into(iv)
-                            binding.llPhoto.addView(iv)
-                            binding.llPhoto.invalidate()
                         }
                     }
                 }
@@ -196,5 +199,6 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
         Loge.e("流程 getTakePic onDestroy ")
         cabinetVM.deliverycancelTimer()
         binding.llPhoto.removeAllViews()
+        cabinetVM.deliveryBitmap.clear()
     }
 }

@@ -168,6 +168,59 @@ object FileMdUtil {
         }
     }
 
+    fun delFileName(dir: File, fileNameToDelete: String) {
+        // 指定目录路径（修改为实际路径）
+        // 要删除的文件名（支持通配符）
+        if (!dir.exists() || !dir.isDirectory) {
+            Loge.e("指定文件删除 目录不存在或不是有效目录: $dir")
+            return
+        }
+
+        Loge.e("指定文件删除 扫描目录: ${dir.absolutePath}")
+
+        val files = dir.listFiles { f, name ->
+            // 先匹配文件名
+            val nameMatches = name == fileNameToDelete
+
+            // 再检查是否为图片文件
+            val isImageFile = nameMatches && isImageFile(name)
+
+            if (nameMatches && !isImageFile) {
+                Loge.e("指定文件删除 文件匹配但非图片，跳过删除: $name")
+            }
+
+            isImageFile
+        } ?: emptyArray()
+
+        if (files.isEmpty()) {
+            Loge.e("指定文件删除 未找到匹配的图片文件: $fileNameToDelete")
+            return
+        }
+
+        files.forEach { file ->
+            if (file.delete()) {
+                Loge.e("指定文件删除 成功删除图片: ${file.absolutePath}")
+            } else {
+                Loge.e("指定文件删除 删除失败: ${file.absolutePath}")
+            }
+        }
+    }
+
+    /**
+     * 判断文件是否为图片
+     * @param fileName 文件名
+     * @return true表示是图片文件
+     */
+    private fun isImageFile(fileName: String): Boolean {
+        val imageExtensions = listOf(
+            ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
+            ".heic", ".heif", ".tiff", ".tif", ".ico"
+        )
+
+        val lowerCaseName = fileName.lowercase()
+        return imageExtensions.any { lowerCaseName.endsWith(it) }
+    }
+
     /**
      * 保存 音频 图片资源
      * @param bitmap

@@ -41,6 +41,7 @@ object SPreUtil {
     const val debugPasswd = "debugPasswd"
     const val irOverflow = "irOverflow"
     const val overflowState = "overflowState"
+    const val overflowStateValue = "overflowStateValue"
     const val overflowState1 = "overflowState1"
     const val overflowState2 = "overflowState2"
     const val overflow = "overflow"
