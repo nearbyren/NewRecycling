@@ -158,6 +158,9 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
                 binding.tvCurWeightNet.text = "当前重量(kg)：$result"
             }
         } else {
+            votable = CalculationUtil.subtractFloats(
+                curTotalWeight, curWeight
+            )
             binding.tvCurWeightNet.text = "当前重量(kg)：$curWeight"
         }
         Loge.e("流程 刷新Ui $curWeight 换算百分百比 $weightPercent | $votable")

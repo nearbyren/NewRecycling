@@ -3304,7 +3304,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 setPhotoTransId = transId
                 _currentStep.value = LockerStep.START
                 delay(1000)
-                enqueuePhotoAction(1)
+                enqueuePhotoAction(1)//投口关闭前的拍照
                 var weightBeforeOpen = setWeightBeforeOpen   // 开门前重量
                 var weightAfterOpening = "0"  // 确认开门瞬间重量
                 var weightDuringOpening = "0" // 过程中最后一次重量
@@ -3375,7 +3375,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, defaultWeight, openModel = model, flowEnd = false)
                     if (currentStep.value == LockerStep.CLOSE) {
                         BoxToolLogUtils.savePrintln("业务流：门已经关闭 跳出查询重量 ")
-                        enqueuePhotoAction(0)
+                        enqueuePhotoAction(0)//投口关闭后的拍照
                         break
                     }
                     // --- 第四阶段：执行关门动作 ---
@@ -3484,7 +3484,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 _currentStep.value = LockerStep.START
                 startWorkflow()
                 delay(1000)
-                enqueuePhotoAction(1)
+                enqueuePhotoAction(1)//清运关闭前的拍照
                 doorGeX = doorGex
                 var weightBeforeOpen = setWeightBeforeOpen   // 开门前重量
                 var weightAfterOpening = "0"  // 确认开门瞬间重量
@@ -3522,7 +3522,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         BoxToolLogUtils.savePrintln("业务流：门未开等待门物理状态变为  0 1 【${clearType}】|【${doorStatus}】")
                         if (clearType == CmdCode.GE_CLOSE && doorStatus == CmdCode.GE_OPEN) {
                             _currentStep.value = LockerStep.WAITING_OPEN_CLEAR
-                            enqueuePhotoAction(0)
+
                             val weightAfterOpeningCmd = SerialPortSdk.queryWeight(doorGex)
                             if (weightAfterOpeningCmd.isFailure) throw Exception("业务流 确认开门瞬间重量 获取重量指令失败: ${weightAfterOpeningCmd.exceptionOrNull()?.message}")
                             weightAfterOpening = weightAfterOpeningCmd.getOrNull()?.weight.toString()
@@ -3567,7 +3567,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         BoxToolLogUtils.savePrintln("业务流：门开后等待门物理状态变为 0 0 【${clearType}】|【${doorStatus}】")
                         if (clearType == CmdCode.GE_CLOSE && doorStatus == CmdCode.GE_CLOSE) {
                             _currentStep.value = LockerStep.CLOSE
-
+                            enqueuePhotoAction(0)//清运关闭后的拍照=
                             DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
                             return@withTimeout
                         }
