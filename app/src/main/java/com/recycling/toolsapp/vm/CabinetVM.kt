@@ -1747,7 +1747,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             httpRepo.uploadPhoto(post).onSuccess { user ->
                 Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
                 insertInfoLog(LogEntity().apply {
-                    cmd = activeType
+                    cmd = "$activeType$photoType"
                     msg = "$transId,onFileSuccess"
                     time = AppUtils.getDateYMDHMS()
                 }, false)
@@ -1756,7 +1756,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             }.onFailure { code, message ->
                 Loge.d("网络请求 拍照上传 onFailure $code $message")
                 insertInfoLog(LogEntity().apply {
-                    cmd = activeType
+                    cmd = "$activeType$photoType"
                     msg = "$transId,onFileFailure"
                     time = AppUtils.getDateYMDHMS()
                 })
@@ -1764,7 +1764,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             }.onCatch { e ->
                 Loge.d("网络请求 拍照上传 onCatch ${e.errorMsg}")
                 insertInfoLog(LogEntity().apply {
-                    cmd = activeType
+                    cmd = "$activeType$photoType"
                     msg = "$transId,onFileCatch"
                     time = AppUtils.getDateYMDHMS()
                 })
