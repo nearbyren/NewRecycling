@@ -906,7 +906,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             //保存格口信息
             Loge.e("获取socket初始化数据 开始保存格口信息 开始")
             val stateBox = mutableListOf<StateEntity>()
-            var setVolume = 2
+            var setVolume = 10
             loginModel.config.list?.let { lattices ->
                 lattices.withIndex().forEach { (index, lattice) ->
                     Loge.e("获取socket初始化数据 当前格口：${index} /价格：${lattice.price}")
@@ -958,7 +958,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         weightMonitor = lattice.weight
                         time = AppUtils.getDateYMDHMS()
                     }
-//                    setVolume = lattice.volume
+                    setVolume = lattice.volume
                     val queryLattice = lattice.cabinId?.let { cabinId ->
                         DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cabinId)
                     }
@@ -4326,94 +4326,33 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
         containersJob = ioScope.launch {
             while (isActive) {
-                Loge.e("进来查询投递柜开始")
-                SerialPortSdk.queryStatus().onSuccess { result ->
-                    if (containersDB.isEmpty()) {
-                        containersDB = DatabaseManager.queryStateList(AppUtils.getContext()).toMutableList()
-                    }
-                    Loge.e("进来查询投递柜结果")
-                    val size = containersDB.size
-                    Loge.e("业务流：startStatus onSuccess $result")
-                    result.containers.withIndex().forEach { (index, lower) ->
-                        when (index) {
-                            0 -> {
-                                val state = containersDB[0]
-                                //取出原始重量
-                                val weightNew = lower.weigh?.toFloat() ?: 0.0f
-                                curG1Weight = weightNew.toString()
-                                val weightOld = state.weigh.toString()
-                                //处理重量浮动变化
-                                val isChange = CalculationUtil.subtractFloatsBoolean(
-                                    weightNew.toString(), weightOld
-                                )
-                                val result1 = WeightChangeStorage(AppUtils.getContext()).putWithCooldown(
-                                    "key_weight1", if (isChange) "success" else "Failure", devWeiChaMapSend[0]
-                                        ?: false
-                                )
-                                if (result1 && isChange) {
-                                    devWeiChaMapCun[0] = weightNew.toString()
-                                    devWeiChaMapSend[0] = true
-                                }
-                                Loge.e("执行重量变动 查询 下位机-1 |new:${lower.weigh} old:${weightOld} | 改：$isChange 结：$result1")
-                                val irStateValue = lower.irStateValue
-                                val irDoorStatusValue = lower.doorStatusValue
-                                val lockStatus = lower.lockStatusValue
-                                val runStatus = lower.xzStatusValue
-                                state.smoke = lower.smokeValue
-                                state.irState = irStateValue
-                                state.doorStatus = irDoorStatusValue
-                                state.weigh = weightNew
-                                state.lockStatus = lockStatus
-                                state.time = AppUtils.getDateYMDHMS()
-                                val curG1Total = curG1TotalWeight.toFloat()
-                                val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
-                                //实时总重量 心跳 上报前数据
-                                val curG1Weight = state.weigh
-                                //上报重量大于总重量则报提示
-                                if (curG1Weight > curG1Total) {
-                                    state.capacity = 2
-                                } else if (curG1Weight > irOverflow && irStateValue == 1) {
-                                    state.capacity = 3
-                                } else if (irStateValue == 1) {
-                                    state.capacity = 1
-                                } else if (irStateValue == 0) {
-                                    state.capacity = 0
-                                }
-                                val setIr1 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr1, -1] as Int
-                                if (setIr1 == 1) {
-                                    maptDoorFault[FaultType.FAULT_CODE_11] = irStateValue == 1
-                                } else {
-                                    maptDoorFault[FaultType.FAULT_CODE_11] = false
-                                    maptDoorFault[FaultType.FAULT_CODE_211] = false
-                                }
-                                //不等于故障则推杆正常
-                                val turnBoo = irDoorStatusValue == 3
-                                if (!turnBoo) {
-                                    maptDoorFault[FaultType.FAULT_CODE_111] = false
-                                    maptDoorFault[FaultType.FAULT_CODE_110] = false
-                                }
-                                maptDoorFault[FaultType.FAULT_CODE_91] = turnBoo
-                                maptDoorFault[FaultType.FAULT_CODE_5101] = runStatus == 0
-                                refreshContainers(state, 0)
-                            }
-
-                            1 -> {
-                                if (size > 1 && doorGeXType == CmdCode.GE2) {
-                                    val state = containersDB[1]
+                try {
+                    SerialPortSdk.queryStatus().onSuccess { result ->
+                        if (containersDB.isEmpty()) {
+                            containersDB = DatabaseManager.queryStateList(AppUtils.getContext()).toMutableList()
+                        }
+                        Loge.e("进来查询投递柜结果")
+                        val size = containersDB.size
+                        Loge.e("业务流：startStatus onSuccess $result")
+                        result.containers.withIndex().forEach { (index, lower) ->
+                            when (index) {
+                                0 -> {
+                                    val state = containersDB[0]
+                                    //取出原始重量
                                     val weightNew = lower.weigh?.toFloat() ?: 0.0f
+                                    curG1Weight = weightNew.toString()
                                     val weightOld = state.weigh.toString()
-                                    curG2Weight = weightNew.toString()
                                     //处理重量浮动变化
                                     val isChange = CalculationUtil.subtractFloatsBoolean(
                                         weightNew.toString(), weightOld
                                     )
                                     val result1 = WeightChangeStorage(AppUtils.getContext()).putWithCooldown(
-                                        "key_weight2", if (isChange) "success" else "Failure", devWeiChaMapSend[1]
+                                        "key_weight1", if (isChange) "success" else "Failure", devWeiChaMapSend[0]
                                             ?: false
                                     )
                                     if (result1 && isChange) {
-                                        devWeiChaMapCun[1] = weightNew.toString()
-                                        devWeiChaMapSend[1] = true
+                                        devWeiChaMapCun[0] = weightNew.toString()
+                                        devWeiChaMapSend[0] = true
                                     }
                                     Loge.e("执行重量变动 查询 下位机-1 |new:${lower.weigh} old:${weightOld} | 改：$isChange 结：$result1")
                                     val irStateValue = lower.irStateValue
@@ -4426,47 +4365,112 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     state.weigh = weightNew
                                     state.lockStatus = lockStatus
                                     state.time = AppUtils.getDateYMDHMS()
-                                    val curG2Total = curG2TotalWeight.toFloat()
+                                    val curG1Total = curG1TotalWeight.toFloat()
                                     val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
-                                    //实时总重量
-                                    val curG2Weight = state.weigh
+                                    //实时总重量 心跳 上报前数据
+                                    val curG1Weight = state.weigh
                                     //上报重量大于总重量则报提示
-                                    if (curG2Weight > curG2Total) {
+                                    if (curG1Weight > curG1Total) {
                                         state.capacity = 2
-                                    } else if (curG2Weight > irOverflow && irStateValue == 1) {
+                                    } else if (curG1Weight > irOverflow && irStateValue == 1) {
                                         state.capacity = 3
                                     } else if (irStateValue == 1) {
                                         state.capacity = 1
                                     } else if (irStateValue == 0) {
                                         state.capacity = 0
                                     }
-                                    val setIr2 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr2, 1] as Int
-                                    if (setIr2 == 1) {
-                                        maptDoorFault[FaultType.FAULT_CODE_12] = irStateValue == 1
+                                    val setIr1 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr1, -1] as Int
+                                    if (setIr1 == 1) {
+                                        maptDoorFault[FaultType.FAULT_CODE_11] = irStateValue == 1
                                     } else {
-                                        maptDoorFault[FaultType.FAULT_CODE_12] = false
-                                        maptDoorFault[FaultType.FAULT_CODE_212] = false
+                                        maptDoorFault[FaultType.FAULT_CODE_11] = false
+                                        maptDoorFault[FaultType.FAULT_CODE_211] = false
                                     }
                                     //不等于故障则推杆正常
                                     val turnBoo = irDoorStatusValue == 3
                                     if (!turnBoo) {
-                                        maptDoorFault[FaultType.FAULT_CODE_121] = false
-                                        maptDoorFault[FaultType.FAULT_CODE_120] = false
+                                        maptDoorFault[FaultType.FAULT_CODE_111] = false
+                                        maptDoorFault[FaultType.FAULT_CODE_110] = false
                                     }
-                                    maptDoorFault[FaultType.FAULT_CODE_92] = turnBoo
-                                    maptDoorFault[FaultType.FAULT_CODE_5202] = runStatus == 0
-                                    refreshContainers(state, 1)
+                                    maptDoorFault[FaultType.FAULT_CODE_91] = turnBoo
+                                    maptDoorFault[FaultType.FAULT_CODE_5101] = runStatus == 0
+                                    refreshContainers(state, 0)
                                 }
+
+                                1 -> {
+                                    if (size > 1 && doorGeXType == CmdCode.GE2) {
+                                        val state = containersDB[1]
+                                        val weightNew = lower.weigh?.toFloat() ?: 0.0f
+                                        val weightOld = state.weigh.toString()
+                                        curG2Weight = weightNew.toString()
+                                        //处理重量浮动变化
+                                        val isChange = CalculationUtil.subtractFloatsBoolean(
+                                            weightNew.toString(), weightOld
+                                        )
+                                        val result1 = WeightChangeStorage(AppUtils.getContext()).putWithCooldown(
+                                            "key_weight2", if (isChange) "success" else "Failure", devWeiChaMapSend[1]
+                                                ?: false
+                                        )
+                                        if (result1 && isChange) {
+                                            devWeiChaMapCun[1] = weightNew.toString()
+                                            devWeiChaMapSend[1] = true
+                                        }
+                                        Loge.e("执行重量变动 查询 下位机-1 |new:${lower.weigh} old:${weightOld} | 改：$isChange 结：$result1")
+                                        val irStateValue = lower.irStateValue
+                                        val irDoorStatusValue = lower.doorStatusValue
+                                        val lockStatus = lower.lockStatusValue
+                                        val runStatus = lower.xzStatusValue
+                                        state.smoke = lower.smokeValue
+                                        state.irState = irStateValue
+                                        state.doorStatus = irDoorStatusValue
+                                        state.weigh = weightNew
+                                        state.lockStatus = lockStatus
+                                        state.time = AppUtils.getDateYMDHMS()
+                                        val curG2Total = curG2TotalWeight.toFloat()
+                                        val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
+                                        //实时总重量
+                                        val curG2Weight = state.weigh
+                                        //上报重量大于总重量则报提示
+                                        if (curG2Weight > curG2Total) {
+                                            state.capacity = 2
+                                        } else if (curG2Weight > irOverflow && irStateValue == 1) {
+                                            state.capacity = 3
+                                        } else if (irStateValue == 1) {
+                                            state.capacity = 1
+                                        } else if (irStateValue == 0) {
+                                            state.capacity = 0
+                                        }
+                                        val setIr2 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr2, 1] as Int
+                                        if (setIr2 == 1) {
+                                            maptDoorFault[FaultType.FAULT_CODE_12] = irStateValue == 1
+                                        } else {
+                                            maptDoorFault[FaultType.FAULT_CODE_12] = false
+                                            maptDoorFault[FaultType.FAULT_CODE_212] = false
+                                        }
+                                        //不等于故障则推杆正常
+                                        val turnBoo = irDoorStatusValue == 3
+                                        if (!turnBoo) {
+                                            maptDoorFault[FaultType.FAULT_CODE_121] = false
+                                            maptDoorFault[FaultType.FAULT_CODE_120] = false
+                                        }
+                                        maptDoorFault[FaultType.FAULT_CODE_92] = turnBoo
+                                        maptDoorFault[FaultType.FAULT_CODE_5202] = runStatus == 0
+                                        refreshContainers(state, 1)
+                                    }
+                                }
+
                             }
 
                         }
-
+                    }.onFailure { e ->
+                        BoxToolLogUtils.savePrintln("业务流： startStatus onFailure ${e.message}")
                     }
-                }.onFailure { e ->
-                    BoxToolLogUtils.savePrintln("业务流： startStatus onFailure ${e.message}")
+                }catch (e: TimeoutCancellationException) {
+                    BoxToolLogUtils.savePrintln("业务流：轮询超时: ${e.message}")
+                } catch (e: Exception) {
+                    BoxToolLogUtils.savePrintln("业务流：轮询异常: ${e.message}")
                 }
-                delay(1000)
-                Loge.e("进来查询投递柜结束")
+                delay(2000)
             }
         }
     }

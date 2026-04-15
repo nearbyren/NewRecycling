@@ -47,11 +47,6 @@ class SerialVM : ViewModel() {
 
     private val extractor = FrameExtractor { packet ->
         responseWaiter?.complete(packet)
-//        directDeferred?.let {
-//            Loge.e("哈哈哈 接收 extractor $packet")
-//            onDataReceived(packet)
-//        }
-
     }
 
     fun startMonitor(path: String, baud: Int) {
@@ -83,10 +78,20 @@ class SerialVM : ViewModel() {
 
     private suspend fun readLoop() = withContext(Dispatchers.IO) {
         val buffer = ByteArray(1024)
-        while (isRunning.get()) {
-            val len = fis?.read(buffer) ?: -1
-            if (len == -1) throw IOException("End of Stream")
-            if (len > 0) extractor.push(buffer.copyOfRange(0, len))
+        try {
+            while (isRunning.get() && isActive) {
+                val len = fis?.read(buffer) ?: -1
+                if (len == -1) break
+                if (len > 0) {
+                    // 拷贝当前读取到的实际有效长度
+                    val validData = buffer.copyOfRange(0, len)
+                    // 喂给提取器
+                    extractor.push(validData)
+                }
+            }
+        } catch (e: Exception) {
+            Loge.e("串口读取异常: ${e.message}")
+            BoxToolLogUtils.savePrintln("业务流：串口读取异常: ${e.message}")
         }
     }
 
