@@ -45,6 +45,7 @@ import com.recycling.toolsapp.utils.CommandParser
 import com.recycling.toolsapp.utils.EnumSignal
 import com.recycling.toolsapp.utils.FaultType
 import com.recycling.toolsapp.utils.NetworkStateManager
+import com.recycling.toolsapp.utils.OSUtils
 import com.recycling.toolsapp.utils.SignalStrengthAnalyzer
 import com.recycling.toolsapp.utils.SnackbarUtils
 import com.recycling.toolsapp.vm.CabinetVM
@@ -54,6 +55,7 @@ import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.BusType
@@ -692,7 +694,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.chipStep.collect {
-                    Loge.e("升级流程：返回的指令 -> $it")
+                    Loge.i("升级流程：返回的指令 -> $it")
                     when (it) {
                         CabinetVM.UpgradeStep.IDLE -> {}
 
@@ -746,6 +748,10 @@ class NavTouDoubleActivity : AppCompatActivity() {
                                 msg = "升级进行中-$it"
                                 time = AppUtils.getDateYMDHMS()
                             })
+                            if (it == CabinetVM.UpgradeStep.RESTART_APP) {
+                                delay(3000)
+                                OSUtils.restartAppFrontDesk(this@NavTouDoubleActivity)
+                            }
                         }
 
                     }
@@ -758,7 +764,9 @@ class NavTouDoubleActivity : AppCompatActivity() {
                     BoxToolLogUtils.savePrintln("业务流：当前步骤 -> $it")
                     when (it) {
                         CabinetVM.LockerStep.IDLE -> {}
-                        CabinetVM.LockerStep.START -> {}
+                        CabinetVM.LockerStep.START -> {
+                            BoxToolLogUtils.savePrintln("业务流：开启相机拍照")
+                        }
 
                         CabinetVM.LockerStep.OPENING -> {
                             BoxToolLogUtils.savePrintln("业务流：插入数据")
@@ -768,16 +776,18 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             }
                         }
 
+
                         CabinetVM.LockerStep.WAITING_OPEN_DOOR -> {
 
                         }
 
                         CabinetVM.LockerStep.WAITING_OPEN_CLEAR -> {
-
+                            BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
                         }
 
                         CabinetVM.LockerStep.WEIGHT_TRACKING -> {
                             BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
+
                         }
 
                         CabinetVM.LockerStep.CLICK_CLOSE -> {
@@ -794,29 +804,78 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.CLOSE -> {
-                            val openType = cabinetVM.remoteOpenType
-//                            cabinetVM.takePhoto(0)
-                            val curWeight = when (cabinetVM.doorGeX) {
-                                CmdCode.GE1 -> {
-                                    cabinetVM.curG1Weight ?: "0.00"
-                                }
+                            BoxToolLogUtils.savePrintln("业务流：检测已关闭")
+                            cabinetVM.startLockerEndWeight(
+                                cabinetVM.doorGeX, cabinetVM.curG1Weight ?: "0.00"
+                            )
 
-                                CmdCode.GE2 -> {
-                                    cabinetVM.curG2Weight ?: "0.00"
-                                }
-
-                                else -> {
-                                    cabinetVM.curG1Weight ?: "0.00"
-                                }
-                            }
-                            cabinetVM.startLockerEndWeight(cabinetVM.doorGeX, curWeight)
                         }
 
                         CabinetVM.LockerStep.WAITING_CLOSE, CabinetVM.LockerStep.FINISHED -> {
                             BoxToolLogUtils.savePrintln("业务流：上报关闭")
+                            if (it == CabinetVM.LockerStep.FINISHED) {
+                                cabinetVM.deteServiceClose()
+                            }
                         }
 
-                        CabinetVM.LockerStep.CAMERA_END->{
+                        CabinetVM.LockerStep.CAMERA_END -> {
+
+                        }
+                    }
+                }
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.currentUiStep.collect {
+                    BoxToolLogUtils.savePrintln("业务流：当前步骤UI -> $it")
+                    val navController = Navigation.findNavController(
+                        this@NavTouDoubleActivity, R.id.nav_host_fragment_double
+                    )
+                    when (it) {
+                        CabinetVM.LockerUiStep.IDLE -> {}
+
+                        CabinetVM.LockerUiStep.DELIVERY_START -> {
+                            if (navController.currentDestination?.id != R.id.action_start_delivery) {
+                                Navigation.findNavController(
+                                    this@NavTouDoubleActivity, R.id.nav_host_fragment_double
+                                ).navigate(R.id.action_start_delivery)
+                            }
+                        }
+
+                        CabinetVM.LockerUiStep.DELIVERY_END -> {
+                            navController.navigateUp()
+                        }
+
+                        CabinetVM.LockerUiStep.CLEAR_START -> {
+                            if (navController.currentDestination?.id != R.id.action_start_clear_door) {
+                                Navigation.findNavController(
+                                    this@NavTouDoubleActivity, R.id.nav_host_fragment_double
+                                ).navigate(R.id.action_start_clear_door)
+                            }
+
+                        }
+                        CabinetVM.LockerUiStep.CLEAR_END -> {
+                            navController.navigateUp()
+                        }
+                        CabinetVM.LockerUiStep.MOBILE_END -> {
+                            navController.navigateUp()
+                        }
+                    }
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.cameraLifecycleEvent.collect { op ->
+                    when (op) {
+                        CabinetVM.CameraOp.START -> {
+                            // 只负责这一件事：把硬件和 UI 绑定起来
+                            cabinetVM.cameraManagerNew.startDualCamerasParallel( binding.textureIn!!, binding.textureOut!!, false, listener = cameraErrorListener)
+                        }
+                        CabinetVM.CameraOp.DESTROY -> {
+                            cabinetVM.cameraManagerNew.destroy()
                         }
                     }
                 }
