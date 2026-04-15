@@ -1620,12 +1620,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = "f1-20260409.bin"
+    var chipName = "f1-20260320.bin"
 
     /***
      * 下载主芯片版本大小
      */
-    var chipDowV = 20260409
+    var chipDowV = 20260320
 
     /***
      * 当前主芯片版本大小
@@ -2761,74 +2761,82 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
                         delay(2000)
                         if (chipStep.value == UpgradeStep.QUERY_STATUS) {
-                            //发送的文件数据
-                            val sendBLFile = mutableListOf<ByteArray>()
                             val masterFile = FileMdUtil.matchNewFile2("bin", chipName)
                             masterFile?.let { file ->
-                                sendBLFile.clear()
                                 try {
-                                    FileInputStream(file).use { fis ->
-                                        val buffer = ByteArray(8)
-                                        var bytesRead: Int
-                                        var blockIndex = 0
-                                        // 循环读取直到文件结束
-                                        while (fis.read(buffer).also { bytesRead = it } != -1) {
-                                            val blockToSend = buffer.copyOfRange(0, bytesRead) // 或 buffer.copyOf(bytesRead)
-                                            Loge.d("流程 芯片升级 封装好数据 共发送 $blockIndex 个数据块，发了数据：${ByteUtils.toHexString(blockToSend)}")
-                                            sendBLFile.add(blockToSend)
-                                            blockIndex++
-                                        }
-                                        Loge.d("流程 芯片升级 共发送 $blockIndex 个数据块")
-                                    }
-                                } catch (e: Exception) {
-                                    Loge.d("流程 芯片升级 处理文件时出错: ${e.message}")
-                                } finally {
-                                    Loge.d("流程 芯片升级 封装好数据 开始发送文件数据")
-                                    Loge.d("流程 芯片升级 chipSet8fs ${sendBLFile.size}")
-                                    var conutSendByte = 0
-                                    if (sendByte.isNotEmpty()) {
-                                        // 升级中的文件发送循环
-                                        while (isActive && conutSendByte < sendBLFile.size) {
-                                            val sendByte = sendBLFile[conutSendByte]
-                                            Loge.d("流程 芯片升级 发送第 $conutSendByte 个数据块，数据：${ByteUtils.toHexString(sendByte)}")
+                                    // 1. 一次性读取文件字节，方便分包处理
+                                    val allBytes = file.readBytes()
+                                    val CHUNK_SIZE = 8 // 下位机要求的每包大小
+                                    val totalBlocks = (allBytes.size + CHUNK_SIZE - 1) / CHUNK_SIZE
 
-                                            // 直接调用，不排队，速度最快
-                                            val result = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD18, sendByte)
-                                            result.onSuccess { bytes ->
-                                                // 解析 Payload (逻辑同你之前的代码)
-                                                val payload = ProtocolCodec.getSafePayload(bytes)
-                                                if (payload != null && payload.contentEquals(sendByte)) {
-                                                    // 校验成功，发下一包
-                                                    conutSendByte++
+                                    var currentBlockIndex = 0
+                                    val maxRetriesPerBlock = 5 // 每包最大重试次数
+
+                                    Loge.d("流程 芯片升级 开始发送，总块数: $totalBlocks")
+
+                                    // 2. 升级中的文件发送循环
+                                    while (isActive && currentBlockIndex < totalBlocks) {
+                                        // 计算当前块的起始和结束位置
+                                        val start = currentBlockIndex * CHUNK_SIZE
+                                        val end = minOf(start + CHUNK_SIZE, allBytes.size)
+                                        val blockToSend = allBytes.copyOfRange(start, end)
+
+                                        var isBlockSuccess = false
+                                        var retryCount = 0
+
+                                        // 3. 单包发送与匹配逻辑
+                                        while (retryCount < maxRetriesPerBlock) {
+                                            Loge.d("流程 芯片升级 发送块[$currentBlockIndex], 尝试次[${retryCount + 1}], 数据:${ByteUtils.toHexString(blockToSend)}")
+
+                                            // 调用 executeDirect (内部带有 timeout)
+                                            val result = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD18, blockToSend)
+
+                                            result.onSuccess { responseBytes ->
+                                                // 解析下位机返回的有效负载
+                                                val returnedPayload = ProtocolCodec.getSafePayload(responseBytes)
+
+                                                // 核心匹配逻辑：判断下位机返回的是否等于刚才发送的
+                                                if (returnedPayload != null && returnedPayload.contentEquals(blockToSend)) {
+                                                    Loge.d("流程 芯片升级 块[$currentBlockIndex] 匹配成功")
+                                                    isBlockSuccess = true
                                                 } else {
-                                                    // 校验失败逻辑...
-                                                    BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep8 conutSendByte = $conutSendByte ")
-                                                    _chipStep.value = UpgradeStep.SEND_FILE_FUALT
+                                                    Loge.e("流程 芯片升级 块[$currentBlockIndex] 数据不匹配! 期待:${ByteUtils.toHexString(blockToSend)}, 收到:${ByteUtils.toHexString(returnedPayload ?: byteArrayOf())}")
                                                 }
                                             }.onFailure { e ->
-                                                Loge.d("流程 芯片升级 文件發送失敗 = ${e.message} ")
-                                                _chipStep.value = UpgradeStep.SEND_FILE_FUALT
-                                                BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep8 = ${e.message} ")
-                                                // 此处可以实现重试逻辑，或者抛出异常中断升级
+                                                Loge.e("流程 芯片升级 块[$currentBlockIndex] 通信失败: ${e.message}")
                                             }
-//                                            delay(1000)
-                                            // 方案 B 已经由 executeDirect 的返回速度决定了频率，
-                                            // 这里如果下位机写 Flash 快，可以不 delay，或者只 delay(5)
+
+                                            if (isBlockSuccess) break // 匹配成功，跳出重试循环
+
+                                            retryCount++
+                                            if (retryCount < maxRetriesPerBlock) {
+                                                delay(100) // 重试前稍作停顿，给下位机缓冲时间
+                                            }
                                         }
-                                        Loge.d("流程 芯片升级 ${sendBLFile.size} = ${conutSendByte} ")
-                                        if (sendBLFile.size == conutSendByte) {
-                                            _chipStep.value = UpgradeStep.SEND_FILE
+
+                                        // 4. 判断当前块是否彻底失败
+                                        if (isBlockSuccess) {
+                                            currentBlockIndex++ // 只有匹配成功才发下一个块
+                                        } else {
+                                            Loge.e("流程 芯片升级 块[$currentBlockIndex] 达到最大重试次数，升级终止")
+                                            _chipStep.value = UpgradeStep.SEND_FILE_FUALT
+                                            BoxToolLogUtils.savePrintln("流程 芯片升级 块[$currentBlockIndex] 连续失败，退出")
+                                            return@launch
                                         }
-                                    } else {
-                                        _chipStep.value = UpgradeStep.SEND_FILE_FUALT
-                                        BoxToolLogUtils.savePrintln("流程 芯片升级 封装好数据 没有文件数据")
-                                        Loge.d("流程 芯片升级 封装好数据 没有文件数据")
-                                        return@launch
                                     }
+
+                                    // 5. 全部发送完成校验
+                                    if (currentBlockIndex == totalBlocks) {
+                                        Loge.d("流程 芯片升级 所有数据块发送并匹配完成")
+                                        _chipStep.value = UpgradeStep.SEND_FILE
+                                    }
+
+                                } catch (e: Exception) {
+                                    Loge.e("流程 芯片升级 文件处理异常: ${e.message}")
+                                    _chipStep.value = UpgradeStep.SEND_FILE_FUALT
                                 }
                             }
                         }
-
                         if (chipStep.value == UpgradeStep.SEND_FILE) {
                             delay(5000)
                             val chipStep9 = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD9, byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte()))
@@ -2836,6 +2844,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 // 解析 Payload (逻辑同你之前的代码)
                                 val payload = ProtocolCodec.getSafePayload(bytes)
                                 if (payload?.size == 3) {
+                                    Loge.d("流程 芯片升级 查询升级结果完成")
                                     _chipStep.value = UpgradeStep.SEND_FILE_END
                                 }
                             }.onFailure { e ->
@@ -2870,6 +2879,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 val payload = ProtocolCodec.getSafePayload(bytes)
                                 if (payload?.size == 3) {
                                     SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
+                                    Loge.d("流程 芯片升级 查询重启指令")
                                     _chipStep.value = UpgradeStep.RESTART_APP
                                 }
                             }.onFailure { e ->
