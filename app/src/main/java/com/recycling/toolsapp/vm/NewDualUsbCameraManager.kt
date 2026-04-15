@@ -199,7 +199,9 @@ class NewDualUsbCameraManager(context: Context) {
     suspend fun takePicturesParallel(requests: List<PhotoRequest>): List<File?> = coroutineScope {
         requests.map { req ->
             async(Dispatchers.IO) {
+                delay(1000)
                 takePictureSuspend(req.cameraId, req.switchType, req.inOut, req.saveFile)
+
             }
         }.awaitAll()
     }

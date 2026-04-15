@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Environment
 import android.text.TextUtils
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bumptech.glide.Glide
@@ -410,7 +411,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val overflowState = adminOverflowModel.overflowState
             val cabinId = adminOverflowModel.cabinId ?: ""
             val transId = adminOverflowModel.transId ?: ""
-            if (autoCalcOverflow == 0 && overflowState == 1) {
+            if (autoCalcOverflow == 0 && overflowState == 1) {//服务器下发满溢 弹出满溢框
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState, true)
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowStateValue, overflowState)
                 when (cabinId) {
@@ -426,6 +427,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                 }
             } else if (autoCalcOverflow == 0 && overflowState == 0) {
+                maptDoorFault[FaultType.FAULT_CODE_2110] = false
+                maptDoorFault[FaultType.FAULT_CODE_2120] = false
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState, true)
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowStateValue, overflowState)
             } else {
@@ -903,7 +906,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             //保存格口信息
             Loge.e("获取socket初始化数据 开始保存格口信息 开始")
             val stateBox = mutableListOf<StateEntity>()
-            var setVolume = 10
+            var setVolume = 2
             loginModel.config.list?.let { lattices ->
                 lattices.withIndex().forEach { (index, lattice) ->
                     Loge.e("获取socket初始化数据 当前格口：${index} /价格：${lattice.price}")
@@ -955,7 +958,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         weightMonitor = lattice.weight
                         time = AppUtils.getDateYMDHMS()
                     }
-                    setVolume = lattice.volume
+//                    setVolume = lattice.volume
                     val queryLattice = lattice.cabinId?.let { cabinId ->
                         DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cabinId)
                     }
@@ -2274,8 +2277,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val setIr2 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr2, -1] as Int
                     val overflowState = SPreUtil[AppUtils.getContext(), SPreUtil.overflowState, false] as Boolean
                     val overflowStateValue = SPreUtil[AppUtils.getContext(), SPreUtil.overflowStateValue, 1] as Int
+                    val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
                     // 构建JSON对象
-                    val jsonObject = getDeviceWeightChange(CmdValue.CMD_HEART_BEAT, stateList, setSignal, setIr1, setIr2, overflowState, overflowStateValue)
+                    val jsonObject = getDeviceWeightChange(CmdValue.CMD_HEART_BEAT, stateList, setSignal, setIr1, setIr2, overflowState, overflowStateValue, irOverflow)
                     Loge.e("执行重量变动 心跳")
                     if (!isRunning.get()) {
                         val result1 = WeightChangeStorage(AppUtils.getContext()).get("key_weight1")
@@ -2288,7 +2292,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             if (result2 == "success") {
                                 devWeiChaMapSend[1] = false
                             }
-                            val weightChange = getDeviceWeightChange(CmdValue.CMD_PERIPHERAL_STATUS, stateList, setSignal, setIr1, setIr2, overflowState, overflowStateValue)
+                            val weightChange = getDeviceWeightChange(CmdValue.CMD_PERIPHERAL_STATUS, stateList, setSignal, setIr1, setIr2, overflowState, overflowStateValue, irOverflow)
                             Loge.e("执行重量变动 数据 $weightChange ")
                             sendText(weightChange.toString())
                             saveRecordSocket(CmdValue.CONNECTING, "weight, 1：${devWeiChaMapCun[0]} | 2：${devWeiChaMapCun[1]}")
@@ -2306,7 +2310,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    private fun getDeviceWeightChange(cmd: String, stateList: List<StateEntity>, setSignal: Int, setIr1: Int, setIr2: Int, overflowState: Boolean, overflowStateValue: Int): JsonObject {
+    private fun getDeviceWeightChange(cmd: String, stateList: List<StateEntity>, setSignal: Int, setIr1: Int, setIr2: Int, overflowState: Boolean, overflowStateValue: Int, irOverflow: Int): JsonObject {
         return JsonBuilder.build {
             addProperty("cmd", cmd)
             addProperty("signal", setSignal)
@@ -2328,15 +2332,22 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 60f
                             }
                         }
+                        //1.满溢 0.未满溢
+                        val irState = state.irState
+                        //上传前
                         val curGWeight = state.weigh
-                        if (overflowState) {
-                            if (overflowStateValue == 1) {
+                        //容量[0可投递, 1红外遮挡, 2超重, 3红外遮挡后-投递超重]
+                        //当我上传心跳的时候 你就已经给我返回 有可能不会给你发 capacity =3
+                        if (overflowState) {//服务器下发漫溢状态
+                            if (overflowStateValue == 1) { //
                                 addProperty("capacity", 2)
                             } else if (overflowStateValue == 0) {
                                 addProperty("capacity", 0)
                             }
                         } else if (curGWeight > curGTotal) {
                             addProperty("capacity", 2)
+                        } else if (curGWeight > irOverflow && irState == 1) { //当前重量大于红外超重阈值(单位：Kg） 红外满溢是遮挡的
+                            addProperty("capacity", 3)
                         } else {
                             addProperty("capacity", state.capacity)
                         }
@@ -2954,6 +2965,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             for (switchType in photoActionChannel) {
                 // 这里是串行的！执行完一次循环才会处理下一个 type
                 executePhotoWorkflow(switchType)
+//                executePhotoWorkflow2(switchType)
             }
         }
     }
@@ -2986,8 +2998,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val setTransId = removeRetryPrefix(transId)
             val a = if (switchType == 1) 0 else 3
             val b = if (switchType == 1) 2 else 1
-            val e = if (a == 0) 1 else 3
-            val f = if (b == 2) 2 else 4
+            val e = if (a == 0) 1 else 2
+            val f = if (b == 2) 3 else 4
             val nameIn = "${e}i${a}${setTransId}---${AppUtils.getDateYMD()}.jpg"
             val nameOut = "${f}o${b}${setTransId}---${AppUtils.getDateYMD()}.jpg"
 //            val dir = File(AppUtils.getContext().cacheDir, "action")
@@ -2995,9 +3007,16 @@ class CabinetVM @Inject constructor() : ViewModel() {
             if (!dir.exists()) dir.mkdirs()
             val fileIn = File(dir, nameIn)
             val fileOut = File(dir, nameOut)
-            val requests = listOf(
-                NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn), NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut)
-            )
+            val requests = if (switchType == 1) {
+                listOf(
+                    NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn), NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut)
+                )
+            } else {
+                listOf(
+                    NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut),NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn)
+                )
+            }
+
 
             // 同时开始拍照并等待全部完成
             val results = cameraManagerNew.takePicturesParallel(requests)
@@ -3007,7 +3026,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 results.forEach { file ->
                     if (file != null) {
                         //结算页只显示图片打开的拍照
-                        if(switchType==1){
+                        if (switchType == 1) {
                             setRefBusStaChannel(MonitorWeight().apply {
                                 refreshType = RefBusType.REFRESH_TYPE_4
                                 takePhotoUrl = file.absolutePath
@@ -3054,6 +3073,61 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
 
+    var postTransId: String = ""
+
+    /***
+     * @param switchType 0.关 1.开`
+     */
+    fun executePhotoWorkflow2(switchType: Int = -1) {
+        viewModelScope.async {
+            val transId = modelOpenBean?.transId ?: "transId"
+            postTransId = transId
+            val setTransId = removeRetryPrefix(transId)
+            val a = if (switchType == 1) 0 else 3
+            val b = if (switchType == 1) 2 else 1
+            val e = if (a == 0) 1 else 3
+            val f = if (b == 2) 2 else 4
+            val nameIn = "$e-i-$switchType-$a-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+            val nameOut = "$f-o-$switchType-$b-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+            val dir = File(AppUtils.getContext().cacheDir, "action")
+//        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+            if (!dir.exists()) dir.mkdirs()
+            val fileIn = File(dir, nameIn)
+            val fileOut = File(dir, nameOut)
+            when (switchType) {
+                1 -> {
+                    val toFile1 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+                    if (toFile1 != null && toFile1.exists()) {
+                        BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
+                        uploadPhoto(curSn, setTransId, "0", toFile1, switchType.toString())
+                    }
+                    delay(3000)
+                    val toFile2 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+                    if (toFile2 != null && toFile2.exists()) {
+                        BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
+                        uploadPhoto(curSn, setTransId, "2", toFile2, switchType.toString())
+                    }
+                }
+
+                0 -> {
+                    val toFile1 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
+                    if (toFile1 != null && toFile1.exists()) {
+                        BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
+                        uploadPhoto(curSn, setTransId, "3", toFile1, switchType.toString())
+                    }
+                    delay(3000)
+                    val toFile2 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
+                    if (toFile2 != null && toFile2.exists()) {
+                        BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
+                        uploadPhoto(curSn, setTransId, "1", toFile2, switchType.toString())
+                    }
+                }
+
+                else -> {}
+            }
+        }
+    }
+
     var checkStatusResult: Deferred<Boolean>? = null
 
     /**
@@ -3091,10 +3165,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     CmdCode.GE1 -> {
                         if (maptDoorFault[FaultType.FAULT_CODE_11] == true) {
                             //红外满溢+可超重量
-                            val curTotalWeight1 = CalculationUtil.addFloats(curG1TotalWeight, irOverflowC.toString())
                             //格口1 当前重量小于服务器红外满溢则true
                             val bl1Overflow = CalculationUtil.isLess(
-                                curG1Weight ?: "0.00", curTotalWeight1
+                                curG1Weight ?: "0.00", irOverflowC.toString()
                             )
                             if (bl1Overflow) {
                                 maptDoorFault[FaultType.FAULT_CODE_211] = false
@@ -3110,10 +3183,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                     CmdCode.GE2 -> {
                         if (maptDoorFault[FaultType.FAULT_CODE_12] == true) {
-                            val curTotalWeight2 = CalculationUtil.addFloats(curG2TotalWeight, irOverflowC.toString())
                             //格口2 当前重量小于服务器红外满溢则true
                             val bl2Overflow = CalculationUtil.isLess(
-                                curG2Weight ?: "0.00", curTotalWeight2
+                                curG2Weight ?: "0.00", irOverflowC.toString()
                             )
                             if (bl2Overflow) {
                                 maptDoorFault[FaultType.FAULT_CODE_212] = false
@@ -3334,7 +3406,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
             } finally {
                 _cameraLifecycleEvent.emit(CameraOp.DESTROY)
-                endCameraUploadPhoto()
+//                endCameraUploadPhoto()
                 //保持门要关闭
                 restartAppCloseDoor(doorGex)
                 setCurrentUiStep(LockerUiStep.DELIVERY_END)
@@ -3830,67 +3902,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
             input
         }
     }
-//拍照前 Before taking 拍照后 After taking
-    /***
-     * @param switchType 0.关 1.开
-     */
-
-
-
-//拍照前 Before taking 拍照后 After taking
-    /***
-     * @param switchType 0.关 1.开`
-     */
-    var postTransId: String = ""
-    fun takePhoto(switchType: Int = -1) {
-//        viewModelScope.async {
-//            val transId = modelOpenBean?.transId ?: "transId"
-//            postTransId = transId
-//            val setTransId = removeRetryPrefix(transId)
-//            val a = if (switchType == 1) 0 else 3
-//            val b = if (switchType == 1) 2 else 1
-//            val e = if (a == 0) 1 else 3
-//            val f = if (b == 2) 2 else 4
-//            val nameIn = "$e-i-$switchType-$a-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-//            val nameOut = "$f-o-$switchType-$b-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-//            val dir = File(AppUtils.getContext().cacheDir, "action")
-////        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-//            if (!dir.exists()) dir.mkdirs()
-//            val fileIn = File(dir, nameIn)
-//            val fileOut = File(dir, nameOut)
-//            when (switchType) {
-//                1 -> {
-//                    val toFile1 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
-//                    if (toFile1 != null && toFile1.exists()) {
-//                        BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
-////                    uploadPhoto(curSn, setTransId, 0, toFile1.absolutePath, switchType.toString())
-//                    }
-//                    delay(3000)
-//                    val toFile2 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
-//                    if (toFile2 != null && toFile2.exists()) {
-//                        BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
-////                    uploadPhoto(curSn, setTransId, 0, toFile2.absolutePath, switchType.toString())
-//                    }
-//                }
-//
-//                0 -> {
-//                    val toFile1 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
-//                    if (toFile1 != null && toFile1.exists()) {
-//                        BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
-////                    uploadPhoto(curSn, setTransId, 0, toFile1.absolutePath, switchType.toString())
-//                    }
-//                    delay(3000)
-//                    val toFile2 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
-//                    if (toFile2 != null && toFile2.exists()) {
-//                        BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
-////                    uploadPhoto(curSn, setTransId, 0, toFile2.absolutePath, switchType.toString())
-//                    }
-//                }
-//
-//                else -> {}
-//            }
-//        }
-    }
 
 
     fun getSortedFilesByNumberPrefix(): List<String> {
@@ -3914,44 +3925,69 @@ class CabinetVM @Inject constructor() : ViewModel() {
             ?: emptyList()
     }
 
-    fun extractFourthValue(fileName: String): String? {
-        val parts = fileName.split('_')
-        return if (parts.size >= 3) {
-            parts[2] // 索引从0开始，所以第4个是索引3
-        } else null
+    fun extractThirdChar(fileName: String): Char? {
+        return fileName.getOrNull(2)
     }
 
-    fun extractThirdChar(fileName: String): String? {
-        return if (fileName.length >= 3) {
-            fileName[2].toString() // 索引2，第三个字符
-        } else null
+
+    // 更详细的版本，带日志和错误处理
+    fun getSortedFilesWithLogging(): List<String> {
+        val dir = File(
+            AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
+        )
+
+        // 检查目录是否存在
+        if (!dir.exists()) {
+            Loge.e("FileUtils", "目录不存在: ${dir.absolutePath}")
+            return emptyList()
+        }
+
+        val files = dir.listFiles()
+
+        if (files.isNullOrEmpty()) {
+            Log.e("FileUtils", "目录为空或无读取权限")
+            return emptyList()
+        }
+
+        val sortedFiles = files.filter { it.isFile }.sortedWith(compareBy { file ->
+            // 按第一个字符排序，处理空文件名的情况
+            when {
+                file.name.isEmpty() -> '~'  // 空文件名放到最后
+                else -> file.name[0]
+            }
+        })
+
+        // 打印排序结果用于调试
+        sortedFiles.forEach { file ->
+            Loge.d("FileUtils", "排序后: ${file.name} (首字符: ${file.name.firstOrNull()})")
+        }
+
+        return sortedFiles.map { it.absolutePath }
     }
 
     fun endCameraUploadPhoto() {
-//        viewModelScope.launch(Dispatchers.IO) {
-//            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-//            if (!dir.exists()) dir.mkdirs()
-//            dir.listFiles().forEach { postFile ->
-//
-//                val photoType = extractFourthValue(postFile.name).toString()
-//                Loge.d("网络请求 拍照上传 $photoType 文件大小：${postFile.length()} ")
-//                val post = mutableMapOf<String, Any>()
-//                post["sn"] = curSn
-//                post["transId"] = postTransId
-//                post["photoType"] = photoType
-//                post["file"] = postFile
-//                Loge.d("网络请求 拍照上传 post $post")
-//                httpRepo.uploadPhoto(post).onSuccess { user ->
-//                    Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
-//                }.onFailure { code, message ->
-//                    Loge.d("网络请求 拍照上传 onFailure $code $message")
-//
-//                }.onCatch { e ->
-//                    Loge.d("网络请求 拍照上传 onCatch ${e.errorMsg}")
-//                }
-//                delay(2000)
-//            }
-//        }
+        viewModelScope.launch(Dispatchers.IO) {
+            getSortedFilesWithLogging().forEach { postFile ->
+                val file = File(postFile)
+                val photoType = extractThirdChar(file.name).toString()
+                Loge.d("网络请求 拍照上传 $photoType 文件大小：${file.length()} ")
+                val post = mutableMapOf<String, Any>()
+                post["sn"] = curSn
+                post["transId"] = postTransId
+                post["photoType"] = photoType.toInt()
+                post["file"] = file
+                Loge.d("网络请求 拍照上传 post $post")
+                httpRepo.uploadPhoto(post).onSuccess { user ->
+                    Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
+                }.onFailure { code, message ->
+                    Loge.d("网络请求 拍照上传 onFailure $code $message")
+
+                }.onCatch { e ->
+                    Loge.d("网络请求 拍照上传 onCatch ${e.errorMsg}")
+                }
+                delay(2000)
+            }
+        }
 
     }
 
@@ -4330,13 +4366,14 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 state.lockStatus = lockStatus
                                 state.time = AppUtils.getDateYMDHMS()
                                 val curG1Total = curG1TotalWeight.toFloat()
-                                //实时总重量
+                                val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
+                                //实时总重量 心跳 上报前数据
                                 val curG1Weight = state.weigh
                                 //上报重量大于总重量则报提示
-                                if (curG1Weight > curG1Total && irStateValue == 1) {
-                                    state.capacity = 3
-                                } else if (curG1Weight > curG1Total) {
+                                if (curG1Weight > curG1Total) {
                                     state.capacity = 2
+                                } else if (curG1Weight > irOverflow && irStateValue == 1) {
+                                    state.capacity = 3
                                 } else if (irStateValue == 1) {
                                     state.capacity = 1
                                 } else if (irStateValue == 0) {
@@ -4389,14 +4426,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     state.weigh = weightNew
                                     state.lockStatus = lockStatus
                                     state.time = AppUtils.getDateYMDHMS()
-                                    val curG1Total = curG2TotalWeight.toFloat()
+                                    val curG2Total = curG2TotalWeight.toFloat()
+                                    val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
                                     //实时总重量
                                     val curG2Weight = state.weigh
                                     //上报重量大于总重量则报提示
-                                    if (curG2Weight > curG1Total && irStateValue == 1) {
-                                        state.capacity = 3
-                                    } else if (curG2Weight > curG1Total) {
+                                    if (curG2Weight > curG2Total) {
                                         state.capacity = 2
+                                    } else if (curG2Weight > irOverflow && irStateValue == 1) {
+                                        state.capacity = 3
                                     } else if (irStateValue == 1) {
                                         state.capacity = 1
                                     } else if (irStateValue == 0) {
