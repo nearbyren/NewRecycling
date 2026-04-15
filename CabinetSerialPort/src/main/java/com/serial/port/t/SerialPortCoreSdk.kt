@@ -298,11 +298,11 @@ class SerialPortCoreSdk private constructor() {
         return execute(SerialPortSdk.CMD6, data).mapCatching { bytes ->
             val cmd = bytes[SerialPortSdk.CMD_POS]
             Loge.i("我的数据 cmd $cmd")
-            if (cmd != SerialPortSdk.CMD6) DoorResult(cmd = 6, cmdByte = SerialPortSdk.CMD6, cmdStatus = true)
+            if (cmd != SerialPortSdk.CMD6) DoorResult(cmd = 6, cmdByte = SerialPortSdk.CMD6, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
             Loge.i("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
             DoorResult(
-                locker = payload[0].toInt(), caliStatus = if (payload[1].toInt() == 1) 1 else 0, cmd = 6, cmdByte = SerialPortSdk.CMD6, cmdStatus = true
+                locker = payload[0].toInt(), status = payload[1].toInt(), cmd = 6, cmdByte = SerialPortSdk.CMD6, cmdStatus = true
             )
         }
     }

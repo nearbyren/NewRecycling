@@ -136,7 +136,7 @@ class SerialVM : ViewModel() {
     suspend fun sendWithRetryStatus(data: ByteArray, maxRetries: Int = 5, timeout: Long = 30000): Result<ByteArray> {
         var lastErr: Exception? = null
         repeat(maxRetries) { attempt ->
-            val res = sendOnceChip(data, timeout)
+            val res = sendOnce(data, timeout)
             if (res.isSuccess) return res
             lastErr = res.exceptionOrNull() as? Exception
             delay(1000L)

@@ -1729,7 +1729,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 上传拍照
      */
-    private fun uploadPhoto(sn: String, transId: String, photoType: String , filePath: File, activeType: String) {
+    private fun uploadPhoto(sn: String, transId: String, photoType: String, filePath: File, activeType: String) {
         viewModelScope.launch(Dispatchers.IO) {
             if (activeType == "45") {
                 Loge.d("网络请求 拍照上传 延迟")
@@ -3002,7 +3002,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             // 同时开始拍照并等待全部完成
             val results = cameraManagerNew.takePicturesParallel(requests)
 
-            withContext(Dispatchers.IO){
+            withContext(Dispatchers.IO) {
                 // results 里的文件顺序与 requests 一致
                 results.forEach { file ->
                     if (file != null) {
@@ -3047,58 +3047,39 @@ class CabinetVM @Inject constructor() : ViewModel() {
             }
         }
     }
+
     // 简单上传函数
-    fun uploadPhoto2(
-        curSn: String,
-        setTransId: String,
-        photoType: String,
-        file: File,
-        switchType: String
-    ) {
+    fun uploadPhoto2(curSn: String, setTransId: String, photoType: String, file: File, switchType: String) {
 
         viewModelScope.launch(Dispatchers.IO) {
 
-        // 创建客户端
-        val client = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .build()
+            // 创建客户端
+            val client = OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build()
 
-        // 构建请求体
-        val requestBody = MultipartBody.Builder()
-            .setType(MultipartBody.FORM)
-            .addFormDataPart("sn", curSn)
-            .addFormDataPart("transId", setTransId)
-            .addFormDataPart("photoType", photoType)
-            .addFormDataPart("switchType", switchType)
-            .addPart(
-                headersOf("Content-Disposition", "form-data; name=\"file\"; filename=\"${file.name}\""),
-                file.asRequestBody("image/jpeg".toMediaTypeOrNull())
-            )
-            .build()
+            // 构建请求体
+            val requestBody = MultipartBody.Builder().setType(MultipartBody.FORM).addFormDataPart("sn", curSn).addFormDataPart("transId", setTransId).addFormDataPart("photoType", photoType).addFormDataPart("switchType", switchType).addPart(
+                    headersOf("Content-Disposition", "form-data; name=\"file\"; filename=\"${file.name}\""), file.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                ).build()
 
-        // 创建请求（替换成你的上传地址）
-        val request = Request.Builder()
-            .url("http://112.91.141.155:10088/api/device/upload/photo")  // 修改为你的接口地址
-            .post(requestBody)
-            .build()
+            // 创建请求（替换成你的上传地址）
+            val request = Request.Builder().url("http://112.91.141.155:10088/api/device/upload/photo")  // 修改为你的接口地址
+                .post(requestBody).build()
 
-        // 执行请求
-        try {
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                println("上传拍照路径 上传成功: ${file.name}")
-                println("上传拍照路径 响应: ${response.body?.string()}")
-            } else {
-                println("上传拍照路径 上传失败: ${file.name} - ${response.code}")
+            // 执行请求
+            try {
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    println("上传拍照路径 上传成功: ${file.name}")
+                    println("上传拍照路径 响应: ${response.body?.string()}")
+                } else {
+                    println("上传拍照路径 上传失败: ${file.name} - ${response.code}")
+                }
+                response.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("上传拍照路径 上传异常: ${file.name} - ${e.message}")
             }
-            response.close()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            println("上传拍照路径 上传异常: ${file.name} - ${e.message}")
         }
-    }
     }
     // 4. 核心拍照与上传逻辑（将原 takePhoto 内容移到这里）
 //    private suspend fun executePhotoWorkflow(switchType: Int) {
@@ -3335,16 +3316,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：正在执行开门动作【${SendTurnText.fromStatus(openType)}】 开门前重量:$weightBeforeOpen")
                 dbBeforeWeight(weightBeforeOpen, model)
                 val turnDoor = SerialPortSdk.turnDoor(openType)
-                if (turnDoor.isFailure) throw Exception("开门指令发送失败: ${turnDoor.exceptionOrNull()?.message}")
+                if (turnDoor.isFailure) throw Exception("业务流：开门指令接收失败: ${turnDoor.exceptionOrNull()?.message}")
                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
                 // --- 第二阶段：轮询等待门开启 ---
                 _currentStep.value = LockerStep.WAITING_OPEN_DOOR
 
                 BoxToolLogUtils.savePrintln("业务流：等待门物理状态变为【开启】")
                 // 使用 withTimeout 防止传感器故障导致协程永久挂起
-                withTimeout(20000) { // 20秒超时
+                withTimeout(30000) { // 30秒超时
                     while (isActive) {
-                        val doorStatus = SerialPortSdk.turnDoorStatus(doorGex).getOrNull()?.status
+                        val doorStatusValue = SerialPortSdk.turnDoorStatus(doorGex)
+                        if (doorStatusValue.isFailure) throw Exception("业务流：门开动作获取投门状态失败: ${doorStatusValue.exceptionOrNull()?.message}")
+                        val doorStatus = doorStatusValue.getOrNull()?.status
                         BoxToolLogUtils.savePrintln("业务流：门开动作等待门物理状态变为 1 【${doorStatus}】")
                         if (doorStatus == CmdCode.GE_OPEN) {
                             setRefBusStaChannel(MonitorWeight().apply {
@@ -3364,9 +3347,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
 //                            noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT, true)
                             BoxToolLogUtils.savePrintln("业务流：门开前格口-门开故障 打开后的重量：$weightBeforeOpen")
-                            throw Exception("业务流：门开前格口-门开故障: 3 ${doorStatus}")
+                            throw Exception("业务流：门开前格口-门开故障: 3 $doorStatus")
                         }
-                        delay(500)
+                        delay(1000)
                     }
                 }
                 // --- 第三阶段：监测重量变化 ---
@@ -3374,7 +3357,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
                 while (isActive) {
                     val weightDuringOpeningCmd = SerialPortSdk.queryWeight(doorGex)
-                    if (weightDuringOpeningCmd.isFailure) throw Exception("业务流 过程中最后一次重量 获取重量指令失败: ${weightDuringOpeningCmd.exceptionOrNull()?.message}")
+                    if (weightDuringOpeningCmd.isFailure) throw Exception("业务流： 过程中最后一次重量 获取重量指令失败: ${weightDuringOpeningCmd.exceptionOrNull()?.message}")
                     weightDuringOpening = weightDuringOpeningCmd.getOrNull()?.weight.toString()
                     if (doorGex == CmdCode.GE1) {
                         curG1Weight = weightDuringOpening
@@ -3397,8 +3380,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                     // --- 第五阶段：轮询等待门关闭 ---
                     if (currentStep.value == LockerStep.CLOSING) {
-                        withTimeout(60000) { // 30秒超时
-                            val doorStatus = SerialPortSdk.turnDoorStatus(doorGex).getOrNull()?.status
+                        withTimeout(30000) { // 30秒超时
+                            val doorStatusValue = SerialPortSdk.turnDoorStatus(doorGex)
+                            if (doorStatusValue.isFailure) throw Exception("业务流：门关动作获取投门状态失败: ${doorStatusValue.exceptionOrNull()?.message}")
+                            val doorStatus = doorStatusValue.getOrNull()?.status
                             BoxToolLogUtils.savePrintln("业务流：门关动作等待门物理状态变为 0【${doorStatus}】")
                             if (doorStatus == CmdCode.GE_CLOSE) {
 //                                noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_NORMAL, false)
@@ -4040,6 +4025,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             fileName[2].toString() // 索引2，第三个字符
         } else null
     }
+
     fun endCameraUploadPhoto() {
 //        viewModelScope.launch(Dispatchers.IO) {
 //            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
@@ -4625,7 +4611,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
         val turnDoorStatusValue = SerialPortSdk.turnDoorStatus(doorGeX)
         if (turnDoorStatusValue.isFailure) {
-            BoxToolLogUtils.savePrintln("业务流：开启启动关门失败：${turnDoorStatusValue.exceptionOrNull()?.message}")
+            BoxToolLogUtils.savePrintln("业务流：重启动应用 开启启动关门失败：${turnDoorStatusValue.exceptionOrNull()?.message}")
             return@withContext
         }
         val doorStatus = turnDoorStatusValue.getOrNull()?.status ?: -1
