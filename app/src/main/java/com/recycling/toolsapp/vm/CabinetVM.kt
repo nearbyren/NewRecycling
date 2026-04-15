@@ -903,7 +903,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             //保存格口信息
             Loge.e("获取socket初始化数据 开始保存格口信息 开始")
             val stateBox = mutableListOf<StateEntity>()
-            var setVolume = 2
+            var setVolume = 10
             loginModel.config.list?.let { lattices ->
                 lattices.withIndex().forEach { (index, lattice) ->
                     Loge.e("获取socket初始化数据 当前格口：${index} /价格：${lattice.price}")
@@ -955,7 +955,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         weightMonitor = lattice.weight
                         time = AppUtils.getDateYMDHMS()
                     }
-//                    setVolume = lattice.volume
+                    setVolume = lattice.volume
                     val queryLattice = lattice.cabinId?.let { cabinId ->
                         DatabaseManager.queryLatticeEntity(AppUtils.getContext(), cabinId)
                     }
@@ -2988,10 +2988,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val b = if (switchType == 1) 2 else 1
             val e = if (a == 0) 1 else 3
             val f = if (b == 2) 2 else 4
-            val nameIn = "${e}i${a}${setTransId}.jpg"
-            val nameOut = "${f}o${b}${setTransId}.jpg"
-            val dir = File(AppUtils.getContext().cacheDir, "action")
-//        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+            val nameIn = "${e}i${a}${setTransId}---${AppUtils.getDateYMD()}.jpg"
+            val nameOut = "${f}o${b}${setTransId}---${AppUtils.getDateYMD()}.jpg"
+//            val dir = File(AppUtils.getContext().cacheDir, "action")
+        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
             if (!dir.exists()) dir.mkdirs()
             val fileIn = File(dir, nameIn)
             val fileOut = File(dir, nameOut)
