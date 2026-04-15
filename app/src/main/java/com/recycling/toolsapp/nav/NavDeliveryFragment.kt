@@ -1,5 +1,7 @@
 package com.recycling.toolsapp.nav
 
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageView
@@ -106,21 +108,27 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
                         }
 
                         4 -> {
-//                            val bitmaps = cabinetVM.deliveryBitmap
-//                            bitmaps.forEach { bit->
-//                                val iv = AppCompatImageView(requireActivity()).apply {
-//                                    layoutParams = LinearLayoutCompat.LayoutParams(
-//                                        LinearLayoutCompat.LayoutParams.MATCH_PARENT, LinearLayoutCompat.LayoutParams.WRAP_CONTENT
-//                                    ).apply {
-//                                        setMargins(0, 0, 0, 20)
-//                                    }
-//                                    scaleType = ImageView.ScaleType.FIT_CENTER
-//                                    adjustViewBounds = true  // 允许根据图片比例调整边界
-//                                }
-//                                iv.setImageBitmap(bit)
-//                                binding.llPhoto.addView(iv)
-//                                binding.llPhoto.invalidate()
-//                            }
+                            try {
+                                if (taskPhotoPath.isNotEmpty()) {
+                                    val bitmap = BitmapFactory.decodeFile(taskPhotoPath)
+                                    if (bitmap != null) {
+                                        val imageView = AppCompatImageView(requireActivity()).apply {
+                                            layoutParams = LinearLayoutCompat.LayoutParams(
+                                                LinearLayoutCompat.LayoutParams.MATCH_PARENT, LinearLayoutCompat.LayoutParams.WRAP_CONTENT
+                                            ).apply {
+                                                setMargins(0, 0, 0, 20)
+                                            }
+                                            scaleType = ImageView.ScaleType.FIT_CENTER
+                                            adjustViewBounds = true  // 允许根据图片比例调整边界
+                                        }
+                                        imageView.setImageBitmap(bitmap)
+                                        binding.llPhoto.addView(imageView)
+                                        binding.llPhoto.invalidate()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         }
                     }
                 }
@@ -179,7 +187,18 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
         super.onDestroy()
         Loge.e("流程 getTakePic onDestroy ")
         cabinetVM.deliverycancelTimer()
+        releaseBitmapResources()
         binding.llPhoto.removeAllViews()
-        cabinetVM.deliveryBitmap.clear()
+    }
+
+    private fun releaseBitmapResources() {
+        for (i in 0 until binding.llPhoto.childCount) {
+            val child = binding.llPhoto.getChildAt(i)
+            if (child is AppCompatImageView) {
+                val bitmap = (child.drawable as? BitmapDrawable)?.bitmap
+                bitmap?.recycle()
+                child.setImageDrawable(null)
+            }
+        }
     }
 }

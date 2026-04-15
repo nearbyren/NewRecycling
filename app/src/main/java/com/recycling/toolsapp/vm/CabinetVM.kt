@@ -2991,7 +2991,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val nameIn = "${e}i${a}${setTransId}---${AppUtils.getDateYMD()}.jpg"
             val nameOut = "${f}o${b}${setTransId}---${AppUtils.getDateYMD()}.jpg"
 //            val dir = File(AppUtils.getContext().cacheDir, "action")
-        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
             if (!dir.exists()) dir.mkdirs()
             val fileIn = File(dir, nameIn)
             val fileOut = File(dir, nameOut)
@@ -3006,8 +3006,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 // results 里的文件顺序与 requests 一致
                 results.forEach { file ->
                     if (file != null) {
-                        // 1. 定义外部存储的中转路径 (建议使用 App 私有的外部目录，不需要权限申请)
-
+                        //结算页只显示图片打开的拍照
+                        if(switchType==1){
+                            setRefBusStaChannel(MonitorWeight().apply {
+                                refreshType = RefBusType.REFRESH_TYPE_4
+                                takePhotoUrl = file.absolutePath
+                            })
+                        }
                         val photoType = extractThirdChar(file.name).toString()
                         uploadPhoto(curSn, setTransId, photoType, file, switchType.toString())
 
@@ -3048,110 +3053,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    // 简单上传函数
-    fun uploadPhoto2(curSn: String, setTransId: String, photoType: String, file: File, switchType: String) {
-
-        viewModelScope.launch(Dispatchers.IO) {
-
-            // 创建客户端
-            val client = OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build()
-
-            // 构建请求体
-            val requestBody = MultipartBody.Builder().setType(MultipartBody.FORM).addFormDataPart("sn", curSn).addFormDataPart("transId", setTransId).addFormDataPart("photoType", photoType).addFormDataPart("switchType", switchType).addPart(
-                    headersOf("Content-Disposition", "form-data; name=\"file\"; filename=\"${file.name}\""), file.asRequestBody("image/jpeg".toMediaTypeOrNull())
-                ).build()
-
-            // 创建请求（替换成你的上传地址）
-            val request = Request.Builder().url("http://112.91.141.155:10088/api/device/upload/photo")  // 修改为你的接口地址
-                .post(requestBody).build()
-
-            // 执行请求
-            try {
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    println("上传拍照路径 上传成功: ${file.name}")
-                    println("上传拍照路径 响应: ${response.body?.string()}")
-                } else {
-                    println("上传拍照路径 上传失败: ${file.name} - ${response.code}")
-                }
-                response.close()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                println("上传拍照路径 上传异常: ${file.name} - ${e.message}")
-            }
-        }
-    }
-    // 4. 核心拍照与上传逻辑（将原 takePhoto 内容移到这里）
-//    private suspend fun executePhotoWorkflow(switchType: Int) {
-//        println("哈哈哈哈 $switchType")
-//        val transId = modelOpenBean?.transId ?: "transId"
-//        postTransId = transId
-//        val setTransId = removeRetryPrefix(transId)
-//        val a = if (switchType == 1) 0 else 3
-//        val b = if (switchType == 1) 2 else 1
-//        val e = if (a == 0) 1 else 3
-//        val f = if (b == 2) 2 else 4
-//        val nameIn = "$e-i-$switchType-$a-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-//        val nameOut = "$f-o-$switchType-$b-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-//        val dir = File(AppUtils.getContext().cacheDir, "action")
-////        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-//        if (!dir.exists()) dir.mkdirs()
-//        val fileIn = File(dir, nameIn)
-//        val fileOut = File(dir, nameOut)
-//        when (switchType) {
-//            1 -> {
-//                val toFile1 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
-//                if (toFile1 != null && toFile1.exists()) {
-//                    BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
-//                    uploadPhoto(curSn, setTransId, 0, toFile1.absolutePath, switchType.toString())
-//                }
-//                delay(3000)
-//                val toFile2 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
-//                if (toFile2 != null && toFile2.exists()) {
-//                    BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
-//                    uploadPhoto(curSn, setTransId, 0, toFile2.absolutePath, switchType.toString())
-//                }
-//
-////                val ids = cameraManagerNew.getExternalCameraIds()
-////                println("进入拍照环节。。。。。${ids.size}")
-//////                if (ids.size < 2){
-//////                    return
-//////                }
-////                // 准备文件
-////                val fileMap = mapOf(
-////                    ids[0] to fileIn,
-////                    ids[1] to fileOut
-////                )
-////
-////                // 并行拍照：等待两张都拍完（由于是并行，总时间约等于一张的时间）
-////                val results = cameraManagerNew.takeDualPictureSuspend(switchType, fileMap)
-////                println("进入拍照环节。。。。。${results.size}")
-////                // 并发上传
-////                results.forEach { (cameraId, file) ->
-////                    if (file != null) {
-////                        uploadPhoto(curSn, setTransId, 0, file.absolutePath, switchType.toString())
-////                    }
-////                }
-//            }
-//
-//            0 -> {
-//                val toFile1 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut)
-//                if (toFile1 != null && toFile1.exists()) {
-//                    BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
-//                    uploadPhoto(curSn, setTransId, 0, toFile1.absolutePath, switchType.toString())
-//                }
-//                delay(3000)
-//                val toFile2 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn)
-//                if (toFile2 != null && toFile2.exists()) {
-//                    BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
-//                    uploadPhoto(curSn, setTransId, 0, toFile2.absolutePath, switchType.toString())
-//                }
-//            }
-//
-//            else -> {}
-//        }
-//
-//    }
 
     var checkStatusResult: Deferred<Boolean>? = null
 
@@ -3935,7 +3836,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
 
 
-    var deliveryBitmap = mutableListOf<Bitmap>()
+
 //拍照前 Before taking 拍照后 After taking
     /***
      * @param switchType 0.关 1.开`
