@@ -2368,7 +2368,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         val curGWeight = state.weigh
                         //容量[0可投递, 1红外遮挡, 2超重, 3红外遮挡后-投递超重]
                         //当我上传心跳的时候 你就已经给我返回 有可能不会给你发 capacity =3
-                        if (overflowState) {//服务器下发漫溢状态
+                        if (overflowState) {//服务器下发漫溢状态 当服务器改为false 走下面的逻辑
                             if (overflowStateValue == 1) { //
                                 addProperty("capacity", 2)
                             } else if (overflowStateValue == 0) {
@@ -4456,7 +4456,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
                                     //实时总重量 心跳 上报前数据
                                     val curG1Weight = state.weigh
-                                    //上报重量大于总重量则报提示
+                                    //上报重量大于总重量则报提示 当我上传心跳的时候  capacity //容量[0可投递, 1红外遮挡, 2超重, 3红外遮挡后-投递超重]
                                     if (curG1Weight > curG1Total) {
                                         state.capacity = 2
                                     } else if (curG1Weight > irOverflow && irStateValue == 1) {
@@ -4608,6 +4608,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             warningContent = BusType.BUS_OVERFLOW
                         })
                         maptDoorFault[FaultType.FAULT_CODE_1111] = true
+                    }else{
+                        setRefBusStaChannel(MonitorWeight().apply {
+                            refreshType = RefBusType.REFRESH_TYPE_2
+                            doorGeX = CmdCode.GE1
+                            warningContent = BusType.BUS_NORMAL
+                        })
+                        maptDoorFault[FaultType.FAULT_CODE_1111] = false
                     }
                 }
 
@@ -4624,6 +4631,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             warningContent = BusType.BUS_OVERFLOW
                         })
                         maptDoorFault[FaultType.FAULT_CODE_1112] = true
+                    }else{
+                        setRefBusStaChannel(MonitorWeight().apply {
+                            refreshType = RefBusType.REFRESH_TYPE_2
+                            doorGeX = CmdCode.GE2
+                            warningContent = BusType.BUS_NORMAL
+                        })
+                        maptDoorFault[FaultType.FAULT_CODE_1112] = false
                     }
                 }
             }
