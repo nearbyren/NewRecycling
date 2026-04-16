@@ -547,7 +547,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OTA -> {
                         val otaModel = Gson().fromJson(json, OtaBean::class.java)
-//                        cabinetVM.startDowChip(otaModel)
+                        cabinetVM.startDowChip(otaModel)
                     }
 
                     CmdValue.CMD_OTA_APK -> {
@@ -618,7 +618,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
         super.onDetachedFromWindow()
         Loge.e("流程 home onDestroy")
         networkStateManager.stopMonitoring()
-//        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
+        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
         cabinetVM.stopAll()
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
@@ -629,7 +629,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
         super.onDestroy()
         Loge.e("流程 home onDestroy")
         networkStateManager.stopMonitoring()
-//        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
+        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
         cabinetVM.stopAll()
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
@@ -637,7 +637,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
     }
 
-    private val cameraErrorListener = CameraErrorListener { status, index, text  ->
+    private val cameraErrorListener = CameraErrorListener { status, index, text ->
         if (status) {
             if ("0" == index) {
                 cabinetVM.maptDoorFault[FaultType.FAULT_CODE_51] = false
@@ -663,7 +663,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
     }
 
     fun latestBusinessStatus() {
-//        cabinetVM.cameraManagerNew.registerUsbReceiver()
+        cabinetVM.cameraManagerNew.registerUsbReceiver()
 //        lifecycleScope.launch {
 //            repeatOnLifecycle(Lifecycle.State.STARTED) {
 //                SerialPortSdk.flowBusinessSetup.collect {
@@ -813,9 +813,6 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
                         CabinetVM.LockerStep.WAITING_CLOSE, CabinetVM.LockerStep.FINISHED -> {
                             BoxToolLogUtils.savePrintln("业务流：上报关闭")
-                            if (it == CabinetVM.LockerStep.FINISHED) {
-                                cabinetVM.deteServiceClose()
-                            }
                         }
 
                         CabinetVM.LockerStep.CAMERA_END -> {
@@ -855,9 +852,11 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             }
 
                         }
+
                         CabinetVM.LockerUiStep.CLEAR_END -> {
                             navController.navigateUp()
                         }
+
                         CabinetVM.LockerUiStep.MOBILE_END -> {
                             navController.navigateUp()
                         }
@@ -872,8 +871,9 @@ class NavTouDoubleActivity : AppCompatActivity() {
                     when (op) {
                         CabinetVM.CameraOp.START -> {
                             // 只负责这一件事：把硬件和 UI 绑定起来
-                            cabinetVM.cameraManagerNew.startDualCamerasParallel( binding.textureIn!!, binding.textureOut!!, false, listener = cameraErrorListener)
+                            cabinetVM.cameraManagerNew.startDualCamerasParallel(binding.textureIn!!, binding.textureOut!!, false, listener = cameraErrorListener)
                         }
+
                         CabinetVM.CameraOp.DESTROY -> {
                             cabinetVM.cameraManagerNew.destroy()
                         }

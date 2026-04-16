@@ -545,7 +545,10 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OTA_APK -> {
                         val otaModel = Gson().fromJson(json, OtaBean::class.java)
-                        cabinetVM.startDowApk(otaModel)
+                        if (!cabinetVM.isRunning) {
+                            BoxToolLogUtils.savePrintln("业务流：升级APK 有正在业务执行中")
+                            cabinetVM.startDowApk(otaModel)
+                        }
                     }
 
                     CmdValue.CMD_ADMIN_PHOTO -> {
@@ -615,7 +618,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         super.onDetachedFromWindow()
         Loge.e("流程 home onDestroy")
         networkStateManager.stopMonitoring()
-//        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
+        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
         cabinetVM.stopAll()
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
@@ -627,7 +630,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         super.onDestroy()
         Loge.e("流程 home onDestroy")
         networkStateManager.stopMonitoring()
-//        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
+        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
         cabinetVM.stopAll()
         cabinetVM.cancelServiceClose()
         cabinetVM.cancelContainersStatusJob()
@@ -664,7 +667,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
 
     fun latestBusinessStatus() {
-//        cabinetVM.cameraManagerNew.registerUsbReceiver()
+        cabinetVM.cameraManagerNew.registerUsbReceiver()
 
 
         /*      lifecycleScope.launch {
@@ -816,9 +819,6 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                         CabinetVM.LockerStep.WAITING_CLOSE, CabinetVM.LockerStep.FINISHED -> {
                             BoxToolLogUtils.savePrintln("业务流：上报关闭")
-                            if (it == CabinetVM.LockerStep.FINISHED) {
-                                cabinetVM.deteServiceClose()
-                            }
                         }
 
                         CabinetVM.LockerStep.CAMERA_END -> {
@@ -840,9 +840,9 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                         CabinetVM.LockerUiStep.DELIVERY_START -> {
                             if (navController.currentDestination?.id != R.id.action_start_delivery) {
-                                    Navigation.findNavController(
-                                        this@NavTouSingleActivity, R.id.nav_host_fragment_single
-                                    ).navigate(R.id.action_start_delivery)
+                                Navigation.findNavController(
+                                    this@NavTouSingleActivity, R.id.nav_host_fragment_single
+                                ).navigate(R.id.action_start_delivery)
                             }
                         }
 
@@ -857,10 +857,12 @@ class NavTouSingleActivity : AppCompatActivity() {
                                 ).navigate(R.id.action_start_clear_door)
                             }
 
-                         }
+                        }
+
                         CabinetVM.LockerUiStep.CLEAR_END -> {
                             navController.navigateUp()
-                         }
+                        }
+
                         CabinetVM.LockerUiStep.MOBILE_END -> {
                             navController.navigateUp()
                         }
@@ -875,8 +877,9 @@ class NavTouSingleActivity : AppCompatActivity() {
                     when (op) {
                         CabinetVM.CameraOp.START -> {
                             // 只负责这一件事：把硬件和 UI 绑定起来
-                            cabinetVM.cameraManagerNew.startDualCamerasParallel( binding.textureIn!!, binding.textureOut!!, false, listener = cameraErrorListener)
+                            cabinetVM.cameraManagerNew.startDualCamerasParallel(binding.textureIn!!, binding.textureOut!!, false, listener = cameraErrorListener)
                         }
+
                         CabinetVM.CameraOp.DESTROY -> {
                             cabinetVM.cameraManagerNew.destroy()
                         }

@@ -416,13 +416,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowStateValue, overflowState)
                 when (cabinId) {
                     cur1Cabinld -> {
-                        SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState1, false)
+                        SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState1, true)
                         maptDoorFault[FaultType.FAULT_CODE_2110] = true
 
                     }
 
                     cur2Cabinld -> {
-                        SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState2, false)
+                        SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState2, true)
                         maptDoorFault[FaultType.FAULT_CODE_2120] = true
                     }
                 }
@@ -431,6 +431,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 maptDoorFault[FaultType.FAULT_CODE_2120] = false
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState, true)
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowStateValue, overflowState)
+                SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState1, false)
+                SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState2, false)
             } else {
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState, false)
                 SPreUtil.put(AppUtils.getContext(), SPreUtil.overflowState1, false)
@@ -1167,6 +1169,33 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                 }
             }
+
+            try {
+                //处理服务下发满溢重启动还需要存在
+                val overflowState = SPreUtil.get(AppUtils.getContext(), SPreUtil.overflowState, false) as Boolean
+                val overflowState1 = SPreUtil.get(AppUtils.getContext(), SPreUtil.overflowState1, false) as Boolean
+                val overflowState2 = SPreUtil.get(AppUtils.getContext(), SPreUtil.overflowState2, false) as Boolean
+                val overflowStateValue = SPreUtil.get(AppUtils.getContext(), SPreUtil.overflowStateValue, -1)
+                if (overflowState && overflowStateValue == 1) {
+                    if (overflowState1) {
+                        maptDoorFault[FaultType.FAULT_CODE_2110] = true
+                    } else {
+                        maptDoorFault[FaultType.FAULT_CODE_2110] = false
+
+                    }
+                    if (overflowState2) {
+                        maptDoorFault[FaultType.FAULT_CODE_2120] = true
+                    } else {
+                        maptDoorFault[FaultType.FAULT_CODE_2120] = false
+
+                    }
+                } else {
+                    maptDoorFault[FaultType.FAULT_CODE_2110] = false
+                    maptDoorFault[FaultType.FAULT_CODE_2120] = false
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             Loge.e("获取socket初始化数据 启动页面")
             if (!oneInit) {
                 //发送心跳
@@ -1747,6 +1776,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             post["transId"] = transId
             post["photoType"] = photoType
             post["file"] = filePath
+            Loge.d("网络请求 拍照上传 uploadPhoto ${post}")
             httpRepo.uploadPhoto(post).onSuccess { user ->
                 Loge.d("网络请求 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
                 insertInfoLog(LogEntity().apply {
@@ -2280,11 +2310,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
                     // 构建JSON对象
                     val jsonObject = getDeviceWeightChange(CmdValue.CMD_HEART_BEAT, stateList, setSignal, setIr1, setIr2, overflowState, overflowStateValue, irOverflow)
-                    Loge.e("执行重量变动 心跳")
-                    if (!isRunning.get()) {
+                    Loge.e("执行重量变动 心跳 $weightRunning")
+                    if (!weightRunning) {
                         val result1 = WeightChangeStorage(AppUtils.getContext()).get("key_weight1")
                         val result2 = WeightChangeStorage(AppUtils.getContext()).get("key_weight2")
-                        Loge.e("执行重量变动 结：$result1 - 重：${devWeiChaMapCun[0]}| 结：$result2 - 重：${devWeiChaMapCun[1]} 任务：${isRunning.get()}")
+                        Loge.e("执行重量变动 结：$result1 - 重：${devWeiChaMapCun[0]}| 结：$result2 - 重：${devWeiChaMapCun[1]} 任务：${isRunning}")
                         if (result1 == "success" || result2 == "success") {
                             if (result1 == "success") {
                                 devWeiChaMapSend[0] = false
@@ -2295,7 +2325,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             val weightChange = getDeviceWeightChange(CmdValue.CMD_PERIPHERAL_STATUS, stateList, setSignal, setIr1, setIr2, overflowState, overflowStateValue, irOverflow)
                             Loge.e("执行重量变动 数据 $weightChange ")
                             sendText(weightChange.toString())
-                            saveRecordSocket(CmdValue.CONNECTING, "weight, 1：${devWeiChaMapCun[0]} | 2：${devWeiChaMapCun[1]}")
+                            BoxToolLogUtils.savePrintln("业务流：重量变动了 weight, 1：${devWeiChaMapCun[0]} | 2：${devWeiChaMapCun[1]}")
                         }
                     }
 //                    Loge.e("出厂配置 initSocket SocketClient 发送心跳数据：$jsonObject")
@@ -2454,6 +2484,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     fun startDowChip(otaModel: OtaBean) {
+        if (isRunning) {
+            BoxToolLogUtils.savePrintln("业务流：升级固件 有正在业务执行中")
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             val ChipVersionValue = SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
             if (ChipVersionValue.isFailure) {
@@ -2470,7 +2504,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION] as Int
                 val netVersion = netVersion.replace(".", "").toIntOrNull() ?: CmdCode.GJ_VERSION
                 Loge.e("流程 toGoCmdOtaBin 添加资源 $gversion  $netVersion")
-                if (netVersion > gversion && !isRunning.get()) {
+                if (netVersion > gversion) {
                     cancelContainersStatusJob()
                     delay(5000)
                     Loge.e("流程 toGoCmdOtaBin 进来了 $gversion  $netVersion")
@@ -2589,103 +2623,110 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    suspend fun startDowApk(otaModel: OtaBean) = withContext(Dispatchers.IO) {
-        val verName = AppUtils.getVersionName()
-        val oldVs = verName.replace(".", "").toIntOrNull() ?: 0
-        val newVs = otaModel.version?.replace(".", "")?.toIntOrNull() ?: 0
-        if (oldVs < newVs && !isRunning.get()) {
-            _chipStep.value = UpgradeStep.INSTALL_DOW
-            val saveResource = ResEntity().apply {
-                sn = otaModel.sn
-                version = otaModel.version
-                cmd = otaModel.cmd
-                url = otaModel.url
-                md5 = otaModel.md5
-                time = AppUtils.getDateYMDHMS()
-            }
-            val queryResource = DatabaseManager.queryResCmd(
-                AppUtils.getContext(), otaModel.version ?: "", otaModel.sn ?: "", otaModel.cmd ?: ""
-            )
-            if (queryResource == null) {
-                val row = DatabaseManager.insertRes(AppUtils.getContext(), saveResource)
-                Loge.e("获取socket初始化数据  Ota 下载APK $row")
-                delay(3000)
-                //取网络数据判断
-                if (otaModel.url != null && !TextUtils.isEmpty(otaModel.url)) {
-                    val fileName = "hsg-${otaModel.version}.apk"
-                    val dir = FileMdUtil.matchNewFileName("apk", fileName)
-                    otaModel.url?.let { dowurl ->
-                        downloadRes(dowurl, dir) { success, file ->//apk下载 未存储
-                            if (success) {
-                                toGoCmdOtaAPK()
-                                //去安装
-                                installDowApk("不存在 首次更新APK")
-                                upNetResDb("下载APK成功插入${otaModel.version}", ResEntity().apply {
-                                    id = row
-                                    status = ResType.TYPE_2//还未升级
-                                    sn = otaModel.sn
-                                    version = otaModel.version
-                                    cmd = otaModel.cmd
-                                    url = otaModel.url
-                                    md5 = otaModel.md5
-                                    time = AppUtils.getDateYMDHMS()
-                                })
-                            } else {
-                                _chipStep.value = UpgradeStep.INSTALL_FUALT
-                                upNetResDb("下载APK失败插入${otaModel.version}", ResEntity().apply {
-                                    id = row
-                                    status = ResType.TYPE_4//下载失败
-                                    sn = otaModel.sn
-                                    version = otaModel.version
-                                    cmd = otaModel.cmd
-                                    url = otaModel.url
-                                    md5 = otaModel.md5
-                                    time = AppUtils.getDateYMDHMS()
-                                })
-                            }
-                        }
-                    }
-                } else {
-                    _chipStep.value = UpgradeStep.INSTALL_FUALT
-                    Loge.e("获取socket初始化数据  下载APK失败插入失败 $row")
-                    insertInfoLog(LogEntity().apply {
-                        cmd = "ota/apk"
-                        msg = "下载APK失败插入失败  $row"
-                        time = AppUtils.getDateYMDHMS()
-                    })
+    fun startDowApk(otaModel: OtaBean) {
+        if (isRunning) {
+            BoxToolLogUtils.savePrintln("业务流：升级APK 有正在业务执行中")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val verName = AppUtils.getVersionName()
+            val oldVs = verName.replace(".", "").toIntOrNull() ?: 0
+            val newVs = otaModel.version?.replace(".", "")?.toIntOrNull() ?: 0
+            if (oldVs < newVs) {
+                _chipStep.value = UpgradeStep.INSTALL_DOW
+                val saveResource = ResEntity().apply {
+                    sn = otaModel.sn
+                    version = otaModel.version
+                    cmd = otaModel.cmd
+                    url = otaModel.url
+                    md5 = otaModel.md5
+                    time = AppUtils.getDateYMDHMS()
                 }
-            } else {
-                Loge.e("获取socket初始化数据  Ota 下载APK 存在")
-                //版本一致更新安装了
-                val verName = AppUtils.getVersionName()
-                if (verName == otaModel.version) {
-                    _chipStep.value = UpgradeStep.INSTALL_FUALT
-                    queryResource.status = ResType.TYPE_3//Apk文件
-                    upNetResDb("已经是最新版本${otaModel.version}", queryResource)
-                } else {
-                    val verName = AppUtils.getVersionName()
-                    val oldVs = verName.replace(".", "").toInt()
-                    val newVs = otaModel.version?.replace(".", "")?.toInt() ?: 0
-                    Loge.e("获取socket初始化数据  Ota 下载APK 原：${oldVs},新：${newVs}")
-                    //未更新并且是下载失败
-                    if (oldVs < newVs && (queryResource.status == ResType.TYPE_F1 || queryResource.status == ResType.TYPE_2 || queryResource.status == ResType.TYPE_4)) {
+                val queryResource = DatabaseManager.queryResCmd(
+                    AppUtils.getContext(), otaModel.version ?: "", otaModel.sn ?: "", otaModel.cmd
+                        ?: ""
+                )
+                if (queryResource == null) {
+                    val row = DatabaseManager.insertRes(AppUtils.getContext(), saveResource)
+                    Loge.e("获取socket初始化数据  Ota 下载APK $row")
+                    delay(3000)
+                    //取网络数据判断
+                    if (otaModel.url != null && !TextUtils.isEmpty(otaModel.url)) {
                         val fileName = "hsg-${otaModel.version}.apk"
                         val dir = FileMdUtil.matchNewFileName("apk", fileName)
-                        queryResource.url?.let { url ->
-                            downloadRes(url, dir) { success, file ->//apk下载
+                        otaModel.url?.let { dowurl ->
+                            downloadRes(dowurl, dir) { success, file ->//apk下载 未存储
                                 if (success) {
-                                    queryResource.status = ResType.TYPE_2//还未升级
                                     toGoCmdOtaAPK()
                                     //去安装
                                     installDowApk("不存在 首次更新APK")
-                                    //去安装
-                                    upNetResDb("下载APK成功更新${otaModel.version}", queryResource)
+                                    upNetResDb("下载APK成功插入${otaModel.version}", ResEntity().apply {
+                                        id = row
+                                        status = ResType.TYPE_2//还未升级
+                                        sn = otaModel.sn
+                                        version = otaModel.version
+                                        cmd = otaModel.cmd
+                                        url = otaModel.url
+                                        md5 = otaModel.md5
+                                        time = AppUtils.getDateYMDHMS()
+                                    })
                                 } else {
                                     _chipStep.value = UpgradeStep.INSTALL_FUALT
-                                    queryResource.status = ResType.TYPE_4//下载失败
-                                    upNetResDb(
-                                        "下载APK失败更新${otaModel.version}", queryResource
-                                    )
+                                    upNetResDb("下载APK失败插入${otaModel.version}", ResEntity().apply {
+                                        id = row
+                                        status = ResType.TYPE_4//下载失败
+                                        sn = otaModel.sn
+                                        version = otaModel.version
+                                        cmd = otaModel.cmd
+                                        url = otaModel.url
+                                        md5 = otaModel.md5
+                                        time = AppUtils.getDateYMDHMS()
+                                    })
+                                }
+                            }
+                        }
+                    } else {
+                        _chipStep.value = UpgradeStep.INSTALL_FUALT
+                        Loge.e("获取socket初始化数据  下载APK失败插入失败 $row")
+                        insertInfoLog(LogEntity().apply {
+                            cmd = "ota/apk"
+                            msg = "下载APK失败插入失败  $row"
+                            time = AppUtils.getDateYMDHMS()
+                        })
+                    }
+                } else {
+                    Loge.e("获取socket初始化数据  Ota 下载APK 存在")
+                    //版本一致更新安装了
+                    val verName = AppUtils.getVersionName()
+                    if (verName == otaModel.version) {
+                        _chipStep.value = UpgradeStep.INSTALL_FUALT
+                        queryResource.status = ResType.TYPE_3//Apk文件
+                        upNetResDb("已经是最新版本${otaModel.version}", queryResource)
+                    } else {
+                        val verName = AppUtils.getVersionName()
+                        val oldVs = verName.replace(".", "").toInt()
+                        val newVs = otaModel.version?.replace(".", "")?.toInt() ?: 0
+                        Loge.e("获取socket初始化数据  Ota 下载APK 原：${oldVs},新：${newVs}")
+                        //未更新并且是下载失败
+                        if (oldVs < newVs && (queryResource.status == ResType.TYPE_F1 || queryResource.status == ResType.TYPE_2 || queryResource.status == ResType.TYPE_4)) {
+                            val fileName = "hsg-${otaModel.version}.apk"
+                            val dir = FileMdUtil.matchNewFileName("apk", fileName)
+                            queryResource.url?.let { url ->
+                                downloadRes(url, dir) { success, file ->//apk下载
+                                    if (success) {
+                                        queryResource.status = ResType.TYPE_2//还未升级
+                                        toGoCmdOtaAPK()
+                                        //去安装
+                                        installDowApk("不存在 首次更新APK")
+                                        //去安装
+                                        upNetResDb("下载APK成功更新${otaModel.version}", queryResource)
+                                    } else {
+                                        _chipStep.value = UpgradeStep.INSTALL_FUALT
+                                        queryResource.status = ResType.TYPE_4//下载失败
+                                        upNetResDb(
+                                            "下载APK失败更新${otaModel.version}", queryResource
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -3013,7 +3054,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 )
             } else {
                 listOf(
-                    NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut),NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn)
+                    NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut), NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn)
                 )
             }
 
@@ -3068,6 +3109,101 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         delay(2000) // 双摄间隔 1s，减轻网络带宽压力
                     }
                 }
+            }
+        }
+    }
+
+    fun takePhotoRemote(photoModel: PhotoBean) {
+        if (isRunning) {
+            println("进来拍照 业务流：正在执行中")
+            BoxToolLogUtils.savePrintln("业务流：远程拍照 有正在业务执行中")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                println("进来拍照 业务流：执行远程拍照")
+                BoxToolLogUtils.savePrintln("业务流：执行远程拍照")
+                startWorkflow()
+                delay(5000)
+                val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+                if (!dir.exists()) dir.mkdirs()
+                val transId = photoModel?.transId ?: "transId"
+                val setTransId = removeRetryPrefix(transId)
+                when (photoModel.photoType) {
+                    -1 -> {
+                        val ids = cameraManagerNew.getExternalCameraIds()
+                        if (ids.size < 2) return@launch
+                        val nameIn = "yz4${setTransId}---${AppUtils.getDateYMD()}.jpg"
+                        val nameOut = "yz5${setTransId}---${AppUtils.getDateYMD()}.jpg"
+                        val fileIn = File(dir, nameIn)
+                        val fileOut = File(dir, nameOut)
+                        val requests = listOf(
+                            NewDualUsbCameraManager.PhotoRequest(ids[0], 4, "内", fileIn), NewDualUsbCameraManager.PhotoRequest(ids[1], 5, "外", fileOut)
+                        )
+                        // 同时开始拍照并等待全部完成
+                        val results = cameraManagerNew.takePicturesParallel(requests)
+                        withContext(Dispatchers.IO) {
+                            // results 里的文件顺序与 requests 一致
+                            results.forEach { file ->
+                                if (file != null) {
+                                    //结算页只显示图片打开的拍照
+                                    val photoType = extractThirdChar(file.name).toString()
+                                    uploadPhoto(curSn, setTransId, photoType, file, "45")
+
+                                }
+                            }
+                        }
+                    }
+
+                    4 -> {
+                        val ids = cameraManagerNew.getExternalCameraIds()
+                        if (ids.size < 2) return@launch
+                        val nameIn = "45${setTransId}---${AppUtils.getDateYMD()}.jpg"
+                        val fileIn = File(dir, nameIn)
+                        val requests = listOf(
+                            NewDualUsbCameraManager.PhotoRequest(ids[0], 4, "内", fileIn)
+                        )
+                        // 同时开始拍照并等待全部完成
+                        val results = cameraManagerNew.takePicturesParallel(requests)
+                        withContext(Dispatchers.IO) {
+                            // results 里的文件顺序与 requests 一致
+                            results.forEach { file ->
+                                if (file != null) {
+                                    val photoType = extractThirdChar(file.name).toString()
+                                    uploadPhoto(curSn, setTransId, photoType, file, "45")
+                                    delay(2000) // 双摄间隔 1s，减轻网络带宽压力
+                                }
+                            }
+                        }
+
+                    }
+
+                    5 -> {
+                        val ids = cameraManagerNew.getExternalCameraIds()
+                        if (ids.size < 2) return@launch
+                        val nameOut = "45${setTransId}---${AppUtils.getDateYMD()}.jpg"
+                        val fileOut = File(dir, nameOut)
+                        val requests = listOf(
+                            NewDualUsbCameraManager.PhotoRequest(ids[1], 5, "外", fileOut)
+                        )
+                        // 同时开始拍照并等待全部完成
+                        val results = cameraManagerNew.takePicturesParallel(requests)
+                        withContext(Dispatchers.IO) {
+                            // results 里的文件顺序与 requests 一致
+                            results.forEach { file ->
+                                if (file != null) {
+                                    val photoType = extractThirdChar(file.name).toString()
+                                    uploadPhoto(curSn, setTransId, photoType, file, "45")
+                                    delay(2000) // 双摄间隔 1s，减轻网络带宽压力
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _cameraLifecycleEvent.emit(CameraOp.DESTROY)//远程拍照销毁
             }
         }
     }
@@ -3228,7 +3364,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
         return false
     }
 
-    private val isRunning = AtomicBoolean(false)
+    private val _isRunning = AtomicBoolean(false)
+    val isRunning: Boolean get() = _isRunning.get()
+
+    var weightRunning = false
     private val defaultWeight = "0.00"
     private var modelOpenBean: DoorOpenBean? = null
 
@@ -3245,6 +3384,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * @param forcedCloseType 强制关推杆几
      */
     fun startLockerDoorWorkflow(model: DoorOpenBean, setWeightBeforeOpen: String, doorGex: Int, openType: Int, closeType: Int, forcedCloseType: Int, executeCount: Int = 5) {
+        if (!_isRunning.compareAndSet(false, true)) {
+            println("进来拍照 startLockerDoorWorkflow 工作流正在执行中，跳过本次调用 ${model.transId}")
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             var toWeightAfterClosing = "0"  // 彻底关门后重量
             try {
@@ -3252,10 +3395,14 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLockerCheck(model)
                 val transId = model.transId ?: ""
                 val execution = checkStatusResult?.await()
-                BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 格口：$doorGex 当前重量：$setWeightBeforeOpen 满溢：$execution | 运行：${isRunning.get()} |${transId}")
-                if (execution == false && isRunning.getAndSet(true)) {
+                println("进来拍照 startLockerDoorWorkflow： $isRunning")
+                BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 格口：$doorGex 当前重量：$setWeightBeforeOpen 满溢：$execution | 运行：${isRunning} |${transId}")
+                if (execution == false) {
+                    println("进来拍照 startLockerDoorWorkflow 工作流正在执行中，跳过本次调用 ${model.transId}")
                     return@launch
                 }
+                weightRunning = true
+                println("进来拍照 startLockerDoorWorkflow 执行业务： $isRunning ${model.transId}")
                 startWorkflow()
                 setCurrentUiStep(LockerUiStep.MOBILE_END)
                 // 1. 核心状态初始化
@@ -3413,7 +3560,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
-                isRunning.set(false)
+                _isRunning.set(false)
+                weightRunning = false
                 _currentStep.value = LockerStep.IDLE
                 if (doorGex == CmdCode.GE1) {
                     curG1Weight = toWeightAfterClosing
@@ -3425,7 +3573,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                 startContainersStatus() // 恢复全局状态轮询
                 startPollingFault()// 恢复全局异常检测
-//                deteServiceClose()//检测服务器是否完整下发关闭指令
+                deteServiceClose()//检测服务器是否完整下发关闭指令
             }
         }
     }
@@ -3440,8 +3588,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
             var toWeightAfterClosing = "0"  // 彻底关门后重量
             try {
                 val transId = model.transId ?: ""
-                BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 清运：$doorGex 当前重量：$setWeightBeforeOpen 运行：${isRunning.get()} |${transId}")
-                if (isRunning.getAndSet(true)) {
+                BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 清运：$doorGex 当前重量：$setWeightBeforeOpen 运行：${isRunning} |${transId}")
+                if (!_isRunning.compareAndSet(false, true)) {
                     return@launch
                 }
                 // 1. 核心状态初始化
@@ -3575,7 +3723,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
-                isRunning.set(false)
+                _isRunning.set(false)
                 doorGeX = CmdCode.GE
                 _currentStep.value = LockerStep.IDLE
                 if (doorGex == CmdCode.GE1) {
@@ -3591,7 +3739,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
             }
         }
     }
-
 
     /***
      * 异常情况关闭
@@ -3737,8 +3884,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
         deteServiceCloseJob = ioScope.launch {
             while (isActive) {
+                println("进来拍照 deteServiceClose $isRunning")
                 delay(8000)
-                if (!isRunning.get()) {
+                if (!isRunning) {
                     val weights = DatabaseManager.queryWeightStatus(
                         AppUtils.getContext(), EntityType.WEIGHT_TYPE_10
                     )
@@ -3766,7 +3914,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             beforeDownWeight = weight.beforeDownWeight
                             afterDownWeight = weight.afterDownWeight
 
-                            timestamp = AppUtils.getDateYMDHMS()
+                            timestamp = System.currentTimeMillis().toString()
                         }
                         val json = JsonBuilder.convertToJsonString(doorClose)
                         sendText(json)
@@ -3831,8 +3979,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 cmd = CmdValue.CMD_OPEN_DOOR
                 openType = model.openType
                 transId = model.transId
-                curWeightY = weightBeforeOpen
                 curWeight = weightBeforeOpen
+                beforeUpWeight = weightBeforeOpen
                 time = AppUtils.getDateYMDHMS()
                 cabinId = when (doorGeX) {
                     CmdCode.GE1 -> {
@@ -3858,7 +4006,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 curWeight = weightBeforeOpen
                 curWeightY = weightBeforeOpen
                 retCode = 0
-                timestamp = AppUtils.getDateYMDHMS()
+                timestamp = System.currentTimeMillis().toString()
             }
             val json = JsonBuilder.convertToJsonString(doorOpen)
             sendText(json)
@@ -4066,60 +4214,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
 
-    suspend fun takePhotoRemote(photoModel: PhotoBean) = withContext(Dispatchers.IO) {
-//        if (_currentStep.value == LockerStep.IDLE && !isRunning.get()) {
-//            delay(1000)
-//            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-//            if (!dir.exists()) dir.mkdirs()
-//            when (photoModel.photoType) {
-//                -1 -> {
-//                    val setTransId = modelOpenBean?.transId ?: "transId"
-//                    val nameIn = "s-${setTransId}-$45-i-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-//                    val nameOut = "s-${setTransId}-$45-o-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-//                    val fileIn = File(dir, nameIn)
-//                    val fileOut = File(dir, nameOut)
-//
-//                    cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
-//                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
-//                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
-//                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 0, it) }
-//                    }
-//                    delay(5000)
-//                    cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
-//                        BoxToolLogUtils.saveCamera("拍照成功 远程内外 $toFile ${toFile?.name}")
-//                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
-//                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 1, it) }
-//                    }
-//                }
-//
-//                4 -> {
-//
-//                    val setTransId = modelOpenBean?.transId ?: "transId"
-//                    val nameIn = "${setTransId}-$45-in-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-//                    val fileIn = File(dir, nameIn)
-//                    cameraManagerNew.takePicture("0", 45, "内", fileIn) { toFile ->
-//                        BoxToolLogUtils.saveCamera("拍照成功 远程 内 $toFile ${toFile?.name}")
-//                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 4, it, "45") }
-//                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 0, it) }
-//                    }
-//
-//                }
-//
-//                5 -> {
-//                    val setTransId = modelOpenBean?.transId ?: "transId"
-//                    val nameOut = "${setTransId}-$45-out-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}"
-//                    val fileOut = File(dir, nameOut)
-//                    cameraManagerNew.takePicture("1", 45, "外", fileOut) { toFile ->
-//                        BoxToolLogUtils.saveCamera("拍照成功 远程 外 $toFile ${toFile?.name}")
-//                        toFile?.name?.let { uploadPhoto(curSn, setTransId, 5, it, "45") }
-//                        toFile?.absolutePath?.let { toGoInsertPhoto(setTransId, "45", 1, it) }
-//                    }
-//                }
-//            }
-//
-//        }
-    }
-
     // 使用 Channel 或 LiveData 传递结果
     private val _refBusStaStateFlow = MutableStateFlow<MonitorWeight?>(null)
     val refBusStaStateFlow: StateFlow<MonitorWeight?> = _refBusStaStateFlow.asStateFlow()
@@ -4260,7 +4354,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     beforeDownWeight = weight.beforeDownWeight
                     afterDownWeight = weight.afterDownWeight
 
-                    timestamp = AppUtils.getDateYMDHMS()
+                    timestamp = System.currentTimeMillis().toString()
                 }
                 val json = JsonBuilder.convertToJsonString(doorClose)
                 sendText(json)
@@ -4463,9 +4557,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                         }
                     }.onFailure { e ->
-                        BoxToolLogUtils.savePrintln("业务流： startStatus onFailure ${e.message}")
+                        BoxToolLogUtils.savePrintln("业务流：轮询onFailure: ${e.message}")
                     }
-                }catch (e: TimeoutCancellationException) {
+                } catch (e: TimeoutCancellationException) {
                     BoxToolLogUtils.savePrintln("业务流：轮询超时: ${e.message}")
                 } catch (e: Exception) {
                     BoxToolLogUtils.savePrintln("业务流：轮询异常: ${e.message}")
