@@ -12,8 +12,7 @@ object LogUtils {
     var tag = "log-android"
 
     @JvmField
-    var isDebug =true
-//    var isDebug = BuildConfig.DEBUG
+    var isDebug = BuildConfig.DEBUG
 
     @JvmStatic
     fun i(message: String) {

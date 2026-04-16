@@ -3115,13 +3115,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     fun takePhotoRemote(photoModel: PhotoBean) {
         if (isRunning) {
-            println("进来拍照 业务流：正在执行中")
             BoxToolLogUtils.savePrintln("业务流：远程拍照 有正在业务执行中")
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                println("进来拍照 业务流：执行远程拍照")
                 BoxToolLogUtils.savePrintln("业务流：执行远程拍照")
                 startWorkflow()
                 delay(5000)
@@ -3385,7 +3383,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     fun startLockerDoorWorkflow(model: DoorOpenBean, setWeightBeforeOpen: String, doorGex: Int, openType: Int, closeType: Int, forcedCloseType: Int, executeCount: Int = 5) {
         if (!_isRunning.compareAndSet(false, true)) {
-            println("进来拍照 startLockerDoorWorkflow 工作流正在执行中，跳过本次调用 ${model.transId}")
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -3395,14 +3392,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLockerCheck(model)
                 val transId = model.transId ?: ""
                 val execution = checkStatusResult?.await()
-                println("进来拍照 startLockerDoorWorkflow： $isRunning")
                 BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 格口：$doorGex 当前重量：$setWeightBeforeOpen 满溢：$execution | 运行：${isRunning} |${transId}")
                 if (execution == false) {
-                    println("进来拍照 startLockerDoorWorkflow 工作流正在执行中，跳过本次调用 ${model.transId}")
                     return@launch
                 }
                 weightRunning = true
-                println("进来拍照 startLockerDoorWorkflow 执行业务： $isRunning ${model.transId}")
                 startWorkflow()
                 setCurrentUiStep(LockerUiStep.MOBILE_END)
                 // 1. 核心状态初始化
@@ -3589,7 +3583,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             try {
                 val transId = model.transId ?: ""
                 BoxToolLogUtils.savePrintln("业务流：业务正在执行中.... 清运：$doorGex 当前重量：$setWeightBeforeOpen 运行：${isRunning} |${transId}")
-                if (!_isRunning.compareAndSet(false, true)) {
+                if (_isRunning.getAndSet(true)) {
                     return@launch
                 }
                 // 1. 核心状态初始化
@@ -3884,7 +3878,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
         deteServiceCloseJob = ioScope.launch {
             while (isActive) {
-                println("进来拍照 deteServiceClose $isRunning")
                 delay(8000)
                 if (!isRunning) {
                     val weights = DatabaseManager.queryWeightStatus(
