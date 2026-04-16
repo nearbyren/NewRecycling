@@ -77,7 +77,7 @@ class SerialVM : ViewModel() {
     }
 
     private suspend fun readLoop() = withContext(Dispatchers.IO) {
-        val buffer = ByteArray(1024)
+        val buffer = ByteArray(4096)
         try {
             while (isRunning.get() && isActive) {
                 val len = fis?.read(buffer) ?: -1
@@ -87,6 +87,8 @@ class SerialVM : ViewModel() {
                     val validData = buffer.copyOfRange(0, len)
                     // 喂给提取器
                     extractor.push(validData)
+                } else {
+                    delay(1)
                 }
             }
         } catch (e: Exception) {
@@ -108,7 +110,7 @@ class SerialVM : ViewModel() {
             try {
                 withContext(Dispatchers.IO) {
                     Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
-                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
+                    BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
                     fos?.write(data)
 //                    fos?.flush()//此处代码会导致发数据会存在接收不到回来的数据
                     delay(10)

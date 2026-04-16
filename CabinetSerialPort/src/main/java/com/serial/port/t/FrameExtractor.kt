@@ -20,7 +20,7 @@ class FrameExtractor(private val onFrameFound: (ByteArray) -> Unit) {
 
     // 累积缓冲区，用于存放不完整的碎片数据
     private val tempBuffer = ByteArrayOutputStream()
-    private val MAX_BUFFER_SIZE = 4096 // 防止异常数据导致内存溢出
+    private val MAX_BUFFER_SIZE = 8192 // 防止异常数据导致内存溢出
 
     @Synchronized
     fun push(input: ByteArray) {
