@@ -115,8 +115,8 @@ class StartUiActivity : AppCompatActivity() {
             httpRepo.connectAddress(headers, from).onSuccess { initString ->
                 initString?.let { url ->
                     val socketUrl = url.split(":")
-//                    initSocket(socketUrl[0], socketUrl[1].toInt())
-                    initSocket(BuildConfig.socketIP, BuildConfig.socketPort)
+                    initSocket(socketUrl[0], socketUrl[1].toInt())
+//                    initSocket(BuildConfig.socketIP, BuildConfig.socketPort)
                     cabinetVM.insertInfoLog(LogEntity().apply {
                         cmd = "connectAddress"
                         msg = "获取socket地址成功"

@@ -2386,11 +2386,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         } else {
                             addProperty("irState", 0)
                         }
-                        if (setIr2 == 1 && index == 1) {
-                            addProperty("irState", state.irState)
-                        } else {
-                            addProperty("irState", 0)
+                        //处理上报红外是吧
+                        if (doorGeXType == CmdCode.GE2) {
+                            if (setIr2 == 1 && index == 1) {
+                                addProperty("irState", state.irState)
+                            } else {
+                                addProperty("irState", 0)
+                            }
                         }
+
                         addProperty("weigh", state.weigh)
                         addProperty("doorStatus", state.doorStatus)
                         addProperty("lockStatus", state.lockStatus)
@@ -4592,23 +4596,43 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     })
                 }
             }
-
+            val overflowState = SPreUtil[AppUtils.getContext(), SPreUtil.overflowState, false] as Boolean
+            val overflowStateValue = SPreUtil[AppUtils.getContext(), SPreUtil.overflowStateValue, 1] as Int
             //刷新满溢状态
             when (index) {
                 0 -> {
+                    val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
                     val curG1Total = curG1TotalWeight.toFloat()
                     //实时总重量
                     val curG1Weight = state.weigh
                     val setIr1 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr1, -1] as Int
                     //上报重量大于总重量则报提示
-                    if (curG1Weight > curG1Total && setIr1 == 1) {
+                    if (overflowState) {//服务器下发漫溢状态 当服务器改为false 走下面的逻辑
+                        if (overflowStateValue == 1) { //
+                            setRefBusStaChannel(MonitorWeight().apply {
+                                refreshType = RefBusType.REFRESH_TYPE_2
+                                doorGeX = CmdCode.GE1
+                                warningContent = BusType.BUS_OVERFLOW
+                            })
+                            maptDoorFault[FaultType.FAULT_CODE_2110] = true
+                        } else if (overflowStateValue == 0) {
+                            setRefBusStaChannel(MonitorWeight().apply {
+                                refreshType = RefBusType.REFRESH_TYPE_2
+                                doorGeX = CmdCode.GE1
+                                warningContent = BusType.BUS_NORMAL
+                            })
+                            maptDoorFault[FaultType.FAULT_CODE_2110] = false
+                        }else{
+
+                        }
+                    } else if (curG1Weight > curG1Total && setIr1 == 1) {
                         setRefBusStaChannel(MonitorWeight().apply {
                             refreshType = RefBusType.REFRESH_TYPE_2
                             doorGeX = CmdCode.GE1
                             warningContent = BusType.BUS_OVERFLOW
                         })
                         maptDoorFault[FaultType.FAULT_CODE_1111] = true
-                    }else{
+                    } else {
                         setRefBusStaChannel(MonitorWeight().apply {
                             refreshType = RefBusType.REFRESH_TYPE_2
                             doorGeX = CmdCode.GE1
@@ -4624,14 +4648,32 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val curG2Weight = state.weigh
                     val setIr2 = SPreUtil[AppUtils.getContext(), SPreUtil.saveIr2, -1] as Int
                     //上报重量大于总重量则报提示
-                    if (curG2Weight > curG2Total && setIr2 == 1) {
+                    if (overflowState) {//服务器下发漫溢状态 当服务器改为false 走下面的逻辑
+                        if (overflowStateValue == 1) { //
+                            setRefBusStaChannel(MonitorWeight().apply {
+                                refreshType = RefBusType.REFRESH_TYPE_2
+                                doorGeX = CmdCode.GE2
+                                warningContent = BusType.BUS_OVERFLOW
+                            })
+                            maptDoorFault[FaultType.FAULT_CODE_2120] = true
+                        } else if (overflowStateValue == 0) {
+                            setRefBusStaChannel(MonitorWeight().apply {
+                                refreshType = RefBusType.REFRESH_TYPE_2
+                                doorGeX = CmdCode.GE2
+                                warningContent = BusType.BUS_NORMAL
+                            })
+                            maptDoorFault[FaultType.FAULT_CODE_2120] = false
+                        }else{
+
+                        }
+                    } else if (curG2Weight > curG2Total && setIr2 == 1) {
                         setRefBusStaChannel(MonitorWeight().apply {
                             refreshType = RefBusType.REFRESH_TYPE_2
                             doorGeX = CmdCode.GE2
                             warningContent = BusType.BUS_OVERFLOW
                         })
                         maptDoorFault[FaultType.FAULT_CODE_1112] = true
-                    }else{
+                    } else {
                         setRefBusStaChannel(MonitorWeight().apply {
                             refreshType = RefBusType.REFRESH_TYPE_2
                             doorGeX = CmdCode.GE2
