@@ -334,7 +334,6 @@ class NavTouSingleActivity : AppCompatActivity() {
             cabinetVM.getLoginCmd.collect {
                 if (it) {
                     Loge.e("流程 navigateToHome saveSocketInitData 加载fragment")
-                    binding.acivInit.isVisible = false
                     cabinetVM.doorGeXType = CmdCode.GE1
                     initPort()
                     FlowBus.with<ResEvent>("ResEvent").post(this, ResEvent().apply {})
