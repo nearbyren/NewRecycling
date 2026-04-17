@@ -546,7 +546,6 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OTA_APK -> {
                         val otaModel = Gson().fromJson(json, OtaBean::class.java)
-                        BoxToolLogUtils.savePrintln("业务流：升级APK 有正在业务执行中")
                         cabinetVM.startDowApk(otaModel)
                     }
 
