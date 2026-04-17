@@ -2488,7 +2488,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     fun startDowChip(otaModel: OtaBean) {
-        if (!_isRunning.compareAndSet(false, true) && isRunning) {
+        if (isRunning) {
             BoxToolLogUtils.savePrintln("业务流：升级固件 有正在业务执行中 $isRunning")
             return
         }
