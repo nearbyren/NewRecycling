@@ -14,8 +14,8 @@ android {
     defaultConfig {
         minSdk 24 //最低支持版本
         targetSdk 34 //支持的目标版本
-        versionCode 151
-        versionName "1.5.1"
+        versionCode 160
+        versionName "1.6.0"
         buildConfigField "String", "initToken", "\"c2f5de4f-93de-4195-9c74-aa6ad9b2edd8\""
 //        buildConfigField "String", "httpIP", "\"https://testapi.lyshenrecycle.cn:10082/api\""
 //        buildConfigField "String", "socketIP", "\"testapi.lyshenrecycle.cn\""

@@ -1008,6 +1008,17 @@ object DatabaseManager {
         getResFlowDao(context).upResStatus(id, status)
     }
 
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param id
+     * @param status
+     * @return
+     */
+    fun deletedResEntity(context: Context, id: Long) {
+        getResFlowDao(context).deletedResEntity(id)
+    }
+
     /***************************************获取 资源*************************************************/
 
     /***************************************获取 日志记录 实例*************************************************/

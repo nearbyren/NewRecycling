@@ -87,8 +87,6 @@ class SerialVM : ViewModel() {
                     val validData = buffer.copyOfRange(0, len)
                     // 喂给提取器
                     extractor.push(validData)
-                } else {
-                    delay(1)
                 }
             }
         } catch (e: Exception) {
@@ -185,14 +183,14 @@ class SerialVM : ViewModel() {
      * @param data 业务数据
      * @param timeout 超时时间（毫秒）
      */
-    suspend fun executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 3000): Result<ByteArray> {
+    suspend fun executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 10000): Result<ByteArray> {
         if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
         return withContext(Dispatchers.IO) {
             val waiter = CompletableDeferred<ByteArray>()
             responseWaiter = waiter
             directAwaitingCmd = setCmd
             try {
-//                BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
+                BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
                 fos?.write(data)
 //                delay(10)
 //                fos?.flush()//此处代码会导致发数据会存在接收不到回来的数据

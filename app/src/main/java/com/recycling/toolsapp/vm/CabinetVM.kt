@@ -1652,12 +1652,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = "f1-20260320.bin"
+    var chipName = ""
 
     /***
      * 下载主芯片版本大小
      */
-    var chipDowV = 20260320
+    var chipDowV = 20260410
 
     /***
      * 当前主芯片版本大小
@@ -2477,7 +2477,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     enum class UpgradeStep {
-        IDLE, INSTALL_DOW, INSTALL_APK, INSTALL_SAME, INSTALL_FUALT, UPGRADE_DOW, UPGRADE_FUALT, QUERY_VERSION, QUERY_VERSION_FUALT, ENTER_STATUS, ENTER_STATUS_FUALT, QUERY_STATUS, QUERY_STATUS_FUALT, SEND_FILE, SEND_FILE_FUALT, SEND_FILE_END, SEND_FILE_END_FUALT, RESTART_APP, RESTART_APP_FUALT,
+        IDLE, INSTALL_DOW, INSTALL_APK, INSTALL_SAME, INSTALL_FUALT, UPGRADE_DOW, UPGRADE_FUALT, QUERY_VERSION, QUERY_VERSION_FUALT, ENTER_STATUS, ENTER_STATUS_FUALT, QUERY_STATUS, QUERY_STATUS_FUALT, SEND_FILE, SEND_FILE_FUALT, SEND_FILE_END, SEND_FILE_END_FUALT, RESTART_APP, RESTART_APP_FUALT,UPGRADE_END,
     }
 
     // 建议将这些变量放在 ViewModel 中统一管理
@@ -2488,142 +2488,149 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     fun startDowChip(otaModel: OtaBean) {
-        if (isRunning) {
-            BoxToolLogUtils.savePrintln("业务流：升级固件 有正在业务执行中")
+        if (!_isRunning.compareAndSet(false, true) && isRunning) {
+            BoxToolLogUtils.savePrintln("业务流：升级固件 有正在业务执行中 $isRunning")
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
-            val ChipVersionValue = SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
-            if (ChipVersionValue.isFailure) {
-                tipMessage("业务流 查询版本失败:${ChipVersionValue.exceptionOrNull()?.message}")
-                return@launch
-            }
-            val chipVersion = ChipVersionValue.getOrNull()?.chipVersion ?: SPreUtil.gversion
-            SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
-            Loge.e("流程 toGoCmdOtaBin 查询版本结束 $chipVersion")
-            delay(2000)
-            Loge.e("流程 toGoCmdOtaBin 查询版本结束 延迟结束 $chipVersion")
-            val netVersion = otaModel.version ?: ""
-            if (!TextUtils.isEmpty(netVersion)) {
-                val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION] as Int
-                val netVersion = netVersion.replace(".", "").toIntOrNull() ?: CmdCode.GJ_VERSION
-                Loge.e("流程 toGoCmdOtaBin 添加资源 $gversion  $netVersion")
-                if (netVersion > gversion) {
-                    cancelContainersStatusJob()
-                    delay(5000)
-                    Loge.e("流程 toGoCmdOtaBin 进来了 $gversion  $netVersion")
-                    _chipStep.value = UpgradeStep.UPGRADE_DOW
-                    chipCurV = gversion
-                    chipDowV = netVersion
-                    Loge.e("流程 toGoCmdOtaBin 添加资源 回调查询版本 当前：$chipCurV  网络：$chipDowV")
-                    val fileName = "f1-${netVersion}.bin"
-                    chipName = fileName
-                    val saveResource = ResEntity().apply {
-                        sn = otaModel.sn
-                        version = netVersion.toString()
-                        cmd = otaModel.cmd
-                        url = otaModel.url
-                        md5 = otaModel.md5
-                        time = AppUtils.getDateYMDHMS()
-                    }
-                    val queryResource = DatabaseManager.queryResCmd(
-                        AppUtils.getContext(), netVersion.toString(), otaModel.sn
-                            ?: "", otaModel.cmd ?: ""
-                    )
-                    Loge.e("流程 toGoCmdOtaBin 添加资源 $queryResource")
-                    if (queryResource == null) {
-                        val row = DatabaseManager.insertRes(AppUtils.getContext(), saveResource)
-                        Loge.e("流程 toGoCmdOtaBin 添加资源 $row")
-                        //取网络数据判断
-                        if (otaModel.url != null && !TextUtils.isEmpty(otaModel.url) && chipCurV < chipDowV) {
-                            Loge.e("流程 toGoCmdOtaBin 进入下载 ")
-                            val dir = FileMdUtil.matchNewFileName("bin", fileName)
-                            otaModel.url?.let { dowurl ->
-                                downloadRes(dowurl, dir) { success, file ->//固件下载 未存储
-                                    Loge.e("流程 toGoCmdOtaBin success $success")
-                                    if (success) {
-                                        toGoCmdOtaBin()
-                                        startUpgradeWorkflow()
-                                        upNetResDb("下载BIN成功插入", ResEntity().apply {
-                                            id = row
-                                            status = ResType.TYPE_2//还未升级
-                                            sn = otaModel.sn
-                                            version = netVersion.toString()
-                                            cmd = otaModel.cmd
-                                            url = otaModel.url
-                                            md5 = otaModel.md5
-                                            time = AppUtils.getDateYMDHMS()
-                                        })
-                                    } else {
-                                        _chipStep.value = UpgradeStep.UPGRADE_FUALT
-                                        upNetResDb("下载BIN失败插入", ResEntity().apply {
-                                            id = row
-                                            status = ResType.TYPE_4//下载失败
-                                            sn = otaModel.sn
-                                            version = netVersion.toString()
-                                            cmd = otaModel.cmd
-                                            url = otaModel.url
-                                            md5 = otaModel.md5
-                                            time = AppUtils.getDateYMDHMS()
-                                        })
-
-                                    }
-                                }
-                            }
-                        } else {
-                            _chipStep.value = UpgradeStep.UPGRADE_FUALT
-                            Loge.e("流程 toGoCmdOtaBin 下载BIN失败插入失败 $row")
-                            insertInfoLog(LogEntity().apply {
-                                cmd = "ota"
-                                msg = "下载BIN失败插入失败  $row"
-                                time = AppUtils.getDateYMDHMS()
-                            })
+            try {
+                val ChipVersionValue = SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
+                if (ChipVersionValue.isFailure) {
+                    tipMessage("业务流 查询版本失败:${ChipVersionValue.exceptionOrNull()?.message}")
+                    return@launch
+                }
+                val chipVersion = ChipVersionValue.getOrNull()?.chipVersion ?: SPreUtil.gversion
+                SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
+                Loge.e("流程 toGoCmdOtaBin 查询版本结束 $chipVersion")
+                delay(2000)
+                Loge.e("流程 toGoCmdOtaBin 查询版本结束 延迟结束 $chipVersion")
+                val netVersion = otaModel.version ?: ""
+                if (!TextUtils.isEmpty(netVersion)) {
+                    val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION] as Int
+                    val netVersion = netVersion.replace(".", "").toIntOrNull() ?: CmdCode.GJ_VERSION
+                    Loge.e("流程 toGoCmdOtaBin 添加资源 $gversion  $netVersion")
+                    if (netVersion > gversion) {
+                        cancelContainersStatusJob()
+                        delay(5000)
+                        Loge.e("流程 toGoCmdOtaBin 进来了 $gversion  $netVersion")
+                        _chipStep.value = UpgradeStep.UPGRADE_DOW
+                        chipCurV = gversion
+                        chipDowV = netVersion
+                        Loge.e("流程 toGoCmdOtaBin 添加资源 回调查询版本 当前：$chipCurV  网络：$chipDowV")
+                        val fileName = "f1-${netVersion}.bin"
+                        chipName = fileName
+                        val saveResource = ResEntity().apply {
+                            sn = otaModel.sn
+                            version = netVersion.toString()
+                            cmd = otaModel.cmd
+                            url = otaModel.url
+                            md5 = otaModel.md5
+                            time = AppUtils.getDateYMDHMS()
                         }
-                    } else {
-                        Loge.e("流程 toGoCmdOtaBin 存在资源 二次升级")
-                        if (chipCurV == netVersion) {
-                            _chipStep.value = UpgradeStep.UPGRADE_FUALT
-                            Loge.e("流程 toGoCmdOtaBin 存在资源 版本一致")
-                            queryResource.status = ResType.TYPE_3//固件文件
-                            upNetResDb("已经是最新版本${netVersion}", queryResource)
-                        } else {
-                            //版本不一致
-                            if (chipCurV < netVersion && (queryResource.status == ResType.TYPE_F1 || queryResource.status == ResType.TYPE_2 || queryResource.status == ResType.TYPE_4)) {
-                                Loge.e("流程 toGoCmdOtaBin 存在资源 版本不一致")
-                                queryResource.version = netVersion.toString()
-                                queryResource.url = otaModel.url
-                                queryResource.md5 = otaModel.md5
-                                val fileName = "f1-${netVersion}.bin"
+                        val queryResource = DatabaseManager.queryResCmd(
+                            AppUtils.getContext(), netVersion.toString(), otaModel.sn
+                                ?: "", otaModel.cmd ?: ""
+                        )
+                        Loge.e("流程 toGoCmdOtaBin 添加资源 $queryResource")
+                        if (queryResource == null) {
+                            val row = DatabaseManager.insertRes(AppUtils.getContext(), saveResource)
+                            Loge.e("流程 toGoCmdOtaBin 添加资源 $row")
+                            //取网络数据判断
+                            if (otaModel.url != null && !TextUtils.isEmpty(otaModel.url) && chipCurV < chipDowV) {
+                                Loge.e("流程 toGoCmdOtaBin 进入下载 ")
                                 val dir = FileMdUtil.matchNewFileName("bin", fileName)
-                                queryResource.url?.let { url ->
-                                    downloadRes(url, dir) { success, file ->//固件下载
+                                otaModel.url?.let { dowurl ->
+                                    downloadRes(dowurl, dir) { success, file ->//固件下载 未存储
+                                        Loge.e("流程 toGoCmdOtaBin success $success")
                                         if (success) {
-                                            queryResource.status = ResType.TYPE_2//还未升级
                                             toGoCmdOtaBin()
-                                            startUpgradeWorkflow()
-                                            upNetResDb("下载BIN成功更新", queryResource)
+                                            startUpgradeWorkflow(row)
+                                            upNetResDb("下载BIN成功插入", ResEntity().apply {
+                                                id = row
+                                                status = ResType.TYPE_2//还未升级
+                                                sn = otaModel.sn
+                                                version = netVersion.toString()
+                                                cmd = otaModel.cmd
+                                                url = otaModel.url
+                                                md5 = otaModel.md5
+                                                time = AppUtils.getDateYMDHMS()
+                                            })
                                         } else {
                                             _chipStep.value = UpgradeStep.UPGRADE_FUALT
-                                            queryResource.status = ResType.TYPE_4//下载失败
-                                            upNetResDb("下载BIN失败更新", queryResource)
+                                            upNetResDb("下载BIN失败插入", ResEntity().apply {
+                                                id = row
+                                                status = ResType.TYPE_4//下载失败
+                                                sn = otaModel.sn
+                                                version = netVersion.toString()
+                                                cmd = otaModel.cmd
+                                                url = otaModel.url
+                                                md5 = otaModel.md5
+                                                time = AppUtils.getDateYMDHMS()
+                                            })
+
+                                        }
+                                    }
+                                }
+                            } else {
+                                _chipStep.value = UpgradeStep.UPGRADE_FUALT
+                                Loge.e("流程 toGoCmdOtaBin 下载BIN失败插入失败 $row")
+                                insertInfoLog(LogEntity().apply {
+                                    cmd = "ota"
+                                    msg = "下载BIN失败插入失败  $row"
+                                    time = AppUtils.getDateYMDHMS()
+                                })
+                            }
+                        } else {
+                            Loge.e("流程 toGoCmdOtaBin 存在资源 二次升级")
+                            if (chipCurV == netVersion) {
+                                _chipStep.value = UpgradeStep.UPGRADE_FUALT
+                                Loge.e("流程 toGoCmdOtaBin 存在资源 版本一致")
+                                queryResource.status = ResType.TYPE_3//固件文件
+                                upNetResDb("已经是最新版本${netVersion}", queryResource)
+                            } else {
+                                //版本不一致
+                                if (chipCurV < netVersion && (queryResource.status == ResType.TYPE_F1 || queryResource.status == ResType.TYPE_2 || queryResource.status == ResType.TYPE_4)) {
+                                    Loge.e("流程 toGoCmdOtaBin 存在资源 版本不一致")
+                                    queryResource.version = netVersion.toString()
+                                    queryResource.url = otaModel.url
+                                    queryResource.md5 = otaModel.md5
+                                    val fileName = "f1-${netVersion}.bin"
+                                    val dir = FileMdUtil.matchNewFileName("bin", fileName)
+                                    queryResource.url?.let { url ->
+                                        downloadRes(url, dir) { success, file ->//固件下载
+                                            if (success) {
+                                                queryResource.status = ResType.TYPE_2//还未升级
+                                                toGoCmdOtaBin()
+                                                startUpgradeWorkflow(queryResource.id)
+                                                upNetResDb("下载BIN成功更新", queryResource)
+                                            } else {
+                                                _chipStep.value = UpgradeStep.UPGRADE_FUALT
+                                                queryResource.status = ResType.TYPE_4//下载失败
+                                                upNetResDb("下载BIN失败更新", queryResource)
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                } else {
-                    //查询出来 更新状态 在弄个定时去检测在自动执行更新
-                    Loge.e("流程 toGoCmdOtaBin 版本不同")
-                    val queryResource = DatabaseManager.queryResNewBin(
-                        AppUtils.getContext(), otaModel.sn ?: "", CmdValue.CMD_OTA
-                    )
-                    if (queryResource != null) {
-                        queryResource.status = ResType.TYPE_3//固件文件
-                        upNetResDb("已经是最新版本${netVersion}", queryResource)
+                    } else {
+                        //查询出来 更新状态 在弄个定时去检测在自动执行更新
+                        Loge.e("流程 toGoCmdOtaBin 版本不同")
+                        val queryResource = DatabaseManager.queryResNewBin(
+                            AppUtils.getContext(), otaModel.sn ?: "", CmdValue.CMD_OTA
+                        )
+                        if (queryResource != null) {
+                            queryResource.status = ResType.TYPE_3//固件文件
+                            upNetResDb("已经是最新版本${netVersion}", queryResource)
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isRunning.set(false)
             }
+
         }
     }
 
@@ -2764,10 +2771,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    fun startUpgradeWorkflow() {
+    /***
+     * 升级流程
+     */
+    fun startUpgradeWorkflow(row: Long = -1) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                Loge.d("流程 芯片升级 startUpgradeWorkflow  ")
+                Loge.d("流程 芯片升级 startUpgradeWorkflow ")
                 val chipStep7 = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
                 chipStep7.onSuccess { bytes ->
                     // 解析 Payload (逻辑同你之前的代码)
@@ -2777,9 +2787,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         _chipStep.value = UpgradeStep.ENTER_STATUS
                     }
                 }.onFailure { e ->
-                    Loge.d("流程 芯片升级 chipStep7 = ${e.message} ")
-                    BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep7 = ${e.message} ")
                     _chipStep.value = UpgradeStep.ENTER_STATUS_FUALT
+                    Loge.d("流程 芯片升级 chipStep7 = ${e.message} ")
+                    val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(),row)
+                    BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow ENTER_STATUS_FUALT = ${e.message} ")
+
                     return@launch
                 }
                 delay(2000)
@@ -2810,9 +2822,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 _chipStep.value = UpgradeStep.QUERY_STATUS
                             }
                         }.onFailure { e ->
-                            Loge.d("流程 芯片升级 chipStep8 = ${e.message} ")
-                            BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep8 = ${e.message} ")
                             _chipStep.value = UpgradeStep.QUERY_STATUS_FUALT
+                            Loge.d("流程 芯片升级 chipStep8 = ${e.message} ")
+                            val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(),row)
+                            BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow QUERY_STATUS_FUALT = ${e.message} ")
                             return@launch
                         }
                         delay(2000)
@@ -2874,9 +2887,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         if (isBlockSuccess) {
                                             currentBlockIndex++ // 只有匹配成功才发下一个块
                                         } else {
-                                            Loge.e("流程 芯片升级 块[$currentBlockIndex] 达到最大重试次数，升级终止")
                                             _chipStep.value = UpgradeStep.SEND_FILE_FUALT
-                                            BoxToolLogUtils.savePrintln("流程 芯片升级 块[$currentBlockIndex] 连续失败，退出")
+                                            Loge.e("流程 芯片升级 块[$currentBlockIndex] 达到最大重试次数，升级终止")
+                                            val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(),row)
+                                            BoxToolLogUtils.savePrintln("流程 芯片升级 块[$currentBlockIndex] 连续失败，退出 $sRow SEND_FILE_FUALT")
                                             return@launch
                                         }
                                     }
@@ -2888,8 +2902,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     }
 
                                 } catch (e: Exception) {
-                                    Loge.e("流程 芯片升级 文件处理异常: ${e.message}")
                                     _chipStep.value = UpgradeStep.SEND_FILE_FUALT
+                                    Loge.e("流程 芯片升级 文件处理异常: ${e.message}")
+                                    val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(),row)
+                                    BoxToolLogUtils.savePrintln("流程 芯片升级 文件处理异常 $sRow SEND_FILE_FUALT")
+
                                 }
                             }
                         }
@@ -2906,26 +2923,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             }.onFailure { e ->
                                 _chipStep.value = UpgradeStep.SEND_FILE_END_FUALT
                                 Loge.d("流程 芯片升级 chipStep9 = ${e.message} ")
-                                BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep9 = ${e.message} ")
+                                val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(),row)
+                                BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow SEND_FILE_END_FUALT = ${e.message} ")
                                 return@launch
                             }
                         }
-
-//                        if (chipStep.value == UpgradeStep.SEND_FILE_END) {
-//                            delay(2000)
-//                            val chipStep11 =
-//                                SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
-//                            chipStep11.onSuccess { bytes ->
-//                                // 解析 Payload (逻辑同你之前的代码)
-//                                val payload = ProtocolCodec.getSafePayload(bytes)
-//                                val version = payload?.let { HexConverter.byteArrayToInt(it) }
-//                                SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, version?:chipCurV)
-//                            }.onFailure { e ->
-//                                _chipStep.value = UpgradeStep.QUERY_VERSION_FUALT
-//                                Loge.d("流程 芯片升级 查询版本失败 = ${e.message} ")
-//                                return@launch
-//                            }
-//                        }
 
                         if (chipStep.value == UpgradeStep.SEND_FILE_END) {
                             delay(3000)
@@ -2941,17 +2943,22 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             }.onFailure { e ->
                                 _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                 Loge.d("流程 芯片升级 chipStep10 = ${e.message} ")
-                                BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep10 = ${e.message} ")
+                                val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(),row)
+                                BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow RESTART_APP_FUALT = ${e.message} ")
                                 return@launch
                             }
                         }
 
                     } else {
-
+                        BoxToolLogUtils.savePrintln("流程 芯片升级 QUERY_STATUS = 文件有问题 ")
                     }
                 }
             } catch (e: Exception) {
-                BoxToolLogUtils.savePrintln("升级流程：异常情况")
+                BoxToolLogUtils.savePrintln("升级流程：异常情况 ${e.message}")
+                val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(),row)
+            } finally {
+                BoxToolLogUtils.savePrintln("流程 芯片升级 流程 finally")
+
             }
         }
     }
@@ -3368,6 +3375,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     private val _isRunning = AtomicBoolean(false)
     val isRunning: Boolean get() = _isRunning.get()
+
+    private val _isApkChipRunning = AtomicBoolean(false)
+    val isApkChipRunning: Boolean get() = _isApkChipRunning.get()
 
     var weightRunning = false
     private val defaultWeight = "0.00"
@@ -4622,7 +4632,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 warningContent = BusType.BUS_NORMAL
                             })
                             maptDoorFault[FaultType.FAULT_CODE_2110] = false
-                        }else{
+                        } else {
 
                         }
                     } else if (curG1Weight > curG1Total && setIr1 == 1) {
@@ -4663,7 +4673,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 warningContent = BusType.BUS_NORMAL
                             })
                             maptDoorFault[FaultType.FAULT_CODE_2120] = false
-                        }else{
+                        } else {
 
                         }
                     } else if (curG2Weight > curG2Total && setIr2 == 1) {

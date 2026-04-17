@@ -2,6 +2,8 @@ package com.recycling.toolsapp.utils
 
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.text.TextUtils
 import androidx.appcompat.app.AppCompatActivity
 import java.io.BufferedReader
@@ -130,13 +132,16 @@ object OSUtils {
     }
 
     fun restartAppFrontDesk(activity: AppCompatActivity) {
-        val packageManager = activity.packageManager
-        val intent = packageManager.getLaunchIntentForPackage(activity.packageName)
-        val componentName = intent?.component
-        val mainIntent = Intent.makeRestartActivityTask(componentName)
-        activity.finishAffinity() // 关闭所有Activity
-        activity.startActivity(mainIntent)
-        Runtime.getRuntime().exit(0) // 确保完全退出
+        // 2. 创建重启Intent
+        val intent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)
+        intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        // 3. 使用Handler延迟一点再重启，确保finishAffinity完成
+        Handler(Looper.getMainLooper()).postDelayed({
+            activity.finishAffinity()
+            activity.startActivity(intent)
+            Runtime.getRuntime().exit(0)
+        }, 1000)  // 100ms延迟足够，不需要5秒
     }
 }
 

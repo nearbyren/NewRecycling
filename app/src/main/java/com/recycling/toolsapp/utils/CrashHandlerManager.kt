@@ -12,8 +12,13 @@ import android.util.ArrayMap
 import android.util.Log
 import com.recycling.toolsapp.BuildConfig
 import com.recycling.toolsapp.FaceApplication
+import com.recycling.toolsapp.http.MailConfig
+import com.recycling.toolsapp.http.MailSender
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.Loge
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
 import java.io.BufferedOutputStream
 import java.io.File
@@ -124,8 +129,22 @@ class CrashHandlerManager(private val mContext: Context) : Thread.UncaughtExcept
         SPreUtil.put(AppUtils.getContext(), SPreUtil.crash, save)
         //保存異常日誌到文件
         val name = saveCrashInfoToFile(throwable)
-        if (!BuildConfig.DEBUG) {
-
+        CoroutineScope(Dispatchers.IO).launch {
+            val mailConfig = MailConfig.Builder().apply {
+                host = "smtp.qq.com"
+                port = 587
+//                    port = 465
+                username = "860023654@qq.com"
+                password = "raiszbpinaznbbjd" // 或 oauthToken("ya29.token")
+                setRecipient("860023654@qq.com")
+                setSubject("app崩溃文件")
+                setBody("<b>查看附件异常崩溃文件</b>")
+                setAttach(File(name))
+            }.build()
+            when (val result = MailSender.sendDirectly(mailConfig)) {
+                is MailSender.Result.Success -> Loge.d("发送邮件 发送成功")
+                is MailSender.Result.Failure -> Loge.d("发送邮件 ${result.exception}")
+            }
         }
         //使用HTTP Post發送錯誤報告
         sendCrashReportsToServer()

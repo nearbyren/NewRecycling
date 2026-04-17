@@ -45,6 +45,9 @@ interface ResFlowDao {
     @Query("UPDATE ResEntity SET status = :status WHERE id = :id")
     fun upResStatus(id: Long, status: Int)
 
+    @Query("delete from ResEntity WHERE id = :id")
+    fun deletedResEntity(id: Long)
+
     //删除所有数据
     @Query("delete from ResEntity")
     fun deleteAll()

@@ -5,18 +5,9 @@
         xmlns:app="http://schemas.android.com/apk/res-auto"
         xmlns:tools="http://schemas.android.com/tools"
         android:layout_width="match_parent"
+        android:background="@drawable/home"
         android:layout_height="match_parent"
         tools:ignore="MissingConstraints">
-
-
-        <!--相机模块-->
-        <FrameLayout
-            android:id="@+id/fl_camera2"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:visibility="gone"
-            app:layout_constraintBottom_toTopOf="@+id/gl"
-            app:layout_constraintTop_toTopOf="parent" />
 
         <!--相机模块-->
         <androidx.appcompat.widget.LinearLayoutCompat
@@ -52,7 +43,6 @@
 
 
         </androidx.appcompat.widget.LinearLayoutCompat>
-
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/gl"
@@ -170,7 +160,7 @@
                 android:layout_height="match_parent"
                 android:scaleType="matrix"
                 android:src="@drawable/ic_start2"
-                android:visibility="visible" />
+                android:visibility="gone" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/aciv_status_socket"
@@ -219,81 +209,6 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
-
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="parent">
-
-            <androidx.appcompat.widget.AppCompatTextView
-                android:id="@+id/tt_add_camera"
-                android:layout_width="@dimen/dp_30"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="@dimen/dp_1"
-                android:layout_marginBottom="@dimen/dp_50"
-                android:text="添加相机"
-                android:textColor="@color/white"
-                app:layout_constraintBottom_toBottomOf="parent"
-                tools:ignore="MissingConstraints" />
-
-            <androidx.appcompat.widget.AppCompatTextView
-                android:id="@+id/tt_take_photos"
-                android:layout_width="@dimen/dp_20"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="@dimen/dp_1"
-                android:layout_marginBottom="@dimen/dp_50"
-                android:text="拍照"
-                android:textColor="@color/white"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintLeft_toRightOf="@+id/tt_add_camera"
-                tools:ignore="MissingConstraints" />
-
-            <androidx.appcompat.widget.AppCompatTextView
-                android:id="@+id/tt_take_stop"
-                android:layout_width="@dimen/dp_20"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="@dimen/dp_1"
-                android:layout_marginBottom="@dimen/dp_50"
-                android:text="暂停"
-                android:textColor="@color/white"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintLeft_toRightOf="@+id/tt_take_photos"
-                tools:ignore="MissingConstraints" />
-
-        </androidx.constraintlayout.widget.ConstraintLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="parent">
-
-            <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/bopen"
-                android:layout_width="wrap_content"
-                android:text="打开结算"
-                android:layout_height="wrap_content"/>
-
-            <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/bclose"
-                android:text="关闭结算"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/bopenC"
-                android:layout_width="wrap_content"
-                android:text="打开清运"
-                android:layout_height="wrap_content"/>
-
-            <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/bcloseC"
-                android:text="关闭清运"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

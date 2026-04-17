@@ -25,6 +25,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.Navigation
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.findNavController
+import com.bumptech.glide.Glide
 import com.cabinet.toolsapp.tools.bus.FlowBus
 import com.cabinet.toolsapp.tools.bus.ResEvent
 import com.google.android.material.snackbar.Snackbar
@@ -36,6 +37,8 @@ import com.recycling.toolsapp.databinding.NavTouSingleActivityBinding
 import com.recycling.toolsapp.fitsystembar.showSystemBar
 import com.recycling.toolsapp.http.TaskRestartScheduler
 import com.recycling.toolsapp.model.LogEntity
+import com.recycling.toolsapp.nav.NavDeBugTypeFragment
+import com.recycling.toolsapp.nav.NavDeBugTypeSelfFragment
 import com.recycling.toolsapp.socket.AdminOverflowBean
 import com.recycling.toolsapp.socket.ConfigBean
 import com.recycling.toolsapp.socket.DoorCloseBean
@@ -312,7 +315,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         // 启动门控制系统
         cabinetVM.startContainersStatus()
         //启动检查故障
-        cabinetVM.startPollingFault()
+//        cabinetVM.startPollingFault()
         ///启动查询版本
 //        cabinetVM.startChipVersion()
 //        cabinetVM.startUpgradeWorkflow()
@@ -330,19 +333,18 @@ class NavTouSingleActivity : AppCompatActivity() {
         lifecycleScope.launch {
             cabinetVM.getLoginCmd.collect {
                 if (it) {
-                    Loge.e("测试我来了 刷新背景图 getLoginCmd")
                     Loge.e("流程 navigateToHome saveSocketInitData 加载fragment")
                     binding.acivInit.isVisible = false
                     cabinetVM.doorGeXType = CmdCode.GE1
                     initPort()
                     FlowBus.with<ResEvent>("ResEvent").post(this, ResEvent().apply {})
-                    refreshHomeRes()
+                    refreshHomeRes("登陆回来")
                 }
             }
         }
         lifecycleScope.launch {
             cabinetVM.isRefreshHomeRes.collect {
-                refreshHomeRes()
+                refreshHomeRes("加载数据完毕监听")
             }
         }
         binding.tvNetwork.setOnClickListener {
@@ -545,10 +547,8 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OTA_APK -> {
                         val otaModel = Gson().fromJson(json, OtaBean::class.java)
-                        if (!cabinetVM.isRunning) {
-                            BoxToolLogUtils.savePrintln("业务流：升级APK 有正在业务执行中")
-                            cabinetVM.startDowApk(otaModel)
-                        }
+                        BoxToolLogUtils.savePrintln("业务流：升级APK 有正在业务执行中")
+                        cabinetVM.startDowApk(otaModel)
                     }
 
                     CmdValue.CMD_ADMIN_PHOTO -> {
@@ -570,14 +570,14 @@ class NavTouSingleActivity : AppCompatActivity() {
         }
     }
 
-    private fun refreshHomeRes() {
-        Loge.e("测试我来了 刷新背景图 refreshHomeRes ${cabinetVM.mHomeBg}")
+    private fun refreshHomeRes(text: String) {
+        Loge.e("背景图刷新问题  refreshHomeRes  $text ${cabinetVM.mHomeBg}")
         cabinetVM.mHomeBg?.let { bitmap ->
-            binding.acivHomeNet.setImageBitmap(bitmap)
+            Glide.with(this).load(cabinetVM.mHomeBg).into(binding.acivHomeNet)
         }.also {
             if (cabinetVM.mHomeBg == null) {
-                val resBitmap = BitmapFactory.decodeResource(AppUtils.getContext().resources, R.drawable.home)
-                binding.acivHomeNet.setImageBitmap(resBitmap)
+                Glide.with(this).load(R.drawable.home).into(binding.acivHomeNet)
+
             }
         }
     }
@@ -668,9 +668,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
     fun latestBusinessStatus() {
         cabinetVM.cameraManagerNew.registerUsbReceiver()
-
-
-        /*      lifecycleScope.launch {
+        /* lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 SerialPortSdk.flowBusinessSetup.collect {
                     val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
@@ -741,21 +739,25 @@ class NavTouSingleActivity : AppCompatActivity() {
                         CabinetVM.UpgradeStep.UPGRADE_FUALT, CabinetVM.UpgradeStep.QUERY_VERSION_FUALT, CabinetVM.UpgradeStep.ENTER_STATUS_FUALT, CabinetVM.UpgradeStep.QUERY_STATUS_FUALT, CabinetVM.UpgradeStep.SEND_FILE_FUALT, CabinetVM.UpgradeStep.SEND_FILE_END_FUALT, CabinetVM.UpgradeStep.RESTART_APP_FUALT -> {
                             binding.clPrompt.isVisible = false
                             Loge.d("流程 芯片升级 接收指令${it} 没来回调")
+                            cabinetVM.tipMessage("固件升级失败")
                             cabinetVM.insertInfoLog(LogEntity().apply {
                                 cmd = CmdValue.CMD_OTA
                                 msg = "升级失败-$it"
                                 time = AppUtils.getDateYMDHMS()
                             })
+                            delay(1500)
+                            OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
+
                         }
 
-                        CabinetVM.UpgradeStep.QUERY_VERSION, CabinetVM.UpgradeStep.ENTER_STATUS, CabinetVM.UpgradeStep.QUERY_STATUS, CabinetVM.UpgradeStep.SEND_FILE, CabinetVM.UpgradeStep.SEND_FILE_END, CabinetVM.UpgradeStep.RESTART_APP -> {
+                        CabinetVM.UpgradeStep.QUERY_VERSION, CabinetVM.UpgradeStep.ENTER_STATUS, CabinetVM.UpgradeStep.QUERY_STATUS, CabinetVM.UpgradeStep.SEND_FILE, CabinetVM.UpgradeStep.SEND_FILE_END, CabinetVM.UpgradeStep.RESTART_APP, CabinetVM.UpgradeStep.UPGRADE_END -> {
                             cabinetVM.insertInfoLog(LogEntity().apply {
                                 cmd = CmdValue.CMD_OTA
                                 msg = "升级进行中-$it"
                                 time = AppUtils.getDateYMDHMS()
                             })
-                            if (it == CabinetVM.UpgradeStep.RESTART_APP) {
-                                delay(3000)
+                            if (it == CabinetVM.UpgradeStep.RESTART_APP || it == CabinetVM.UpgradeStep.UPGRADE_END) {
+                                delay(1000)
                                 OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
                             }
                         }

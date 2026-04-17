@@ -39,7 +39,7 @@ class DailyDelDateWorker(
                 val files = dir.listFiles() ?: return@let
                 // 获取一周前的日期
                 val calendar = Calendar.getInstance()
-                calendar.add(Calendar.DAY_OF_YEAR, -5)
+                calendar.add(Calendar.DAY_OF_YEAR, -3)
                 val oneWeekAgo = calendar.time
                 // 日期格式解析器
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
