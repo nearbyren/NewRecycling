@@ -2615,20 +2615,22 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun startDelOldApk() {
         viewModelScope.launch(Dispatchers.IO) {
             val queryResource = DatabaseManager.queryResNewAPk(AppUtils.getContext(), CmdValue.CMD_OTA_APK)
-            //版本一致更新安装了
-            val verName = AppUtils.getVersionName()
-            val newVs = queryResource.version?.replace(".", "")?.toInt() ?: 0
-            val oldVs = verName.replace(".", "").toIntOrNull() ?: 0
-            if (newVs == oldVs) {
-                val file = FileMdUtil.matchNewFile2("apk", "hsg-${oldVs}.apk")
-                if (file.exists()) {
-                    file.delete()
+            if (queryResource != null) {
+                //版本一致更新安装了
+                val verName = AppUtils.getVersionName()
+                val newVs = queryResource.version?.replace(".", "")?.toInt() ?: 0
+                val oldVs = verName.replace(".", "").toIntOrNull() ?: 0
+                if (newVs == oldVs) {
+                    val file = FileMdUtil.matchNewFile2("apk", "hsg-${oldVs}.apk")
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                    upNetResDb("升级完成${queryResource.version}", ResEntity().apply {
+                        id = queryResource.id
+                        status = ResType.TYPE_3
+                        time = AppUtils.getDateYMDHMS()
+                    })
                 }
-                upNetResDb("升级完成${queryResource.version}", ResEntity().apply {
-                    id = queryResource.id
-                    status = ResType.TYPE_3
-                    time = AppUtils.getDateYMDHMS()
-                })
             }
         }
     }
