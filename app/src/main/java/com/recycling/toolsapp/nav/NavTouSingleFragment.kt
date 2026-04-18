@@ -25,6 +25,7 @@ import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.NavTouSingleFragmentBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindLazyTimeFragment
 import com.recycling.toolsapp.utils.CalculationUtil
+import com.recycling.toolsapp.utils.RefBusType
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.CmdCode
@@ -54,13 +55,6 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
         binding.clMobileNet.setOnClickListener {
             Navigation.findNavController(it).navigate(R.id.action_start_mobile)
         }
-        FlowBus.with<ResEvent>("ResEvent").register(this) {
-            refreshQrCodeRes()
-            refreshWeightPrice(
-                CmdCode.GE1, cabinetVM.curGe1Price ?: "0.60", cabinetVM.curG1Weight
-                    ?: "0.00", cabinetVM.curG2Weight ?: "0.00", cabinetVM.curG2Weight ?: "0.00"
-            )
-        }
         refreshQrCodeRes()
         val warningContent = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText1, BusType.BUS_NORMAL] as String
         initWarningContent(warningContent)
@@ -69,7 +63,7 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
 
     private fun refreshQrCodeRes() {
         cabinetVM.mQrCode?.let { bitmap ->
-            binding.acivCodeNet.setImageBitmap(bitmap)
+            Glide.with(this).load(bitmap).into(binding.acivCodeNet)
         }
     }
 
@@ -87,16 +81,16 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
                     val curG1WeightValue = it.curG1WeightValue ?: "0.00"
                     val curG2WeightValue = it.curG2WeightValue ?: "0.00"
                     when (refreshType) {
-                        1 -> {
+                        RefBusType.REFRESH_TYPE_1 -> {
                             refreshWeightPrice(doorGex, curG1WeightPrice, curG2WeightPrice, curG1WeightValue, curG2WeightValue)
                         }
 
-                        2 -> {
+                        RefBusType.REFRESH_TYPE_2 -> {
                             initWarningContent(warningContent)
                         }
 
-                        4 -> {
-
+                        RefBusType.REFRESH_TYPE_6 -> {
+                            refreshQrCodeRes()
                         }
                     }
 

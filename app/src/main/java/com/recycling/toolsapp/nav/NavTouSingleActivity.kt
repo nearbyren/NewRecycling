@@ -52,6 +52,7 @@ import com.recycling.toolsapp.utils.EnumSignal
 import com.recycling.toolsapp.utils.FaultType
 import com.recycling.toolsapp.utils.NetworkStateManager
 import com.recycling.toolsapp.utils.OSUtils
+import com.recycling.toolsapp.utils.RefBusType
 import com.recycling.toolsapp.utils.SignalStrengthAnalyzer
 import com.recycling.toolsapp.utils.SnackbarUtils
 import com.recycling.toolsapp.vm.CabinetVM
@@ -202,14 +203,14 @@ class NavTouSingleActivity : AppCompatActivity() {
     fun initialize(savedInstanceState: Bundle?) {
         initVerSn()
         initNetworkState()
+        initReadSignal()
+        latestBusinessStatus()
         val initSocket = SPreUtil[AppUtils.getContext(), SPreUtil.initSocket, false] as Boolean
         Loge.e("出厂配置 initSocket NavTouSingleActivity initialize $initSocket")
         if (initSocket) {
             Loge.e("测试我来了 刷新背景图 initSocket")
             initSocket()
         }
-        initReadSignal()
-        latestBusinessStatus()
     }
 
     private fun initVerSn(text: String? = "0") {
@@ -312,13 +313,12 @@ class NavTouSingleActivity : AppCompatActivity() {
     }
 
     private fun initPort() {
+        //版本升级完成移除apk
+        cabinetVM.startDelOldApk()
         // 启动门控制系统
         cabinetVM.startContainersStatus()
         //启动检查故障
-//        cabinetVM.startPollingFault()
-        ///启动查询版本
-//        cabinetVM.startChipVersion()
-//        cabinetVM.startUpgradeWorkflow()
+        cabinetVM.startPollingFault()
     }
 
     /***
@@ -334,20 +334,13 @@ class NavTouSingleActivity : AppCompatActivity() {
             cabinetVM.getLoginCmd.collect {
                 if (it) {
                     Loge.e("流程 navigateToHome saveSocketInitData 加载fragment")
-                    cabinetVM.doorGeXType = CmdCode.GE1
                     initPort()
-                    FlowBus.with<ResEvent>("ResEvent").post(this, ResEvent().apply {})
                     refreshHomeRes("登陆回来")
                 }
             }
         }
-        lifecycleScope.launch {
-            cabinetVM.isRefreshHomeRes.collect {
-                refreshHomeRes("加载数据完毕监听")
-            }
-        }
         binding.tvNetwork.setOnClickListener {
-//            cabinetVM.startUpgradeWorkflow()
+            cabinetVM.startUpgradeWorkflow()
         }
         //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
@@ -403,13 +396,13 @@ class NavTouSingleActivity : AppCompatActivity() {
                     CmdValue.CMD_LOGIN -> {
                         val loginModel = Gson().fromJson(json, ConfigBean::class.java)
                         if (loginModel.retCode == 0) {
-                            val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
-                            val result = loginCount + 1
-                            SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, result)
                             cabinetVM.saveSocketInitData(loginModel, false)
                         } else {
                             //这里继续延续登录
                             BoxToolLogUtils.savePrintln("socketClient,登录失败")
+                            val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
+                            val newCount = loginCount + 1
+                            SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, newCount)
                             cabinetVM.toGoAgainLogin()
                         }
 
@@ -665,8 +658,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
 
     fun latestBusinessStatus() {
-        cabinetVM.cameraManagerNew.registerUsbReceiver()
-        /* lifecycleScope.launch {
+        cabinetVM.cameraManagerNew.registerUsbReceiver()/* lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 SerialPortSdk.flowBusinessSetup.collect {
                     val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
@@ -693,6 +685,21 @@ class NavTouSingleActivity : AppCompatActivity() {
                 }
             }
         }*/
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.refBusStaStateFlow.collect {
+                    Loge.e("业务流：刷新重量 结算页面-> $it")
+                    if (it == null) return@collect
+                    val refreshType = it.refreshType
+                    when (refreshType) {
+                        RefBusType.REFRESH_TYPE_5 -> {
+                            refreshHomeRes("刷新背景")
+                        }
+                    }
+                }
+            }
+        }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.chipStep.collect {

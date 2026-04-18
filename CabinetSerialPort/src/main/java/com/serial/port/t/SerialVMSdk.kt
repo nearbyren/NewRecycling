@@ -183,7 +183,7 @@ class SerialVM : ViewModel() {
      * @param data 业务数据
      * @param timeout 超时时间（毫秒）
      */
-    suspend fun executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 10000): Result<ByteArray> {
+    suspend fun executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 20000): Result<ByteArray> {
         if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
         return withContext(Dispatchers.IO) {
             val waiter = CompletableDeferred<ByteArray>()

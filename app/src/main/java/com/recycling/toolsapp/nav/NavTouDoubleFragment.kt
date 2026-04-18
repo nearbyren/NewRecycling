@@ -25,6 +25,7 @@ import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.NavTouDoubleFragmentBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindLazyTimeFragment
 import com.recycling.toolsapp.utils.CalculationUtil
+import com.recycling.toolsapp.utils.RefBusType
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.CmdCode
@@ -55,7 +56,6 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
             Navigation.findNavController(it).navigate(R.id.action_start_mobile)
         }
         FlowBus.with<ResEvent>("ResEvent").register(this) {
-            refreshQrCodeRes()
             refreshWeightPrice(
                 CmdCode.GE1, cabinetVM.curGe1Price ?: "0.60", cabinetVM.curG1Weight
                     ?: "0.00", cabinetVM.curG2Weight ?: "0.00", cabinetVM.curG2Weight ?: "0.00"
@@ -63,7 +63,6 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
         }
         refreshQrCodeRes()
         val warningContent1 = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText1, BusType.BUS_NORMAL] as String
-        refreshQrCodeRes()
         val warningContent2 = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText2, BusType.BUS_NORMAL] as String
         initWarningContent(warningContent1, 1)
         initWarningContent(warningContent2, 2)
@@ -71,34 +70,37 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
 
     private fun refreshQrCodeRes() {
         cabinetVM.mQrCode?.let { bitmap ->
-            binding.acivCodeNet.setImageBitmap(bitmap)
+            Glide.with(this).load(bitmap).into(binding.acivCodeNet)
         }
     }
 
     private fun latestBusiness() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            cabinetVM.refBusStaStateFlow.collect {
-                Loge.e("业务流：刷新重量 投递双 -> $it")
-                if (it == null) return@collect
-                val refreshType = it.refreshType
-                val warningContent = it.warningContent
-                val doorGex = it.doorGeX
-                val curG1WeightPrice = it.curG1WeightPrice ?: "0.60"
-                val curG2WeightPrice = it.curG2WeightPrice ?: "0.60"
-                val curG1WeightValue = it.curG1WeightValue ?: "0.00"
-                val curG2WeightValue = it.curG2WeightValue ?: "0.00"
-                when (refreshType) {
-                    1 -> {
-                        refreshWeightPrice(doorGex, curG1WeightPrice, curG2WeightPrice, curG1WeightValue, curG2WeightValue)
-                    }
+                cabinetVM.refBusStaStateFlow.collect {
+                    Loge.e("业务流：刷新重量 投递双 -> $it")
+                    if (it == null) return@collect
+                    val refreshType = it.refreshType
+                    val warningContent = it.warningContent
+                    val doorGex = it.doorGeX
+                    val curG1WeightPrice = it.curG1WeightPrice ?: "0.60"
+                    val curG2WeightPrice = it.curG2WeightPrice ?: "0.60"
+                    val curG1WeightValue = it.curG1WeightValue ?: "0.00"
+                    val curG2WeightValue = it.curG2WeightValue ?: "0.00"
+                    when (refreshType) {
+                        RefBusType.REFRESH_TYPE_1 -> {
+                            refreshWeightPrice(doorGex, curG1WeightPrice, curG2WeightPrice, curG1WeightValue, curG2WeightValue)
+                        }
 
-                    2 -> {
-                        initWarningContent(warningContent, doorGex)
+                        RefBusType.REFRESH_TYPE_2 -> {
+                            initWarningContent(warningContent, doorGex)
+                        }
+
+                        RefBusType.REFRESH_TYPE_6 -> {
+                            refreshQrCodeRes()
+                        }
                     }
                 }
-
-            }
             }
         }
     }
@@ -149,7 +151,7 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
                     votable = CalculationUtil.subtractFloats(votable, curWeight)
                     binding.tvLeftCurWeightNet.text = "当前重量(kg)：$curWeight"
                 }
-                 Loge.e("流程 刷新Ui $curWeight | $votable")
+                Loge.e("流程 刷新Ui $curWeight | $votable")
                 //当前价格
                 binding.tvDoublePriceNet.text = "${curG1Price}"
                 //可再投递重量

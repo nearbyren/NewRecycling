@@ -426,7 +426,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         if (isShow) {
             binding.clContent1.isVisible = true
             binding.clBooster.isVisible = true
-            initDoorStatus()
+//            initDoorStatus()
         }
 
         binding.actvLeft.setOnClickListener {
