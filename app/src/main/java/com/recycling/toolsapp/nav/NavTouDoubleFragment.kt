@@ -69,9 +69,10 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
     }
 
     private fun refreshQrCodeRes() {
-        cabinetVM.mQrCode?.let { bitmap ->
-            Glide.with(this).load(bitmap).into(binding.acivCodeNet)
-        }
+        val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
+            .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
+        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/res/qrCode.png")).apply(options).into(binding.acivCodeNet)
+
     }
 
     private fun latestBusiness() {
