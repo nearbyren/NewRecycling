@@ -2779,6 +2779,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun startUpgradeWorkflow(row: Long = -1) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                _chipStep.value = UpgradeStep.UPGRADE_DOW
                 cancelContainersStatusJob()
                 delay(2000)
                 Loge.d("升级流程：startUpgradeWorkflow ")
