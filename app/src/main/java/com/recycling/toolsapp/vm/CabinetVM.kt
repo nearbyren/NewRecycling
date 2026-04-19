@@ -2894,7 +2894,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         if (isBlockSuccess) {
                                             currentBlockIndex++ // 只有匹配成功才发下一个块
                                         } else {
-                                            _chipStep.value = UpgradeStep.SEND_FILE _FUALT
+                                            _chipStep.value = UpgradeStep.SEND_FILE_FUALT
                                             Loge.e("升级流程：块[$currentBlockIndex] 达到最大重试次数，升级终止")
                                             val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                                             BoxToolLogUtils.savePrintln("升级流程：块[$currentBlockIndex] 连续失败，退出 $sRow SEND_FILE_FUALT")
