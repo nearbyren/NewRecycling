@@ -2466,7 +2466,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     fun startDowChip(otaModel: OtaBean) {
-        BoxToolLogUtils.savePrintln("业务流：升级固件 期待 false $isRunning 期待 false $isApkChipRunning")
+        BoxToolLogUtils.savePrintln("业务流：升级固件 期待 false $isRunning ")
         if (isRunning) {
             return
         }
@@ -2624,7 +2624,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     fun startDowApk(otaModel: OtaBean) {
         if (isRunning) {
-            BoxToolLogUtils.savePrintln("业务流：升级APK 期待 false $isRunning 期待 false $isApkChipRunning")
+            BoxToolLogUtils.savePrintln("业务流：升级APK 期待 false $isRunning ")
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
