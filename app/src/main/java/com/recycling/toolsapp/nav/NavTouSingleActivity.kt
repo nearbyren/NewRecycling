@@ -734,12 +734,15 @@ class NavTouSingleActivity : AppCompatActivity() {
                             binding.clPrompt.isVisible = false
                             Loge.d("流程 芯片升级 接收指令${it} 没来回调")
                             cabinetVM.tipMessage("固件升级失败")
+                            val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0] as Int
+                            val result = upgradeCount + 1
+                            SPreUtil.put(AppUtils.getContext(), AppUtils.getDateYMD(), result)
                             cabinetVM.insertInfoLog(LogEntity().apply {
                                 cmd = CmdValue.CMD_OTA
                                 msg = "升级失败-$it"
                                 time = AppUtils.getDateYMDHMS()
                             })
-                            delay(1000)
+                            delay(1500)
                             OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
 
                         }

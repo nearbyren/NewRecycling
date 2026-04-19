@@ -2777,6 +2777,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * 升级流程
      */
     fun startUpgradeWorkflow(row: Long = -1) {
+        val upgradeCount = SPreUtil.put(AppUtils.getContext(), AppUtils.getDateYMD(), 0) as Int
+        if (upgradeCount > 5) {
+            BoxToolLogUtils.savePrintln("升级流程：今天超过升级次数 $upgradeCount 不再继续升级")
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 _chipStep.value = UpgradeStep.UPGRADE_DOW
@@ -2929,6 +2934,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     val failBytes = byteArrayOf(0xB4.toByte(), 0xB5.toByte(), 0xB6.toByte())
                                     if (payload.contentEquals(successBytes)) {
                                         SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
+                                        SPreUtil.put(AppUtils.getContext(), SPreUtil.upgradeCount, 1)
                                         BoxToolLogUtils.savePrintln("升级流程：进入文件校验指令 onSuccess = ${payload}")
                                         Loge.d("升级流程：查询重启指令 - 成功")
                                         _chipStep.value = UpgradeStep.RESTART_APP
@@ -4668,7 +4674,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }.onFailure { e ->
                         BoxToolLogUtils.savePrintln("业务流：轮询onFailure: ${e.message}")
                     }
-                        Loge.e("查询版本开始 $isQueryVersion")
+                    Loge.e("查询版本开始 $isQueryVersion")
                     if (!isQueryVersion) {
                         startChipVersion()
                     }
