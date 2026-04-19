@@ -103,14 +103,7 @@ import nearby.lib.netwrok.download.SingleDownloader
 import nearby.lib.netwrok.response.CorHttp
 import nearby.lib.netwrok.response.SPreUtil
 import nearby.lib.signal.livebus.BusType
-import okhttp3.Headers
-import okhttp3.Headers.Companion.headersOf
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.internal.wait
+import kotlinx.coroutines.cancelChildren
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -121,7 +114,6 @@ import java.net.Socket
 import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.math.min
 import kotlin.math.pow
@@ -142,9 +134,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * 用于处理 main 操作的协程作用域
      */
     val mainScope = MainScope()
-
-
-    private val sendFileByte232 = Channel<ByteArray>()
 
     /***
      * 插入数据库
@@ -289,10 +278,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
     fun closeAllScope() {
-        ioScope.cancel()
-        mainScope.cancel()
-        clientScope.cancel()
-        sendFileByte232.close()
+        ioScope.coroutineContext.cancelChildren()
+        mainScope.coroutineContext.cancelChildren()
+        clientScope.coroutineContext.cancelChildren()
         SerialPortSdk.release()
     }
 
@@ -486,14 +474,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    /***
-     * 继续登录
-     */
+    /**** 继续登录*/
     val flowAgainLogin = MutableStateFlow(false)
     val getAgainLogin: MutableStateFlow<Boolean> = flowAgainLogin
 
     var againJob: Job? = null
+    fun cancelJobAgain() {
+        flowAgainLogin.value = false //标记未登录
+        againJob?.cancel()
+        againJob = null
+    }
 
+    /**** 继续登录*/
     fun toGoAgainLogin() {
         Loge.e("流程 toGoAgainLogin 启动toGoAgainLogin")
         if (againJob?.isActive == true) {
@@ -514,12 +506,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 delay(5000L)
             }
         }
-    }
-
-    fun cancelJobAgain() {
-        flowAgainLogin.value = false //标记未登录
-        againJob?.cancel()
-        againJob = null
     }
 
 
@@ -1398,9 +1384,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         pollingFaultJob = null
     }
 
-    /***
-     * 定时轮询查询异常
-     */
+    /**** 定时轮询查询异常*/
     fun startPollingFault() {
         if (pollingFaultJob?.isActive == true) {
             BoxToolLogUtils.savePrintln("业务流：查询柜体状态 检测故障信息")
@@ -2857,7 +2841,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 BoxToolLogUtils.savePrintln("升级流程：流程 finally ${chipStep.value}")
                 println("升级流程：我进入 finally ${chipStep.value}")
-                delay(1500)
+                delay(5000)
+                stopAll()
                 FaceApplication.getInstance().baseActivity?.let { OSUtils.restartAppFrontDesk(it) }
             }
         }
@@ -2983,15 +2968,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
+    var installApkUrl: String? = null
     var jobInstall: Job? = null
     fun cancelJobInstall() {
         jobInstall?.cancel()
         jobInstall = null
     }
-
-    var installApkUrl: String? = null
+    /***apk升级**/
     private fun installDowApk(text: String) {
-        jobInstall = ioScope.launch {
+        jobInstall = viewModelScope.launch(Dispatchers.IO) {
             val queryResource = DatabaseManager.queryResNewAPk(AppUtils.getContext(), CmdValue.CMD_OTA_APK)
             //版本一致更新安装了
             val verName = AppUtils.getVersionName()
@@ -3937,6 +3922,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
 
     var deteServiceCloseJob: Job? = null
+    fun cancelServiceClose() {
+        deteServiceCloseJob?.cancel()
+        deteServiceCloseJob = null
+    }
 
     /***检测服务服务是否下发关闭*/
     fun deteServiceClose() {
@@ -3989,10 +3978,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    fun cancelServiceClose() {
-        deteServiceCloseJob?.cancel()
-        deteServiceCloseJob = null
-    }
 
     suspend fun startLockerClose(model: DoorCloseBean) = withContext(Dispatchers.IO) {
         val transId = model.transId
@@ -4307,20 +4292,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                 }.onFailure { code, msg ->
                     isFetching.set(false)
-                    withContext(Dispatchers.Main){
-                        Toast.makeText(AppUtils.getContext(),"重试获取服务器地址中 $code $msg",Toast.LENGTH_LONG).show()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(AppUtils.getContext(), "重试获取服务器地址中 $code $msg", Toast.LENGTH_LONG).show()
                     }
                     retry()
-                }.onCatch { e->
-                    withContext(Dispatchers.Main){
-                        Toast.makeText(AppUtils.getContext(),"重试获取服务器地址中 ${e.errorMsg}",Toast.LENGTH_LONG).show()
+                }.onCatch { e ->
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(AppUtils.getContext(), "重试获取服务器地址中 ${e.errorMsg}", Toast.LENGTH_LONG).show()
                     }
                     isFetching.set(false)
                     retry()
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main){
-                    Toast.makeText(AppUtils.getContext(),"重试获取服务器地址中 ${e.message}",Toast.LENGTH_LONG).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(AppUtils.getContext(), "重试获取服务器地址中 ${e.message}", Toast.LENGTH_LONG).show()
                 }
                 isFetching.set(false)
                 if (e !is CancellationException) retry()
@@ -4501,41 +4486,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
     private var containersDB = mutableListOf<StateEntity>()
 
 
-    fun getI1PrefixJpgFiles(): List<String> {
-        return try {
-            val dir = File(
-                AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action"
-            )
-            if (!dir.exists() || !dir.isDirectory) {
-                return emptyList()
-            }
-
-            val files = dir.listFiles()
-            if (files.isNullOrEmpty()) {
-                return emptyList()
-            }
-
-            files.filter { file ->
-                file.isFile
-            }.map { it.absolutePath }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
-        }
-    }
-
-    private fun isImageFile(fileName: String): Boolean {
-        val lowerName = fileName.lowercase()
-        return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")
-    }
-
-
-    fun extractThirdValue(input: String): String? {
-        val parts = input.split("-")
-        return if (parts.size > 2) parts[2] else null
-    }
-
-
     private var containersJob: Job? = null
     fun cancelContainersStatusJob() {
         Loge.e("验证方式 取消柜体查询")
@@ -4543,10 +4493,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         containersJob = null
     }
 
-
-    /****
-     * 投递柜状态查询
-     */
+    /**** * 投递柜状态查询*/
     fun startContainersStatus() {
         Loge.e("进来查询投递柜")
         if (containersJob?.isActive == true) {
@@ -4709,7 +4656,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-
     private suspend fun refreshContainers(state: StateEntity, index: Int) =
         withContext(Dispatchers.IO) {
             val row = DatabaseManager.upStateEntity(AppUtils.getContext(), state)
@@ -4854,21 +4800,16 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     //////////////////////////////////////////////////////调试页面功能/////////////////////////////////////////////////////////////////////////////////
     private var queryStatusJob: Job? = null
-
+    var isLookState = false
     fun cancelStartQueryStatus() {
-        BoxToolLogUtils.savePrintln("业务流： 取消柜查询柜体状态")
+        BoxToolLogUtils.savePrintln("业务流： 取消测试页柜查询柜体状态")
         queryStatusJob?.cancel()
         queryStatusJob = null
     }
-
-    var isLookState = false
-
-    /***
-     * 查询柜体信息
-     */
+    /*** 测试页 查询柜体信息*/
     fun startQueryStatus(stateResult: (containers: MutableList<ContainersResult>) -> Unit) {
         if (queryStatusJob?.isActive == true) {
-            BoxToolLogUtils.savePrintln("业务流：查询柜体状态 轮询已在运行")
+            BoxToolLogUtils.savePrintln("业务流：查询测试页柜体状态 轮询已在运行")
             return
         }
         queryStatusJob = viewModelScope.launch(Dispatchers.IO) {
@@ -4876,7 +4817,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 SerialPortSdk.queryStatus().onSuccess { result ->
                     stateResult(result.containers)
                 }.onFailure { e ->
-                    BoxToolLogUtils.savePrintln("业务流： startStatus onFailure ${e.message}")
+                    BoxToolLogUtils.savePrintln("业务流：查询测试页柜体状态 onFailure ${e.message}")
                 }
             }
         }
@@ -5087,10 +5028,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun stopAll() {
         cancelContainersStatusJob()
         cancelStartQueryStatus()
+        cancelServiceClose()
+        cancelPollingFaultJob()
+        cancelJobAgain()
+        cancelJobInstall()
         closeSock()
         closeAllScope()
-        cancelServiceClose()
-        cancelJobAgain()
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

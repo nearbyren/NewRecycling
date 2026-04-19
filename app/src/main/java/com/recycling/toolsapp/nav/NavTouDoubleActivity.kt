@@ -490,18 +490,25 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_RESTART -> {
                         val restartModel = Gson().fromJson(json, RestartBean::class.java)
-                        when (restartModel.type) {
-                            1 -> {
-                                OSUtils.restartAppFrontDesk(this@NavTouDoubleActivity)
-                            }
+                        lifecycleScope.launch { // 确保在协程中执行
+                            when (restartModel.type) {
+                                1 -> {
+                                    // 1. 给用户一个提示（可选）
+                                    cabinetVM.tipMessage("业务流：系统将在5秒后重启")
 
-                            2 -> {
-                                restartModel.time?.let { time ->
-                                    TaskRestartScheduler.scheduleTodayTimeRange(
-                                        AppUtils.getContext(), time, time, "morning_cleanup_forced", executeIfMissed = true
-                                    )
+                                    // 2. 等待缓冲
+                                    delay(5000)
+
+                                    // 3. 关键：调用 ViewModel 的清理方法
+                                    // 停止所有轮询、关闭 Socket、关闭串口
+                                    cabinetVM.stopAll()
+
+                                    // 4. 确保日志写入磁盘
+                                    BoxToolLogUtils.savePrintln("业务流：收到指令重启：资源已释放，执行重启")
+
+                                    // 5. 正式重启
+                                    OSUtils.restartAppFrontDesk(this@NavTouDoubleActivity)
                                 }
-
                             }
                         }
                     }
@@ -601,16 +608,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        Loge.e("流程 home onDestroy")
-        networkStateManager.stopMonitoring()
-        cabinetVM.cameraManagerNew.unregisterUsbReceiver()
-        cabinetVM.stopAll()
-        cabinetVM.cancelServiceClose()
-        cabinetVM.cancelContainersStatusJob()
-        cabinetVM.cancelJobAgain()
-    }
+
 
     override fun onDestroy() {
         super.onDestroy()
@@ -618,10 +616,6 @@ class NavTouDoubleActivity : AppCompatActivity() {
         networkStateManager.stopMonitoring()
         cabinetVM.cameraManagerNew.unregisterUsbReceiver()
         cabinetVM.stopAll()
-        cabinetVM.cancelServiceClose()
-        cabinetVM.cancelContainersStatusJob()
-        cabinetVM.cancelJobAgain()
-
     }
 
     private val cameraErrorListener = CameraErrorListener { status, index, text ->
