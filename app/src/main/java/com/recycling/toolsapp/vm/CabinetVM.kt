@@ -4509,7 +4509,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
         containersJob = null
     }
 
-    val isQueryVersion = false
 
     /****
      * 投递柜状态查询
@@ -4849,15 +4848,16 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
+    val isQueryVersion = false
+
     /***
      * 查询版本
      */
     suspend fun startChipVersion() = withContext(Dispatchers.IO) {
         SerialPortSdk.startQueryVersion().onSuccess { result ->
             isQueryVersion = true
-            val chipVersion = HexConverter.byteArrayToInt(payload)
-            SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
-            BoxToolLogUtils.savePrintln("业务流：查询版本【$chipVersion】")
+            SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, result.chipVersion)
+            BoxToolLogUtils.savePrintln("业务流：查询版本【${result.chipVersion}】")
         }.onFailure { e ->
             BoxToolLogUtils.savePrintln("业务流：查询版本失败【${e.message}】")
         }
