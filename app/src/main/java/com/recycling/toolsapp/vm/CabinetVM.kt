@@ -20,6 +20,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.JsonSyntaxException
 import com.recycling.toolsapp.BuildConfig
+import com.recycling.toolsapp.FaceApplication
 import com.recycling.toolsapp.db.DatabaseManager
 import com.recycling.toolsapp.http.FileCleaner
 import com.recycling.toolsapp.http.RepoImpl
@@ -55,6 +56,7 @@ import com.recycling.toolsapp.utils.WeightChangeStorage
 import com.recycling.toolsapp.view.AwesomeQRCode
 import com.recycling.toolsapp.vm.CabinetVM.ConnectionState.*
 import com.recycling.toolsapp.R
+import com.recycling.toolsapp.utils.OSUtils
 import com.serial.port.t.ContainersResult
 import com.serial.port.t.ProtocolCodec
 import com.serial.port.t.SendClearText
@@ -3002,6 +3004,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 _chipStep.value = UpgradeStep.UPGRADE_END
                 BoxToolLogUtils.savePrintln("升级流程：流程 finally ${chipStep.value}")
+                println("升级流程：我进入 finally ${chipStep.value}")
+                delay(1500)
+                OSUtils.restartAppFrontDesk(FaceApplication.getInstance().baseActivity)
             }
         }
     }

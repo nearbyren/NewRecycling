@@ -739,9 +739,6 @@ class NavTouSingleActivity : AppCompatActivity() {
                                 msg = "升级失败-$it"
                                 time = AppUtils.getDateYMDHMS()
                             })
-                            delay(1500)
-                            OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
-
                         }
 
                         CabinetVM.UpgradeStep.QUERY_VERSION, CabinetVM.UpgradeStep.ENTER_STATUS, CabinetVM.UpgradeStep.QUERY_STATUS, CabinetVM.UpgradeStep.SEND_FILE, CabinetVM.UpgradeStep.SEND_FILE_END, CabinetVM.UpgradeStep.RESTART_APP, CabinetVM.UpgradeStep.UPGRADE_END -> {
