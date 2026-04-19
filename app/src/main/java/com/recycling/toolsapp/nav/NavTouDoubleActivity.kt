@@ -23,6 +23,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.Navigation
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.request.RequestOptions
 import com.cabinet.toolsapp.tools.bus.FlowBus
 import com.cabinet.toolsapp.tools.bus.ResEvent
 import com.google.android.material.snackbar.Snackbar
@@ -570,14 +572,10 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
     private fun refreshHomeRes(text: String) {
         Loge.e("背景图刷新问题  refreshHomeRes  $text ${cabinetVM.mHomeBg}")
-        cabinetVM.mHomeBg?.let { bitmap ->
-            Glide.with(this).load(cabinetVM.mHomeBg).into(binding.acivHomeNet)
-        }.also {
-            if (cabinetVM.mHomeBg == null) {
-                Glide.with(this).load(R.drawable.home).into(binding.acivHomeNet)
+        val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
+            .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
+        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/res/home.png")).apply(options).into(binding.acivHomeNet)
 
-            }
-        }
     }
 
     private fun socketToast(isShow: Boolean) {
