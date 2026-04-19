@@ -2492,15 +2492,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 val netVersion = otaModel.version ?: ""
                 if (!TextUtils.isEmpty(netVersion)) {
                     val netVersion = netVersion.replace(".", "").toIntOrNull() ?: CmdCode.GJ_VERSION
-                    Loge.e("流程 toGoCmdOtaBin 添加资源 $gversion  $netVersion")
+                    Loge.e("升级流程：添加资源 $gversion  $netVersion")
                     if (netVersion > gversion) {
                         cancelContainersStatusJob()
                         _chipStep.value = UpgradeStep.UPGRADE_DOW
                         delay(5000)
-                        Loge.e("流程 toGoCmdOtaBin 进来了 $gversion  $netVersion")
+                        Loge.e("升级流程：进来了 $gversion  $netVersion")
                         chipCurV = gversion
                         chipDowV = netVersion
-                        Loge.e("流程 toGoCmdOtaBin 添加资源 回调查询版本 当前：$chipCurV  网络：$chipDowV")
+                        Loge.e("升级流程：添加资源 回调查询版本 当前：$chipCurV  网络：$chipDowV")
                         val fileName = "f1-${netVersion}.bin"
                         chipName = fileName
                         val saveResource = ResEntity().apply {
@@ -2515,17 +2515,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             AppUtils.getContext(), netVersion.toString(), otaModel.sn
                                 ?: "", otaModel.cmd ?: ""
                         )
-                        Loge.e("流程 toGoCmdOtaBin 添加资源 $queryResource")
+                        Loge.e("升级流程：添加资源 $queryResource")
                         if (queryResource == null) {
                             val row = DatabaseManager.insertRes(AppUtils.getContext(), saveResource)
-                            Loge.e("流程 toGoCmdOtaBin 添加资源 $row")
+                            Loge.e("升级流程：添加资源 $row")
                             //取网络数据判断
                             if (otaModel.url != null && !TextUtils.isEmpty(otaModel.url) && chipCurV < chipDowV) {
-                                Loge.e("流程 toGoCmdOtaBin 进入下载 ")
+                                Loge.e("升级流程：进入下载 ")
                                 val dir = FileMdUtil.matchNewFileName("bin", fileName)
                                 otaModel.url?.let { dowurl ->
                                     downloadRes(dowurl, dir) { success, file ->//固件下载 未存储
-                                        Loge.e("流程 toGoCmdOtaBin success $success")
+                                        Loge.e("升级流程：success $success")
                                         if (success) {
                                             toGoCmdOtaBin()
                                             startUpgradeWorkflow(row)
@@ -2558,7 +2558,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 }
                             } else {
                                 _chipStep.value = UpgradeStep.UPGRADE_FUALT
-                                Loge.e("流程 toGoCmdOtaBin 下载BIN失败插入失败 $row")
+                                Loge.e("升级流程：下载BIN失败插入失败 $row")
                                 insertInfoLog(LogEntity().apply {
                                     cmd = "ota"
                                     msg = "下载BIN失败插入失败  $row"
@@ -2566,16 +2566,16 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 })
                             }
                         } else {
-                            Loge.e("流程 toGoCmdOtaBin 存在资源 二次升级")
+                            Loge.e("升级流程：存在资源 二次升级")
                             if (chipCurV == netVersion) {
                                 _chipStep.value = UpgradeStep.UPGRADE_FUALT
-                                Loge.e("流程 toGoCmdOtaBin 存在资源 版本一致")
+                                Loge.e("升级流程：存在资源 版本一致")
                                 queryResource.status = ResType.TYPE_3//固件文件
                                 upNetResDb("已经是最新版本${netVersion}", queryResource)
                             } else {
                                 //版本不一致
                                 if (chipCurV < netVersion && (queryResource.status == ResType.TYPE_F1 || queryResource.status == ResType.TYPE_2 || queryResource.status == ResType.TYPE_4)) {
-                                    Loge.e("流程 toGoCmdOtaBin 存在资源 版本不一致")
+                                    Loge.e("升级流程：存在资源 版本不一致")
                                     queryResource.version = netVersion.toString()
                                     queryResource.url = otaModel.url
                                     queryResource.md5 = otaModel.md5
@@ -2602,7 +2602,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
                     } else {
                         //查询出来 更新状态 在弄个定时去检测在自动执行更新
-                        Loge.e("流程 toGoCmdOtaBin 版本不同")
+                        Loge.e("升级流程：版本不同")
                         val queryResource = DatabaseManager.queryResNewBin(
                             AppUtils.getContext(), otaModel.sn ?: "", CmdValue.CMD_OTA
                         )
