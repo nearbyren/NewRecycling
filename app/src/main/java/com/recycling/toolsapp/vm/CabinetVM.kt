@@ -2779,7 +2779,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * 升级流程
      */
     fun startUpgradeWorkflow(row: Long = -1) {
-        val upgradeCount = SPreUtil.put(AppUtils.getContext(), AppUtils.getDateYMD(), 0) as Int
+        val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0]  as Int
         if (upgradeCount > 5) {
             BoxToolLogUtils.savePrintln("升级流程：今天超过升级次数 $upgradeCount 不再继续升级")
             return
