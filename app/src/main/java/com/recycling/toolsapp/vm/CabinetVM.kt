@@ -2528,7 +2528,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         Loge.e("升级流程：success $success")
                                         if (success) {
                                             toGoCmdOtaBin()
-                                            startUpgradeWorkflow(row)
+                                            startDowChipFlow(row)
                                             upNetResDb("下载BIN成功插入", ResEntity().apply {
                                                 id = row
                                                 status = ResType.TYPE_2//还未升级
@@ -2586,7 +2586,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             if (success) {
                                                 queryResource.status = ResType.TYPE_2//还未升级
                                                 toGoCmdOtaBin()
-                                                startUpgradeWorkflow(queryResource.id)
+                                                startDowChipFlow(queryResource.id)
                                                 upNetResDb("下载BIN成功更新", queryResource)
                                             } else {
                                                 _chipStep.value = UpgradeStep.UPGRADE_FUALT
@@ -2623,162 +2623,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
         }
     }
-
-    fun startDowApk(otaModel: OtaBean) {
-        if (isRunning) {
-            BoxToolLogUtils.savePrintln("业务流：升级APK 期待 false $isRunning ")
-            return
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            val verName = AppUtils.getVersionName()
-            val oldVs = verName.replace(".", "").toIntOrNull() ?: 0
-            val newVs = otaModel.version?.replace(".", "")?.toIntOrNull() ?: 0
-            val delFileName = "hsg-${verName}.apk"
-            FileMdUtil.delFileName(FileMdUtil.matchNewFile("apk"), delFileName)
-            if (oldVs < newVs) {
-                _chipStep.value = UpgradeStep.INSTALL_DOW
-                delay(2000)
-                val saveResource = ResEntity().apply {
-                    sn = otaModel.sn
-                    version = otaModel.version
-                    cmd = otaModel.cmd
-                    url = otaModel.url
-                    md5 = otaModel.md5
-                    time = AppUtils.getDateYMDHMS()
-                }
-                val queryResource = DatabaseManager.queryResCmd(
-                    AppUtils.getContext(), otaModel.version ?: "", otaModel.sn ?: "", otaModel.cmd
-                        ?: ""
-                )
-                if (queryResource == null) {
-                    val row = DatabaseManager.insertRes(AppUtils.getContext(), saveResource)
-                    Loge.e("获取socket初始化数据  Ota 下载APK $row")
-                    //取网络数据判断
-                    if (otaModel.url != null && !TextUtils.isEmpty(otaModel.url)) {
-                        val fileName = "hsg-${otaModel.version}.apk"
-                        val dir = FileMdUtil.matchNewFileName("apk", fileName)
-                        otaModel.url?.let { dowurl ->
-                            downloadRes(dowurl, dir) { success, file ->//apk下载 未存储
-                                if (success) {
-                                    toGoCmdOtaAPK()
-                                    //去安装
-                                    installDowApk("不存在 首次更新APK")
-                                    upNetResDb("下载APK成功插入${otaModel.version}", ResEntity().apply {
-                                        id = row
-                                        status = ResType.TYPE_2//还未升级
-                                        sn = otaModel.sn
-                                        version = otaModel.version
-                                        cmd = otaModel.cmd
-                                        url = otaModel.url
-                                        md5 = otaModel.md5
-                                        time = AppUtils.getDateYMDHMS()
-                                    })
-                                } else {
-                                    _chipStep.value = UpgradeStep.INSTALL_FUALT
-                                    FileMdUtil.delFileName(FileMdUtil.matchNewFile("apk"), fileName)
-                                    upNetResDb("下载APK失败插入${otaModel.version}", ResEntity().apply {
-                                        id = row
-                                        status = ResType.TYPE_4//下载失败
-                                        sn = otaModel.sn
-                                        version = otaModel.version
-                                        cmd = otaModel.cmd
-                                        url = otaModel.url
-                                        md5 = otaModel.md5
-                                        time = AppUtils.getDateYMDHMS()
-                                    })
-                                }
-                            }
-                        }
-                    } else {
-                        _chipStep.value = UpgradeStep.INSTALL_FUALT
-                        Loge.e("获取socket初始化数据  下载APK失败插入失败 $row")
-                        insertInfoLog(LogEntity().apply {
-                            cmd = "ota/apk"
-                            msg = "下载APK失败插入失败  $row"
-                            time = AppUtils.getDateYMDHMS()
-                        })
-                    }
-                } else {
-                    Loge.e("获取socket初始化数据  Ota 下载APK 存在")
-                    //版本一致更新安装了
-                    val verName = AppUtils.getVersionName()
-                    if (verName == otaModel.version) {
-                        _chipStep.value = UpgradeStep.INSTALL_FUALT
-                        queryResource.status = ResType.TYPE_3//Apk文件
-                        upNetResDb("已经是最新版本${otaModel.version}", queryResource)
-                    } else {
-                        val verName = AppUtils.getVersionName()
-                        val oldVs = verName.replace(".", "").toInt()
-                        val newVs = otaModel.version?.replace(".", "")?.toInt() ?: 0
-                        Loge.e("获取socket初始化数据  Ota 下载APK 原：${oldVs},新：${newVs}")
-                        //未更新并且是下载失败
-                        if (oldVs < newVs && (queryResource.status == ResType.TYPE_F1 || queryResource.status == ResType.TYPE_2 || queryResource.status == ResType.TYPE_4)) {
-                            val fileName = "hsg-${otaModel.version}.apk"
-                            val dir = FileMdUtil.matchNewFileName("apk", fileName)
-                            queryResource.url?.let { url ->
-                                downloadRes(url, dir) { success, file ->//apk下载
-                                    if (success) {
-                                        queryResource.status = ResType.TYPE_2//还未升级
-                                        toGoCmdOtaAPK()
-                                        //去安装
-                                        installDowApk("不存在 首次更新APK")
-                                        //去安装
-                                        upNetResDb("下载APK成功更新${otaModel.version}", queryResource)
-                                    } else {
-                                        FileMdUtil.delFileName(FileMdUtil.matchNewFile("apk"), fileName)
-                                        _chipStep.value = UpgradeStep.INSTALL_FUALT
-                                        queryResource.status = ResType.TYPE_4//下载失败
-                                        upNetResDb(
-                                            "下载APK失败更新${otaModel.version}", queryResource
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    var jobInstall: Job? = null
-    fun cancelJobInstall() {
-        jobInstall?.cancel()
-        jobInstall = null
-    }
-
-    var installApkUrl: String? = null
-    private fun installDowApk(text: String) {
-        jobInstall = ioScope.launch {
-            val queryResource = DatabaseManager.queryResNewAPk(AppUtils.getContext(), CmdValue.CMD_OTA_APK)
-            //版本一致更新安装了
-            val verName = AppUtils.getVersionName()
-            val oldVs = verName.replace(".", "").toInt()
-            val newVs = queryResource.version?.replace(".", "")?.toInt() ?: 0
-            if (newVs > oldVs) {
-                val fileName = "hsg-${queryResource.version}.apk"
-                val result = FileMdUtil.checkApkFileExists(fileName)
-                installApkUrl = FileMdUtil.matchNewFileName("apk", fileName)
-                upNetResDb("去安装${queryResource.version}", ResEntity().apply {
-                    id = queryResource.id
-                    status = ResType.TYPE_3
-                    sn = queryResource.sn
-                    version = queryResource.version
-                    cmd = queryResource.cmd
-                    url = queryResource.url
-                    md5 = queryResource.md5
-                    time = AppUtils.getDateYMDHMS()
-                })
-                Loge.e("获取socket初始化数据  进来更新APK了 文件是否存在：$result - $text")
-                _chipStep.value = UpgradeStep.INSTALL_APK
-            }
-        }
-    }
-
     /***
      * 升级流程
      */
-    fun startUpgradeWorkflow(row: Long = -1) {
+    private fun startDowChipFlow(row: Long = -1) {
         val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0]  as Int
         if (upgradeCount > 5) {
             BoxToolLogUtils.savePrintln("升级流程：今天超过升级次数 $upgradeCount 不再继续升级")
@@ -3009,6 +2857,162 @@ class CabinetVM @Inject constructor() : ViewModel() {
             }
         }
     }
+
+    /***
+     * 下载apk
+     */
+    fun startDowApk(otaModel: OtaBean) {
+        if (isRunning) {
+            BoxToolLogUtils.savePrintln("业务流：升级APK 期待 false $isRunning ")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val verName = AppUtils.getVersionName()
+            val oldVs = verName.replace(".", "").toIntOrNull() ?: 0
+            val newVs = otaModel.version?.replace(".", "")?.toIntOrNull() ?: 0
+            val delFileName = "hsg-${verName}.apk"
+            FileMdUtil.delFileName(FileMdUtil.matchNewFile("apk"), delFileName)
+            if (oldVs < newVs) {
+                _chipStep.value = UpgradeStep.INSTALL_DOW
+                delay(2000)
+                val saveResource = ResEntity().apply {
+                    sn = otaModel.sn
+                    version = otaModel.version
+                    cmd = otaModel.cmd
+                    url = otaModel.url
+                    md5 = otaModel.md5
+                    time = AppUtils.getDateYMDHMS()
+                }
+                val queryResource = DatabaseManager.queryResCmd(
+                    AppUtils.getContext(), otaModel.version ?: "", otaModel.sn ?: "", otaModel.cmd
+                        ?: ""
+                )
+                if (queryResource == null) {
+                    val row = DatabaseManager.insertRes(AppUtils.getContext(), saveResource)
+                    Loge.e("获取socket初始化数据  Ota 下载APK $row")
+                    //取网络数据判断
+                    if (otaModel.url != null && !TextUtils.isEmpty(otaModel.url)) {
+                        val fileName = "hsg-${otaModel.version}.apk"
+                        val dir = FileMdUtil.matchNewFileName("apk", fileName)
+                        otaModel.url?.let { dowurl ->
+                            downloadRes(dowurl, dir) { success, file ->//apk下载 未存储
+                                if (success) {
+                                    toGoCmdOtaAPK()
+                                    //去安装
+                                    installDowApk("不存在 首次更新APK")
+                                    upNetResDb("下载APK成功插入${otaModel.version}", ResEntity().apply {
+                                        id = row
+                                        status = ResType.TYPE_2//还未升级
+                                        sn = otaModel.sn
+                                        version = otaModel.version
+                                        cmd = otaModel.cmd
+                                        url = otaModel.url
+                                        md5 = otaModel.md5
+                                        time = AppUtils.getDateYMDHMS()
+                                    })
+                                } else {
+                                    _chipStep.value = UpgradeStep.INSTALL_FUALT
+                                    FileMdUtil.delFileName(FileMdUtil.matchNewFile("apk"), fileName)
+                                    upNetResDb("下载APK失败插入${otaModel.version}", ResEntity().apply {
+                                        id = row
+                                        status = ResType.TYPE_4//下载失败
+                                        sn = otaModel.sn
+                                        version = otaModel.version
+                                        cmd = otaModel.cmd
+                                        url = otaModel.url
+                                        md5 = otaModel.md5
+                                        time = AppUtils.getDateYMDHMS()
+                                    })
+                                }
+                            }
+                        }
+                    } else {
+                        _chipStep.value = UpgradeStep.INSTALL_FUALT
+                        Loge.e("获取socket初始化数据  下载APK失败插入失败 $row")
+                        insertInfoLog(LogEntity().apply {
+                            cmd = "ota/apk"
+                            msg = "下载APK失败插入失败  $row"
+                            time = AppUtils.getDateYMDHMS()
+                        })
+                    }
+                } else {
+                    Loge.e("获取socket初始化数据  Ota 下载APK 存在")
+                    //版本一致更新安装了
+                    val verName = AppUtils.getVersionName()
+                    if (verName == otaModel.version) {
+                        _chipStep.value = UpgradeStep.INSTALL_FUALT
+                        queryResource.status = ResType.TYPE_3//Apk文件
+                        upNetResDb("已经是最新版本${otaModel.version}", queryResource)
+                    } else {
+                        val verName = AppUtils.getVersionName()
+                        val oldVs = verName.replace(".", "").toInt()
+                        val newVs = otaModel.version?.replace(".", "")?.toInt() ?: 0
+                        Loge.e("获取socket初始化数据  Ota 下载APK 原：${oldVs},新：${newVs}")
+                        //未更新并且是下载失败
+                        if (oldVs < newVs && (queryResource.status == ResType.TYPE_F1 || queryResource.status == ResType.TYPE_2 || queryResource.status == ResType.TYPE_4)) {
+                            val fileName = "hsg-${otaModel.version}.apk"
+                            val dir = FileMdUtil.matchNewFileName("apk", fileName)
+                            queryResource.url?.let { url ->
+                                downloadRes(url, dir) { success, file ->//apk下载
+                                    if (success) {
+                                        queryResource.status = ResType.TYPE_2//还未升级
+                                        toGoCmdOtaAPK()
+                                        //去安装
+                                        installDowApk("不存在 首次更新APK")
+                                        //去安装
+                                        upNetResDb("下载APK成功更新${otaModel.version}", queryResource)
+                                    } else {
+                                        FileMdUtil.delFileName(FileMdUtil.matchNewFile("apk"), fileName)
+                                        _chipStep.value = UpgradeStep.INSTALL_FUALT
+                                        queryResource.status = ResType.TYPE_4//下载失败
+                                        upNetResDb(
+                                            "下载APK失败更新${otaModel.version}", queryResource
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    var jobInstall: Job? = null
+    fun cancelJobInstall() {
+        jobInstall?.cancel()
+        jobInstall = null
+    }
+
+    var installApkUrl: String? = null
+    private fun installDowApk(text: String) {
+        jobInstall = ioScope.launch {
+            val queryResource = DatabaseManager.queryResNewAPk(AppUtils.getContext(), CmdValue.CMD_OTA_APK)
+            //版本一致更新安装了
+            val verName = AppUtils.getVersionName()
+            val oldVs = verName.replace(".", "").toInt()
+            val newVs = queryResource.version?.replace(".", "")?.toInt() ?: 0
+            if (newVs > oldVs) {
+                val fileName = "hsg-${queryResource.version}.apk"
+                val result = FileMdUtil.checkApkFileExists(fileName)
+                installApkUrl = FileMdUtil.matchNewFileName("apk", fileName)
+                upNetResDb("去安装${queryResource.version}", ResEntity().apply {
+                    id = queryResource.id
+                    status = ResType.TYPE_3
+                    sn = queryResource.sn
+                    version = queryResource.version
+                    cmd = queryResource.cmd
+                    url = queryResource.url
+                    md5 = queryResource.md5
+                    time = AppUtils.getDateYMDHMS()
+                })
+                Loge.e("获取socket初始化数据  进来更新APK了 文件是否存在：$result - $text")
+                _chipStep.value = UpgradeStep.INSTALL_APK
+            }
+        }
+    }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
