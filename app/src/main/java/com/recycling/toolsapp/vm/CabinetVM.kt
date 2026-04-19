@@ -4848,14 +4848,21 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     fun startChipVersion() {
         viewModelScope.launch(Dispatchers.IO) {
-            val ChipVersionValue = SerialPortSdk.firmwareUpgrade78910(11, byteArrayOf(0xAA.toByte(), 0xAB.toByte(), 0xAC.toByte()))
-            if (ChipVersionValue.isFailure) {
-                tipMessage("业务流 查询版本失败:${ChipVersionValue.exceptionOrNull()?.message}")
+            val chipStep11 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD11, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
+            chipStep11.onSuccess { bytes ->
+                // 解析 Payload (逻辑同你之前的代码)
+                val payload = ProtocolCodec.getSafePayload(bytes)
+                if (payload != null) {
+                    if (payload.isNotEmpty()) {
+                        val chipVersion = HexConverter.byteArrayToInt(payload)
+                        SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
+                        BoxToolLogUtils.savePrintln("业务流：查询版本【$chipVersion】")
+                    }
+                }
+            }.onFailure { e ->
+                BoxToolLogUtils.savePrintln("业务流：查询版本失败【${e.message}】")
                 return@launch
             }
-            val chipVersion = ChipVersionValue.getOrNull()?.chipVersion ?: SPreUtil.gversion
-            SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
-            BoxToolLogUtils.savePrintln("业务流：查询版本【$chipVersion】")
         }
     }
 
