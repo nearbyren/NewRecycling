@@ -3006,7 +3006,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("升级流程：流程 finally ${chipStep.value}")
                 println("升级流程：我进入 finally ${chipStep.value}")
                 delay(1500)
-                OSUtils.restartAppFrontDesk(FaceApplication.getInstance().baseActivity)
+                FaceApplication.getInstance().baseActivity?.let { OSUtils.restartAppFrontDesk(it) }
             }
         }
     }
