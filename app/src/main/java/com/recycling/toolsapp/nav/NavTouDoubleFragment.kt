@@ -43,7 +43,6 @@ import java.io.File
 class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBinding>() {
     // 关键点：通过 requireActivity() 获取 Activity 作用域的 ViewModel  // 确保共享实例
     private val cabinetVM: CabinetVM by viewModels(ownerProducer = { requireActivity() })
-    private var downTime = 0L
     override fun isAutoCloseEnabled(): Boolean = false
     override fun layoutRes(): Int {
         return R.layout.nav_tou_double_fragment
@@ -61,21 +60,30 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
                     ?: "0.00", cabinetVM.curG2Weight ?: "0.00", cabinetVM.curG2Weight ?: "0.00"
             )
         }
-        refreshQrCodeRes()
         val warningContent1 = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText1, BusType.BUS_NORMAL] as String
         val warningContent2 = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText2, BusType.BUS_NORMAL] as String
         initWarningContent(warningContent1, 1)
         initWarningContent(warningContent2, 2)
     }
 
-    private fun refreshQrCodeRes() {
-        val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
-            .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
-        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/res/qrCode.png")).apply(options).into(binding.acivCodeNet)
-
-    }
-
     private fun latestBusiness() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.refHomeCodeStateFlow.collect {
+                    Loge.e("业务流：刷新首页二维码 -> $it")
+                    if (it == null) return@collect
+                    val refreshType = it.refreshType
+                    val bitmap = it.bitmap
+                    when (refreshType) {
+                        RefBusType.REFRESH_TYPE_6 -> {
+                            if(bitmap!=null){
+                                Glide.with(AppUtils.getContext()).load(bitmap).into(binding.acivCodeNet)
+                            }
+                        }
+                    }
+                }
+            }
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaStateFlow.collect {
@@ -97,9 +105,6 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
                             initWarningContent(warningContent, doorGex)
                         }
 
-                        RefBusType.REFRESH_TYPE_6 -> {
-                            refreshQrCodeRes()
-                        }
                     }
                 }
             }

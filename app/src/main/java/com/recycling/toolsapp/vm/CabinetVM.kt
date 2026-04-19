@@ -19,6 +19,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.JsonSyntaxException
+import com.recycling.toolsapp.BuildConfig
 import com.recycling.toolsapp.db.DatabaseManager
 import com.recycling.toolsapp.http.FileCleaner
 import com.recycling.toolsapp.http.RepoImpl
@@ -1205,14 +1206,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
     private fun downResBitmap(oneInit: Boolean, path: String, res: Int, status: Int) {
         val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
             .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
-        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/${path}")).apply(options).into(object : CustomTarget<Bitmap?>() {
+        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/${path}")).apply(options).into(object :
+            CustomTarget<Bitmap?>() {
             override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap?>?) {
                 if (res == 1) {
                     mHomeBg = resource
+                    Loge.e("业务流：刷新背景圖 -> 加載發送")
+                    setRefHomeCode(MonitorHomeCode().apply {
+                        refreshType = RefBusType.REFRESH_TYPE_5
+                        bitmap = resource
+                    })
                     if (oneInit) {
-                        setRefBusStaChannel(MonitorWeight().apply {
-                            refreshType = RefBusType.REFRESH_TYPE_5
-                        })
                         setRefBusStaChannel(MonitorWeight().apply {
                             refreshType = RefBusType.REFRESH_TYPE_1
                             doorGeX = CmdCode.GE1
@@ -1242,8 +1246,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                 } else if (res == 2) {
                     mQrCode = resource
-                    setRefBusStaChannel(MonitorWeight().apply {
+                    setRefHomeCode(MonitorHomeCode().apply {
                         refreshType = RefBusType.REFRESH_TYPE_6
+                        bitmap = resource
                     })
                 } else if (res == 3) {
                     mMaintaining = resource
@@ -4260,7 +4265,73 @@ class CabinetVM @Inject constructor() : ViewModel() {
             takePhotoUrl = filePath
         })
     }
+    // 用于通知 Activity 跳转的事件流
+    private val _navigationEvent = MutableSharedFlow<Pair<String, Int>>()
+    val navigationEvent = _navigationEvent.asSharedFlow()
 
+    // 状态锁
+    private val isFetching = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val isTransitioning = java.util.concurrent.atomic.AtomicBoolean(false)
+    //登录次数
+    private var getCount = 1000
+
+    fun getSocketUrl(isDelay: Boolean) {
+        // 外部入口拦截
+        if (isTransitioning.get() || !isFetching.compareAndSet(false, true)) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (isDelay) delay(5000)
+                if (isTransitioning.get()) return@launch
+
+                val postSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""] as String
+                val from = mutableMapOf<String, Any>("sn" to postSn)
+                val headers = mutableMapOf<String, String>("token" to BuildConfig.initToken)
+
+                httpRepo.connectAddress(headers, from).onSuccess { initString ->
+                    if (isTransitioning.compareAndSet(false, true)) {
+                        initString?.let { url ->
+                            val parts = url.split(":")
+                            // 发送跳转信号
+                            _navigationEvent.emit(Pair(parts[0], parts[1].toInt()))
+                        }
+                    }
+                }.onFailure { _, _ ->
+                    isFetching.set(false)
+                    retry()
+                }.onCatch {
+                    isFetching.set(false)
+                    retry()
+                }
+            } catch (e: Exception) {
+                isFetching.set(false)
+                if (e !is CancellationException) retry()
+            }
+        }
+    }
+
+    private fun retry() {
+        if (!isTransitioning.get() && getCount > 0) {
+            getCount--
+            getSocketUrl(true)
+        }
+    }
+
+
+    //独立刷新背景圖
+    private val _refHomeCodeStateFlow = MutableStateFlow<MonitorHomeCode?>(null)
+    val refHomeCodeStateFlow: StateFlow<MonitorHomeCode?> = _refHomeCodeStateFlow.asStateFlow()
+
+    fun setRefHomeCode(result: MonitorHomeCode) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _refHomeCodeStateFlow.emit(result)
+        }
+    }
+    data class MonitorHomeCode(
+        /** 5.刷新背景图 6.二维码 */
+        var refreshType: Int = -1,
+        var bitmap: Bitmap?=null
+    )
 
     private val _refBusStaStateFlow = MutableStateFlow<MonitorWeight?>(null)
     val refBusStaStateFlow: StateFlow<MonitorWeight?> = _refBusStaStateFlow.asStateFlow()

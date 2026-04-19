@@ -88,6 +88,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         FaceApplication.getInstance().baseActivity = this
         initialize(savedInstanceState)
 
+
     }
 
     private fun initNetworkState() {
@@ -337,13 +338,12 @@ class NavTouSingleActivity : AppCompatActivity() {
                 if (it) {
                     Loge.e("流程 navigateToHome saveSocketInitData 加载fragment")
                     initPort()
-                    refreshHomeRes("登陆回来")
                 }
             }
         }
-        binding.tvNetwork.setOnClickListener {
-            cabinetVM.startUpgradeWorkflow()
-        }
+//        binding.tvNetwork.setOnClickListener {
+//            cabinetVM.startUpgradeWorkflow()
+//        }
         //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
             cabinetVM.initConfigSocket(host!!, port)
@@ -479,9 +479,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                         val restartModel = Gson().fromJson(json, RestartBean::class.java)
                         when (restartModel.type) {
                             1 -> {
-                                TaskRestartScheduler.triggerImmediately(
-                                    AppUtils.getContext(), "restart"
-                                )
+                                OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
                             }
 
                             2 -> {
@@ -561,14 +559,6 @@ class NavTouSingleActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun refreshHomeRes(text: String) {
-        Loge.e("背景图刷新问题  refreshHomeRes  $text ${cabinetVM.mHomeBg}")
-        val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
-            .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
-        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/res/home.png")).apply(options).into(binding.acivHomeNet)
-
     }
 
     private fun socketToast(isShow: Boolean) {
@@ -686,13 +676,16 @@ class NavTouSingleActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.refBusStaStateFlow.collect {
-                    Loge.e("业务流：刷新重量 结算页面-> $it")
+                cabinetVM.refHomeCodeStateFlow.collect {
+                    Loge.e("业务流：刷新首页背景 -> $it")
                     if (it == null) return@collect
                     val refreshType = it.refreshType
+                    val bitmap = it.bitmap
                     when (refreshType) {
                         RefBusType.REFRESH_TYPE_5 -> {
-                            refreshHomeRes("刷新背景")
+                             if(bitmap!=null){
+                                Glide.with(AppUtils.getContext()).load(bitmap).into(binding.acivHomeNet)
+                            }
                         }
                     }
                 }

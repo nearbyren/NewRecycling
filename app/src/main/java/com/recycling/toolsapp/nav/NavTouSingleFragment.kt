@@ -55,7 +55,7 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
         binding.clMobileNet.setOnClickListener {
             Navigation.findNavController(it).navigate(R.id.action_start_mobile)
         }
-        refreshQrCodeRes()
+//        refreshQrCodeRes()
         val warningContent = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText1, BusType.BUS_NORMAL] as String
         initWarningContent(warningContent)
 
@@ -64,10 +64,27 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
     private fun refreshQrCodeRes() {
         val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
             .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
-        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/res/qrCode.png")).apply(options).into(binding.acivCodeNet)
+        Glide.with(AppUtils.getContext()).load(File("${AppUtils.getContext().filesDir}/res/qrCode.png")).apply(options).into(binding.acivCodeNet)
     }
 
     private fun latestBusiness() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.refHomeCodeStateFlow.collect {
+                    Loge.e("业务流：刷新首页二维码 -> $it")
+                    if (it == null) return@collect
+                    val refreshType = it.refreshType
+                    val bitmap = it.bitmap
+                    when (refreshType) {
+                        RefBusType.REFRESH_TYPE_6 -> {
+                            if(bitmap!=null){
+                                Glide.with(AppUtils.getContext()).load(bitmap).into(binding.acivCodeNet)
+                            }
+                        }
+                    }
+                }
+            }
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.refBusStaStateFlow.collect {
@@ -88,12 +105,7 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
                         RefBusType.REFRESH_TYPE_2 -> {
                             initWarningContent(warningContent)
                         }
-
-                        RefBusType.REFRESH_TYPE_6 -> {
-                            refreshQrCodeRes()
-                        }
                     }
-
                 }
             }
         }

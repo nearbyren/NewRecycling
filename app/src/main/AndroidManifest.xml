@@ -90,6 +90,7 @@
             android:name="com.recycling.toolsapp.StartUiActivity"
             android:configChanges="keyboard|keyboardHidden"
             android:exported="true"
+            android:launchMode="singleTask"
             android:theme="@style/CabinetLauncherTheme"
             tools:ignore="Instantiatable">
             <intent-filter>

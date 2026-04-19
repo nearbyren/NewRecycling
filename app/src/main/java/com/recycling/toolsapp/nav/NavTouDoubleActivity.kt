@@ -332,7 +332,6 @@ class NavTouDoubleActivity : AppCompatActivity() {
                 if (it) {
                     Loge.e("流程 navigateToHome saveSocketInitData 加载fragment")
                     initPort()
-                    refreshHomeRes("登陆回来")
                 }
             }
         }
@@ -495,9 +494,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         val restartModel = Gson().fromJson(json, RestartBean::class.java)
                         when (restartModel.type) {
                             1 -> {
-                                TaskRestartScheduler.triggerImmediately(
-                                    AppUtils.getContext(), "restart"
-                                )
+                                OSUtils.restartAppFrontDesk(this@NavTouDoubleActivity)
                             }
 
                             2 -> {
@@ -685,13 +682,16 @@ class NavTouDoubleActivity : AppCompatActivity() {
         }*/
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.refBusStaStateFlow.collect {
-                    Loge.e("业务流：刷新重量 结算页面-> $it")
+                cabinetVM.refHomeCodeStateFlow.collect {
+                    Loge.e("业务流：刷新首页背景 -> $it")
                     if (it == null) return@collect
                     val refreshType = it.refreshType
+                    val bitmap = it.bitmap
                     when (refreshType) {
                         RefBusType.REFRESH_TYPE_5 -> {
-                            refreshHomeRes("刷新背景")
+                            if(bitmap!=null){
+                                Glide.with(AppUtils.getContext()).load(bitmap).into(binding.acivHomeNet)
+                            }
                         }
                     }
                 }
