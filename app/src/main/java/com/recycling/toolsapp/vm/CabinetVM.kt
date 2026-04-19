@@ -1649,12 +1649,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = ""
+    var chipName = "f1-20260320"
 
     /***
      * 下载主芯片版本大小
      */
-    var chipDowV = 20260410
+    var chipDowV = 20260320
 
     /***
      * 当前主芯片版本大小
@@ -2781,21 +2781,21 @@ class CabinetVM @Inject constructor() : ViewModel() {
             try {
                 cancelContainersStatusJob()
                 delay(2000)
-                Loge.d("流程 芯片升级 startUpgradeWorkflow ")
-                BoxToolLogUtils.savePrintln("流程 芯片升级 开始 ")
+                Loge.d("升级流程：startUpgradeWorkflow ")
+                BoxToolLogUtils.savePrintln("升级流程：开始")
                 val chipStep7 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
                 chipStep7.onSuccess { bytes ->
                     // 解析 Payload (逻辑同你之前的代码)
                     val payload = ProtocolCodec.getSafePayload(bytes)
-                    BoxToolLogUtils.savePrintln("流程 芯片升级 chipStep7 onSuccess = ${payload?.size}")
                     if (payload?.size == 3) {
+                        BoxToolLogUtils.savePrintln("升级流程：进入升级指令 onSuccess = ${payload?.size}")
                         _chipStep.value = UpgradeStep.ENTER_STATUS
                     }
                 }.onFailure { e ->
                     _chipStep.value = UpgradeStep.ENTER_STATUS_FUALT
-                    Loge.d("流程 芯片升级 chipStep7 = ${e.message} ")
+                    Loge.d("升级流程： chipStep7 = ${e.message} ")
                     val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                    BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow ENTER_STATUS_FUALT = ${e.message} ")
+                    BoxToolLogUtils.savePrintln("升级流程：进入升级指令失败 $sRow ENTER_STATUS_FUALT = ${e.message} ")
                     return@launch
                 }
                 delay(2000)
@@ -2806,30 +2806,29 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     if (filSize != 0) {
                         //软件大小
                         val sizeByte = HexConverter.intToByteArray(filSize)
-                        Loge.d("流程 芯片升级 filSize = $filSize | sizeByte = ${ByteUtils.toHexString(sizeByte)}")
+                        Loge.d("升级流程：filSize = $filSize | sizeByte = ${ByteUtils.toHexString(sizeByte)}")
                         //软件版本
                         val vByte = HexConverter.intToByteArray(chipDowV)
-                        Loge.d("流程 芯片升级 chipMasterV = $chipDowV vByte = ${ByteUtils.toHexString(vByte)}")
+                        Loge.d("升级流程：chipMasterV = $chipDowV vByte = ${ByteUtils.toHexString(vByte)}")
                         //CRC效验值
                         val crc = CRC32MPEG2Util.computeFile(file2.absolutePath)
                         val crcByte = HexConverter.intToByteArray(crc.toInt())
-                        Loge.d("流程 芯片升级 crcByte = ${ByteUtils.toHexString(crcByte)}")
+                        Loge.d("升级流程：crcByte = ${ByteUtils.toHexString(crcByte)}")
                         val sendByte = HexConverter.combineByteArrays(fileType, sizeByte, vByte, crcByte)
                         val sendResult = HexConverter.combineByteArrays(byteArrayOf(0xA1.toByte(), 0xA2.toByte(), 0xA3.toByte()), sendByte)
-                        Loge.d("流程 芯片升级 crcByte = 发送1")
                         val chipStep8 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD8, sendResult)
-                        Loge.d("流程 芯片升级 crcByte = 发送2")
                         chipStep8.onSuccess { bytes ->
                             // 解析 Payload (逻辑同你之前的代码)
                             val payload = ProtocolCodec.getSafePayload(bytes)
                             if (payload?.size == 3) {
+                                BoxToolLogUtils.savePrintln("升级流程：进入升级状态指令 onSuccess = ${payload?.size}")
                                 _chipStep.value = UpgradeStep.QUERY_STATUS
                             }
                         }.onFailure { e ->
                             _chipStep.value = UpgradeStep.QUERY_STATUS_FUALT
-                            Loge.d("流程 芯片升级 chipStep8 = ${e.message} ")
+                            Loge.d("升级流程：进入升级状态指令 = ${e.message} ")
                             val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                            BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow QUERY_STATUS_FUALT = ${e.message} ")
+                            BoxToolLogUtils.savePrintln("升级流程：进入升级状态指令 $sRow QUERY_STATUS_FUALT = ${e.message} ")
                             return@launch
                         }
                         delay(2000)
@@ -2845,7 +2844,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     var currentBlockIndex = 0
                                     val maxRetriesPerBlock = 5 // 每包最大重试次数
 
-                                    Loge.d("流程 芯片升级 开始发送，总块数: $totalBlocks")
+                                    Loge.d("升级流程：开始发送，总块数: $totalBlocks")
 
                                     // 2. 升级中的文件发送循环
                                     while (isActive && currentBlockIndex < totalBlocks) {
@@ -2859,7 +2858,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                                         // 3. 单包发送与匹配逻辑
                                         while (retryCount < maxRetriesPerBlock) {
-                                            Loge.d("流程 芯片升级 发送块[$currentBlockIndex], 尝试次[${retryCount + 1}], 数据:${ByteUtils.toHexString(blockToSend)}")
+                                            Loge.d("升级流程：发送块[$currentBlockIndex], 尝试次[${retryCount + 1}], 数据:${ByteUtils.toHexString(blockToSend)}")
 
                                             // 调用 executeDirect (内部带有 timeout)
                                             val result = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD18, blockToSend)
@@ -2870,13 +2869,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                                                 // 核心匹配逻辑：判断下位机返回的是否等于刚才发送的
                                                 if (returnedPayload != null && returnedPayload.contentEquals(blockToSend)) {
-                                                    Loge.d("流程 芯片升级 块[$currentBlockIndex] 匹配成功")
+                                                    Loge.d("升级流程：块[$currentBlockIndex] 匹配成功")
                                                     isBlockSuccess = true
                                                 } else {
-                                                    Loge.e("流程 芯片升级 块[$currentBlockIndex] 数据不匹配! 期待:${ByteUtils.toHexString(blockToSend)}, 收到:${ByteUtils.toHexString(returnedPayload ?: byteArrayOf())}")
+                                                    Loge.e("升级流程：块[$currentBlockIndex] 数据不匹配! 期待:${ByteUtils.toHexString(blockToSend)}, 收到:${ByteUtils.toHexString(returnedPayload ?: byteArrayOf())}")
                                                 }
                                             }.onFailure { e ->
-                                                Loge.e("流程 芯片升级 块[$currentBlockIndex] 通信失败: ${e.message}")
+                                                Loge.e("升级流程：块[$currentBlockIndex] 通信失败: ${e.message}")
                                             }
 
                                             if (isBlockSuccess) break // 匹配成功，跳出重试循环
@@ -2892,9 +2891,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             currentBlockIndex++ // 只有匹配成功才发下一个块
                                         } else {
                                             _chipStep.value = UpgradeStep.SEND_FILE_FUALT
-                                            Loge.e("流程 芯片升级 块[$currentBlockIndex] 达到最大重试次数，升级终止")
+                                            Loge.e("升级流程：块[$currentBlockIndex] 达到最大重试次数，升级终止")
                                             val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                                            BoxToolLogUtils.savePrintln("流程 芯片升级 块[$currentBlockIndex] 连续失败，退出 $sRow SEND_FILE_FUALT")
+                                            BoxToolLogUtils.savePrintln("升级流程：块[$currentBlockIndex] 连续失败，退出 $sRow SEND_FILE_FUALT")
                                             return@launch
                                         }
                                         delay(10)
@@ -2902,16 +2901,16 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                                     // 5. 全部发送完成校验
                                     if (currentBlockIndex == totalBlocks) {
-                                        Loge.d("流程 芯片升级 所有数据块发送并匹配完成")
+                                        Loge.d("升级流程：所有数据块发送并匹配完成 onSuccess")
+                                        BoxToolLogUtils.savePrintln("升级流程：所有数据块发送并匹配完成")
                                         _chipStep.value = UpgradeStep.SEND_FILE
                                     }
 
                                 } catch (e: Exception) {
                                     _chipStep.value = UpgradeStep.SEND_FILE_FUALT
-                                    Loge.e("流程 芯片升级 文件处理异常: ${e.message}")
+                                    Loge.e("升级流程：文件处理异常: ${e.message}")
                                     val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                                    BoxToolLogUtils.savePrintln("流程 芯片升级 文件处理异常 $sRow SEND_FILE_FUALT")
-
+                                    BoxToolLogUtils.savePrintln("升级流程：文件处理异常 $sRow SEND_FILE_FUALT")
                                 }
                             }
                         }
@@ -2922,35 +2921,38 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 // 解析 Payload (逻辑同你之前的代码)
                                 val payload = ProtocolCodec.getSafePayload(bytes)
                                 if (payload?.size == 3) {
-                                    Loge.d("流程 芯片升级 查询升级结果完成")
+                                    Loge.d("升级流程：查询升级结果完成")
                                     val successBytes = byteArrayOf(0xA4.toByte(), 0xA5.toByte(), 0xA6.toByte())
                                     val failBytes = byteArrayOf(0xB4.toByte(), 0xB5.toByte(), 0xB6.toByte())
                                     if (payload.contentEquals(successBytes)) {
                                         SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
-                                        Loge.d("流程 芯片升级 查询重启指令 - 成功")
+                                        BoxToolLogUtils.savePrintln("升级流程：进入文件校验指令 onSuccess = ${payload}")
+                                        Loge.d("升级流程：查询重启指令 - 成功")
                                         _chipStep.value = UpgradeStep.RESTART_APP
                                     } else if (payload.contentEquals(failBytes)) {
-                                        Loge.e("流程 芯片升级 查询重启指令 - 失败")
+                                        Loge.e("升级流程：查询重启指令 - 失败")
                                         // 处理失败逻辑，例如设置错误状态或重试
                                         _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                         val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                                        BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow SEND_FILE_END_FUALT 字节校验失败  ")
+                                        BoxToolLogUtils.savePrintln("升级流程：$sRow 进入文件校验指令 SEND_FILE_END_FUALT = 字节校验失败")
                                     } else {
                                         _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                         val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                                        BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow SEND_FILE_END_FUALT 非法字节 ")
+                                        BoxToolLogUtils.savePrintln("升级流程：$sRow 进入文件校验指令 SEND_FILE_END_FUALT = 非法字节")
+
                                     }
                                 } else {
                                     _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                     val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                                    BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow SEND_FILE_END_FUALT 字节不够 ")
+                                    BoxToolLogUtils.savePrintln("升级流程：$sRow 进入文件校验指令 SEND_FILE_END_FUALT = 字节不够")
+
                                 }
 
                             }.onFailure { e ->
                                 _chipStep.value = UpgradeStep.SEND_FILE_END_FUALT
-                                Loge.d("流程 芯片升级 chipStep9 = ${e.message} ")
+                                Loge.d("升级流程：chipStep9 = ${e.message} ")
                                 val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                                BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow SEND_FILE_END_FUALT = ${e.message} ")
+                                BoxToolLogUtils.savePrintln("升级流程：$sRow 进入文件校验指令 SEND_FILE_END_FUALT = ${e.message}")
                                 return@launch
                             }
                         }
@@ -2963,28 +2965,28 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 val payload = ProtocolCodec.getSafePayload(bytes)
                                 if (payload?.size == 3) {
                                     SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
-                                    Loge.d("流程 芯片升级 查询重启指令")
+                                    BoxToolLogUtils.savePrintln("升级流程：进入重启指令 onSuccess = ${payload}")
                                     _chipStep.value = UpgradeStep.RESTART_APP
                                 }
                             }.onFailure { e ->
                                 _chipStep.value = UpgradeStep.RESTART_APP_FUALT
-                                Loge.d("流程 芯片升级 chipStep10 = ${e.message} ")
+                                Loge.d("升级流程： chipStep10 = ${e.message} ")
                                 val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                                BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow RESTART_APP_FUALT = ${e.message} ")
+                                BoxToolLogUtils.savePrintln("升级流程：$sRow 进入重启指令 RESTART_APP_FUALT = ${e.message}")
                                 return@launch
                             }
                         }
 
                     } else {
                         val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
-                        BoxToolLogUtils.savePrintln("流程 芯片升级 $sRow QUERY_STATUS = 文件有问题 ")
+                        BoxToolLogUtils.savePrintln("升级流程：$sRow 进入升级状态指令 QUERY_STATUS = 文件大小有问题")
                     }
                 }
             } catch (e: Exception) {
                 val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                 BoxToolLogUtils.savePrintln("升级流程：异常情况 $sRow ${e.message}")
             } finally {
-                BoxToolLogUtils.savePrintln("流程 芯片升级 流程 finally ${chipStep.value}")
+                BoxToolLogUtils.savePrintln("升级流程：流程 finally ${chipStep.value}")
             }
         }
     }
@@ -4661,7 +4663,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }.onFailure { e ->
                         BoxToolLogUtils.savePrintln("业务流：轮询onFailure: ${e.message}")
                     }
-                    Loge.e("查询版本开始 $isQueryVersion")
+                        Loge.e("查询版本开始 $isQueryVersion")
                     if (!isQueryVersion) {
                         startChipVersion()
                     }
@@ -4848,7 +4850,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    val isQueryVersion = false
+    var isQueryVersion = false
 
     /***
      * 查询版本

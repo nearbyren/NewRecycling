@@ -339,9 +339,9 @@ class NavTouSingleActivity : AppCompatActivity() {
                 }
             }
         }
-//        binding.tvNetwork.setOnClickListener {
-//            cabinetVM.startUpgradeWorkflow()
-//        }
+        binding.tvNetwork.setOnClickListener {
+            cabinetVM.startUpgradeWorkflow()
+        }
         //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
             cabinetVM.initConfigSocket(host!!, port)
