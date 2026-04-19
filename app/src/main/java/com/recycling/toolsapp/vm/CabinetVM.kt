@@ -2616,7 +2616,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
-                _isApkChipRunning.set(false)
+
             }
 
         }
@@ -2996,6 +2996,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("升级流程：异常情况 $sRow ${e.message}")
                 _chipStep.value = UpgradeStep.UPGRADE_ERROR
             } finally {
+                if(chipStep.value != UpgradeStep.RESTART_APP){
+                    val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0] as Int
+                    val result = upgradeCount + 1
+                    SPreUtil.put(AppUtils.getContext(), AppUtils.getDateYMD(), result)
+                }
                 _chipStep.value = UpgradeStep.UPGRADE_END
                 BoxToolLogUtils.savePrintln("升级流程：流程 finally ${chipStep.value}")
             }
@@ -3414,9 +3419,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     private val _isRunning = AtomicBoolean(false)
     val isRunning: Boolean get() = _isRunning.get()
-
-    private val _isApkChipRunning = AtomicBoolean(false)
-    val isApkChipRunning: Boolean get() = _isApkChipRunning.get()
 
     var weightRunning = false
     private val defaultWeight = "0.00"
