@@ -1009,7 +1009,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         curG1Weight = states.weigh.toString()
                                         if (!oneInit) {
                                             Loge.e("流程 toGoCmdOtaBin 进来了 1")
-                                            restartAppCloseDoor(CmdCode.GE1)
+//                                            restartAppCloseDoor(CmdCode.GE1)
                                         }
                                     }
 
@@ -1019,7 +1019,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         curG2Weight = states.weigh.toString()
                                         if (!oneInit) {
                                             Loge.e("流程 toGoCmdOtaBin 进来了 2")
-                                            restartAppCloseDoor(CmdCode.GE2)
+//                                            restartAppCloseDoor(CmdCode.GE2)
                                         }
                                     }
                                 }
@@ -2997,7 +2997,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("升级流程：异常情况 $sRow ${e.message}")
                 _chipStep.value = UpgradeStep.UPGRADE_ERROR
             } finally {
-                if(chipStep.value != UpgradeStep.RESTART_APP){
+                if (chipStep.value != UpgradeStep.RESTART_APP) {
                     val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0] as Int
                     val result = upgradeCount + 1
                     SPreUtil.put(AppUtils.getContext(), AppUtils.getDateYMD(), result)
