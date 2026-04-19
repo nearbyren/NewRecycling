@@ -1007,7 +1007,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         curG1Weight = states.weigh.toString()
                                         if (!oneInit) {
                                             Loge.e("流程 toGoCmdOtaBin 进来了 1")
-//                                            restartAppCloseDoor(CmdCode.GE1)
+                                            restartAppCloseDoor(CmdCode.GE1)
                                         }
                                     }
 
@@ -1017,7 +1017,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         curG2Weight = states.weigh.toString()
                                         if (!oneInit) {
                                             Loge.e("流程 toGoCmdOtaBin 进来了 2")
-//                                            restartAppCloseDoor(CmdCode.GE2)
+                                            restartAppCloseDoor(CmdCode.GE2)
                                         }
                                     }
                                 }
@@ -1206,8 +1206,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     private fun downResBitmap(oneInit: Boolean, path: String, res: Int, status: Int) {
         val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
             .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
-        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/${path}")).apply(options).into(object :
-            CustomTarget<Bitmap?>() {
+        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/${path}")).apply(options).into(object : CustomTarget<Bitmap?>() {
             override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap?>?) {
                 if (res == 1) {
                     mHomeBg = resource
@@ -2482,18 +2481,21 @@ class CabinetVM @Inject constructor() : ViewModel() {
 //                val chipVersion = ChipVersionValue.getOrNull()?.chipVersion ?: SPreUtil.gversion
 //                SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
 //                Loge.e("流程 toGoCmdOtaBin 查询版本结束 $chipVersion")
+
                 delay(2000)
 //                Loge.e("流程 toGoCmdOtaBin 查询版本结束 延迟结束 $chipVersion")
+                val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION] as Int
+                val delFileName = "f1-${gversion}.bin"
+                FileMdUtil.delFileName(FileMdUtil.matchNewFile("bin"), delFileName)
                 val netVersion = otaModel.version ?: ""
                 if (!TextUtils.isEmpty(netVersion)) {
-                    val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION] as Int
                     val netVersion = netVersion.replace(".", "").toIntOrNull() ?: CmdCode.GJ_VERSION
                     Loge.e("流程 toGoCmdOtaBin 添加资源 $gversion  $netVersion")
                     if (netVersion > gversion) {
                         cancelContainersStatusJob()
+                        _chipStep.value = UpgradeStep.UPGRADE_DOW
                         delay(5000)
                         Loge.e("流程 toGoCmdOtaBin 进来了 $gversion  $netVersion")
-                        _chipStep.value = UpgradeStep.UPGRADE_DOW
                         chipCurV = gversion
                         chipDowV = netVersion
                         Loge.e("流程 toGoCmdOtaBin 添加资源 回调查询版本 当前：$chipCurV  网络：$chipDowV")
@@ -2547,7 +2549,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                                 md5 = otaModel.md5
                                                 time = AppUtils.getDateYMDHMS()
                                             })
-
+                                            val delFileName = "f1-${netVersion}.bin"
+                                            FileMdUtil.delFileName(FileMdUtil.matchNewFile("bin"), delFileName)
                                         }
                                     }
                                 }
@@ -2587,6 +2590,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                                 _chipStep.value = UpgradeStep.UPGRADE_FUALT
                                                 queryResource.status = ResType.TYPE_4//下载失败
                                                 upNetResDb("下载BIN失败更新", queryResource)
+                                                val delFileName = "f1-${netVersion}.bin"
+                                                FileMdUtil.delFileName(FileMdUtil.matchNewFile("bin"), delFileName)
                                             }
                                         }
                                     }
@@ -2617,40 +2622,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    fun startDelOldApk() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val queryResource = DatabaseManager.queryResNewAPk(AppUtils.getContext(), CmdValue.CMD_OTA_APK)
-            if (queryResource != null) {
-                //版本一致更新安装了
-                val verName = AppUtils.getVersionName()
-                val newVs = queryResource.version?.replace(".", "")?.toInt() ?: 0
-                val oldVs = verName.replace(".", "").toIntOrNull() ?: 0
-                if (newVs == oldVs) {
-                    val file = FileMdUtil.matchNewFile2("apk", "hsg-${oldVs}.apk")
-                    if (file.exists()) {
-                        file.delete()
-                    }
-                    upNetResDb("升级完成${queryResource.version}", ResEntity().apply {
-                        id = queryResource.id
-                        status = ResType.TYPE_3
-                        time = AppUtils.getDateYMDHMS()
-                    })
-                }
-            }
-        }
-    }
-
     fun startDowApk(otaModel: OtaBean) {
-//        BoxToolLogUtils.savePrintln("业务流：升级APK 期待 false $isRunning 期待 false $isApkChipRunning")
         if (isRunning) {
+            BoxToolLogUtils.savePrintln("业务流：升级APK 期待 false $isRunning 期待 false $isApkChipRunning")
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
             val verName = AppUtils.getVersionName()
             val oldVs = verName.replace(".", "").toIntOrNull() ?: 0
             val newVs = otaModel.version?.replace(".", "")?.toIntOrNull() ?: 0
-            val fileName = "hsg-${otaModel.version}.apk"
-            FileMdUtil.delFileName(FileMdUtil.matchNewFile("apk"), fileName)
+            val delFileName = "hsg-${verName}.apk"
+            FileMdUtil.delFileName(FileMdUtil.matchNewFile("apk"), delFileName)
             if (oldVs < newVs) {
                 _chipStep.value = UpgradeStep.INSTALL_DOW
                 delay(2000)
@@ -2798,10 +2780,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 cancelContainersStatusJob()
-                delay(1000)
+                delay(2000)
                 Loge.d("流程 芯片升级 startUpgradeWorkflow ")
                 BoxToolLogUtils.savePrintln("流程 芯片升级 开始 ")
-                val chipStep7 = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
+                val chipStep7 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD7, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
                 chipStep7.onSuccess { bytes ->
                     // 解析 Payload (逻辑同你之前的代码)
                     val payload = ProtocolCodec.getSafePayload(bytes)
@@ -2835,7 +2817,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         val sendByte = HexConverter.combineByteArrays(fileType, sizeByte, vByte, crcByte)
                         val sendResult = HexConverter.combineByteArrays(byteArrayOf(0xA1.toByte(), 0xA2.toByte(), 0xA3.toByte()), sendByte)
                         Loge.d("流程 芯片升级 crcByte = 发送1")
-                        val chipStep8 = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD8, sendResult)
+                        val chipStep8 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD8, sendResult)
                         Loge.d("流程 芯片升级 crcByte = 发送2")
                         chipStep8.onSuccess { bytes ->
                             // 解析 Payload (逻辑同你之前的代码)
@@ -2880,7 +2862,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             Loge.d("流程 芯片升级 发送块[$currentBlockIndex], 尝试次[${retryCount + 1}], 数据:${ByteUtils.toHexString(blockToSend)}")
 
                                             // 调用 executeDirect (内部带有 timeout)
-                                            val result = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD18, blockToSend)
+                                            val result = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD18, blockToSend)
 
                                             result.onSuccess { responseBytes ->
                                                 // 解析下位机返回的有效负载
@@ -2915,7 +2897,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             BoxToolLogUtils.savePrintln("流程 芯片升级 块[$currentBlockIndex] 连续失败，退出 $sRow SEND_FILE_FUALT")
                                             return@launch
                                         }
-                                        delay(50)
+                                        delay(10)
                                     }
 
                                     // 5. 全部发送完成校验
@@ -2935,7 +2917,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
                         if (chipStep.value == UpgradeStep.SEND_FILE) {
                             delay(5000)
-                            val chipStep9 = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD9, byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte()))
+                            val chipStep9 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD9, byteArrayOf(0xa4.toByte(), 0xa5.toByte(), 0xa6.toByte()))
                             chipStep9.onSuccess { bytes ->
                                 // 解析 Payload (逻辑同你之前的代码)
                                 val payload = ProtocolCodec.getSafePayload(bytes)
@@ -2975,7 +2957,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                         if (chipStep.value == UpgradeStep.SEND_FILE_END) {
                             delay(3000)
-                            val chipStep10 = SerialPortCoreSdk.instance.executeChip2(SerialPortSdk.CMD10, byteArrayOf(0xa7.toByte(), 0xa8.toByte(), 0xa9.toByte()))
+                            val chipStep10 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD10, byteArrayOf(0xa7.toByte(), 0xa8.toByte(), 0xa9.toByte()))
                             chipStep10.onSuccess { bytes ->
                                 // 解析 Payload (逻辑同你之前的代码)
                                 val payload = ProtocolCodec.getSafePayload(bytes)
@@ -4265,6 +4247,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             takePhotoUrl = filePath
         })
     }
+
     // 用于通知 Activity 跳转的事件流
     private val _navigationEvent = MutableSharedFlow<Pair<String, Int>>()
     val navigationEvent = _navigationEvent.asSharedFlow()
@@ -4272,6 +4255,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     // 状态锁
     private val isFetching = java.util.concurrent.atomic.AtomicBoolean(false)
     private val isTransitioning = java.util.concurrent.atomic.AtomicBoolean(false)
+
     //登录次数
     private var getCount = 1000
 
@@ -4327,11 +4311,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
             _refHomeCodeStateFlow.emit(result)
         }
     }
+
     data class MonitorHomeCode(
         /** 5.刷新背景图 6.二维码 */
-        var refreshType: Int = -1,
-        var bitmap: Bitmap?=null
-    )
+        var refreshType: Int = -1, var bitmap: Bitmap? = null)
 
     private val _refBusStaStateFlow = MutableStateFlow<MonitorWeight?>(null)
     val refBusStaStateFlow: StateFlow<MonitorWeight?> = _refBusStaStateFlow.asStateFlow()

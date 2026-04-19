@@ -195,22 +195,4 @@ object SerialPortSdk {
         _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
-
-    /** 进入升级 升级状态 文件校验 重启 查版本*/
-    suspend fun firmwareUpgrade78910(commandType: Int, data: ByteArray): Result<DoorResult> {
-        if (!isInit) return Result.failure(Exception("SDK未初始化"))
-        val result = SerialPortCoreSdk.instance.firmwareUpgrade78910(commandType, data)
-//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
-        return result
-    }
-
-    /** 发送文件 */
-    suspend fun firmwareUpgradeFile(byte: ByteArray): Result<DoorResult> {
-        if (!isInit) return Result.failure(Exception("SDK未初始化"))
-        val result = SerialPortCoreSdk.instance.firmwareUpgradeFile(byte)
-//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
-        return result
-    }
-
-
 }

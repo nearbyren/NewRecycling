@@ -99,7 +99,7 @@ class SerialVM : ViewModel() {
      * 基础发送：仅执行一次发送并等待响应
      * 供调度器 CommandScheduler 调用，实现精准的优先级重试
      */
-    suspend fun sendOnce(data: ByteArray, timeout: Long = 3000): Result<ByteArray> {
+    suspend fun sendOnce(data: ByteArray, timeout: Long = 5000): Result<ByteArray> {
         if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
 
         return sendMutex.withLock {
@@ -110,7 +110,6 @@ class SerialVM : ViewModel() {
                     Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
                     BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
                     fos?.write(data)
-//                    fos?.flush()//此处代码会导致发数据会存在接收不到回来的数据
                     delay(10)
                 }
                 // 挂起直到收到数据或超时
@@ -138,6 +137,11 @@ class SerialVM : ViewModel() {
         return Result.failure(lastErr ?: Exception("执行失败"))
     }
 
+    /**
+     * 柜体状态查询
+     * @param data 业务数据
+     * @param timeout 超时时间（毫秒）
+     */
     suspend fun sendWithRetryStatus(data: ByteArray, maxRetries: Int = 5, timeout: Long = 30000): Result<ByteArray> {
         var lastErr: Exception? = null
         repeat(maxRetries) { attempt ->
@@ -145,16 +149,6 @@ class SerialVM : ViewModel() {
             if (res.isSuccess) return res
             lastErr = res.exceptionOrNull() as? Exception
             delay(1000L)
-        }
-        return Result.failure(lastErr ?: Exception("执行失败"))
-    }
-
-    suspend fun sendWithRetryChip(data: ByteArray, maxRetries: Int = 5, timeout: Long = 30000): Result<ByteArray> {
-        var lastErr: Exception? = null
-        repeat(maxRetries) { attempt ->
-            val res = sendOnceChip(data, timeout)
-            if (res.isSuccess) return res
-            lastErr = res.exceptionOrNull() as? Exception
         }
         return Result.failure(lastErr ?: Exception("执行失败"))
     }
@@ -177,13 +171,13 @@ class SerialVM : ViewModel() {
         }
     }
 
-    /**？
-     * 方案 B：绕过队列的直接执行方法
+    /**
+     * 芯片升级
      * @param setCmd 发送的指令字
      * @param data 业务数据
      * @param timeout 超时时间（毫秒）
      */
-    suspend fun executeDirect(setCmd: Byte, data: ByteArray, timeout: Long = 20000): Result<ByteArray> {
+    suspend fun executeChipDirect(setCmd: Byte, data: ByteArray, timeout: Long = 20000): Result<ByteArray> {
         if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
         return withContext(Dispatchers.IO) {
             val waiter = CompletableDeferred<ByteArray>()
@@ -192,8 +186,8 @@ class SerialVM : ViewModel() {
             try {
                 BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
                 fos?.write(data)
-//                delay(10)
-//                fos?.flush()//此处代码会导致发数据会存在接收不到回来的数据
+//                fos?.flush()
+                 delay(5)
                 // 挂起直到收到数据或超时
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)
@@ -204,36 +198,6 @@ class SerialVM : ViewModel() {
             } catch (e: Exception) {
                 directAwaitingCmd = null
                 Result.failure(e)
-            } catch (e: Exception) {
-                Result.failure(e)
-            } finally {
-                responseWaiter = null
-            }
-        }
-    }
-
-    /**
-     * 基础发送：仅执行一次发送并等待响应
-     * 供调度器 CommandScheduler 调用，实现精准的优先级重试
-     */
-    suspend fun sendOnceChip(data: ByteArray, timeout: Long = 3000): Result<ByteArray> {
-        if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
-
-        return sendMutex.withLock {
-            val waiter = CompletableDeferred<ByteArray>()
-            responseWaiter = waiter
-            try {
-                withContext(Dispatchers.IO) {
-                    Loge.i("我的数据 发送处理 sendOnce ${ByteUtils.toHexString(data)}")
-//                    BoxToolLogUtils.sendOriginalLower(0,  ByteUtils.toHexString(data))
-                    BoxToolLogUtils.sendOriginalLower(10, "${ByteUtils.toHexString(data)}")
-                    fos?.write(data)
-                    delay(10)
-//                    fos?.flush()//此处代码会导致发数据会存在接收不到回来的数据
-                }
-                // 挂起直到收到数据或超时
-                val response = withTimeout(timeout) { waiter.await() }
-                Result.success(response)
             } catch (e: Exception) {
                 Result.failure(e)
             } finally {

@@ -42,14 +42,9 @@ class SerialPortCoreSdk private constructor() {
             ?: Result.failure(Exception("Communication VM is null"))
     }
 
-    private suspend fun executeChip(cmd: Byte, data: ByteArray): Result<ByteArray> {
+    suspend fun executeChipNew(cmd: Byte, data: ByteArray): Result<ByteArray> {
         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-        return vm?.sendWithRetryChip(frame) ?: Result.failure(Exception("Communication VM is null"))
-    }
-
-    suspend fun executeChip2(cmd: Byte, data: ByteArray): Result<ByteArray> {
-        val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-        return vm?.executeDirect(cmd, frame)
+        return vm?.executeChipDirect(cmd, frame)
             ?: Result.failure(Exception("Communication VM is null"))
     }
 
@@ -409,93 +404,6 @@ class SerialPortCoreSdk private constructor() {
             DoorResult(
                 locker = payload[0].toInt(), rodHinderValue = rodHinderValueByte, cmd = 19, cmdByte = SerialPortSdk.CMD19, cmdStatus = true
             )
-        }
-    }
-
-    /** 进入升级 升级状态 文件校验 重启 查版本*/
-    suspend fun firmwareUpgrade78910(commandType: Int, data: ByteArray): Result<DoorResult> {
-        val setCmd = when (commandType) {
-            7 -> {
-                SerialPortSdk.CMD7
-            }
-
-            8 -> {
-                SerialPortSdk.CMD8
-            }
-
-            9 -> {
-                SerialPortSdk.CMD9
-            }
-
-            10 -> {
-                SerialPortSdk.CMD10
-            }
-
-            else -> {
-                SerialPortSdk.CMD11
-            }
-
-        }
-
-        return executeChip(setCmd, data).mapCatching { bytes ->
-            val cmd = bytes[SerialPortSdk.CMD_POS]
-            Loge.e("我的数据 cmd $cmd ${ByteUtils.toHexString(data)}")
-            if (cmd != setCmd) DoorResult(cmd = commandType, cmdByte = setCmd, cmdStatus = false)
-            val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
-            val result = when (setCmd) {
-                SerialPortSdk.CMD7, SerialPortSdk.CMD8, SerialPortSdk.CMD10 -> {
-                    if (payload.size == 3) 1 else 0
-                }
-
-                SerialPortSdk.CMD9 -> {
-                    val a = payload[0].toString()
-                    val b = payload[1].toString()
-                    val c = payload[2].toString()
-                    if (a == "164" && b == "165" && c == "166") {
-                        1
-                    } else if (a == "180" && b == "181" && c == "182") {
-                        0
-                    } else {
-                        0
-                    }
-                }
-
-                SerialPortSdk.CMD11 -> {
-                    val a = payload[0].toString()
-                    val b = payload[1].toString()
-                    val c = payload[2].toString()
-                    val d = payload[3].toString()
-                    if (a == "255" && b == "255" && c == "255" && d == "255") {
-                        20260320
-                    } else {
-                        HexConverter.byteArrayToInt(payload)
-                    }
-                }
-
-                else -> {
-                    0
-                }
-            }
-            if (setCmd == SerialPortSdk.CMD11) {
-                DoorResult(chipVersion = result, cmd = commandType, cmdByte = cmd, cmdStatus = true)
-            } else {
-                DoorResult(upStatus = result, cmd = commandType, cmdByte = cmd, cmdStatus = true)
-
-            }
-        }
-    }
-
-    /** 发送文件 */
-    suspend fun firmwareUpgradeFile(byte: ByteArray): Result<DoorResult> {
-        return executeChip(SerialPortSdk.CMD18, byte).mapCatching { bytes ->
-            val cmd = bytes[SerialPortSdk.CMD_POS]
-            Loge.e("我的数据 cmd $cmd")
-            if (cmd != SerialPortSdk.CMD18) DoorResult(cmd = 18, cmdByte = SerialPortSdk.CMD18, cmdStatus = false)
-            val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
-            if (payload.size < 8) throw Exception("返回数据长度不足")
-            DoorResult(byteArray = payload, cmd = 18, cmdByte = SerialPortSdk.CMD18, cmdStatus = true)
         }
     }
 }

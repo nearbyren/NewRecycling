@@ -316,8 +316,6 @@ class NavTouSingleActivity : AppCompatActivity() {
     }
 
     private fun initPort() {
-        //版本升级完成移除apk
-        cabinetVM.startDelOldApk()
         // 启动门控制系统
         cabinetVM.startContainersStatus()
         //启动检查故障
