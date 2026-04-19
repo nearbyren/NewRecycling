@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Environment
 import android.text.TextUtils
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bumptech.glide.Glide
@@ -1215,7 +1216,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     Loge.e("业务流：刷新背景圖 -> 加載發送")
                     setRefHomeCode(MonitorHomeCode().apply {
                         refreshType = RefBusType.REFRESH_TYPE_5
-                        bitmap = resource
+                        homeCodeBitmap = resource
                     })
                     if (oneInit) {
                         setRefBusStaChannel(MonitorWeight().apply {
@@ -1249,7 +1250,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     mQrCode = resource
                     setRefHomeCode(MonitorHomeCode().apply {
                         refreshType = RefBusType.REFRESH_TYPE_6
-                        bitmap = resource
+                        homeCodeBitmap = resource
                     })
                 } else if (res == 3) {
                     mMaintaining = resource
@@ -1301,7 +1302,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     FileMdUtil.saveBitmapToInternalStorage(bitmap, "qrCode.png")
                     Loge.e("获取socket初始化数据 创建二维码成功 保存开始 ${Thread.currentThread().name}")
                     SPreUtil.put(AppUtils.getContext(), SPreUtil.isQrCode, true)
-
+                    setRefHomeCode(MonitorHomeCode().apply {
+                        refreshType = RefBusType.REFRESH_TYPE_6
+                        homeCodeBitmap = bitmap
+                    })
                 }
             })
     }
@@ -4289,7 +4293,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
             try {
                 if (isDelay) delay(5000)
                 if (isTransitioning.get()) return@launch
-
                 val postSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""] as String
                 val from = mutableMapOf<String, Any>("sn" to postSn)
                 val headers = mutableMapOf<String, String>("token" to BuildConfig.initToken)
@@ -4302,14 +4305,23 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             _navigationEvent.emit(Pair(parts[0], parts[1].toInt()))
                         }
                     }
-                }.onFailure { _, _ ->
+                }.onFailure { code, msg ->
                     isFetching.set(false)
+                    withContext(Dispatchers.Main){
+                        Toast.makeText(AppUtils.getContext(),"重试获取服务器地址中 $code $msg",Toast.LENGTH_LONG).show()
+                    }
                     retry()
-                }.onCatch {
+                }.onCatch { e->
+                    withContext(Dispatchers.Main){
+                        Toast.makeText(AppUtils.getContext(),"重试获取服务器地址中 ${e.errorMsg}",Toast.LENGTH_LONG).show()
+                    }
                     isFetching.set(false)
                     retry()
                 }
             } catch (e: Exception) {
+                withContext(Dispatchers.Main){
+                    Toast.makeText(AppUtils.getContext(),"重试获取服务器地址中 ${e.message}",Toast.LENGTH_LONG).show()
+                }
                 isFetching.set(false)
                 if (e !is CancellationException) retry()
             }
@@ -4336,7 +4348,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     data class MonitorHomeCode(
         /** 5.刷新背景图 6.二维码 */
-        var refreshType: Int = -1, var bitmap: Bitmap? = null)
+        var refreshType: Int = -1, var homeCodeBitmap: Bitmap? = null)
 
     private val _refBusStaStateFlow = MutableStateFlow<MonitorWeight?>(null)
     val refBusStaStateFlow: StateFlow<MonitorWeight?> = _refBusStaStateFlow.asStateFlow()

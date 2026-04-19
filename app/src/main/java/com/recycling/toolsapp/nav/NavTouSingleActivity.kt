@@ -87,8 +87,6 @@ class NavTouSingleActivity : AppCompatActivity() {
         window?.showSystemBar(false)
         FaceApplication.getInstance().baseActivity = this
         initialize(savedInstanceState)
-
-
     }
 
     private fun initNetworkState() {
@@ -678,7 +676,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                     Loge.e("业务流：刷新首页背景 -> $it")
                     if (it == null) return@collect
                     val refreshType = it.refreshType
-                    val bitmap = it.bitmap
+                    val bitmap = it.homeCodeBitmap
                     when (refreshType) {
                         RefBusType.REFRESH_TYPE_5 -> {
                             if (bitmap != null) {
