@@ -650,8 +650,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
     }
 
     fun latestBusinessStatus() {
-        cabinetVM.cameraManagerNew.registerUsbReceiver()
-       /* lifecycleScope.launch {
+        cabinetVM.cameraManagerNew.registerUsbReceiver()/* lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 SerialPortSdk.flowBusinessSetup.collect {
                     val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
@@ -687,7 +686,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                     val bitmap = it.bitmap
                     when (refreshType) {
                         RefBusType.REFRESH_TYPE_5 -> {
-                            if(bitmap!=null){
+                            if (bitmap != null) {
                                 Glide.with(AppUtils.getContext()).load(bitmap).into(binding.acivHomeNet)
                             }
                         }
@@ -736,7 +735,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             })
                         }
 
-                        CabinetVM.UpgradeStep.UPGRADE_FUALT, CabinetVM.UpgradeStep.QUERY_VERSION_FUALT, CabinetVM.UpgradeStep.ENTER_STATUS_FUALT, CabinetVM.UpgradeStep.QUERY_STATUS_FUALT, CabinetVM.UpgradeStep.SEND_FILE_FUALT, CabinetVM.UpgradeStep.SEND_FILE_END_FUALT, CabinetVM.UpgradeStep.RESTART_APP_FUALT -> {
+                        CabinetVM.UpgradeStep.UPGRADE_FUALT, CabinetVM.UpgradeStep.UPGRADE_ERROR, CabinetVM.UpgradeStep.QUERY_VERSION_FUALT, CabinetVM.UpgradeStep.ENTER_STATUS_FUALT, CabinetVM.UpgradeStep.QUERY_STATUS_FUALT, CabinetVM.UpgradeStep.SEND_FILE_FUALT, CabinetVM.UpgradeStep.SEND_FILE_END_FUALT, CabinetVM.UpgradeStep.RESTART_APP_FUALT -> {
                             binding.clPrompt.isVisible = false
                             Loge.d("流程 芯片升级 接收指令${it} 没来回调")
                             cabinetVM.tipMessage("固件升级失败")

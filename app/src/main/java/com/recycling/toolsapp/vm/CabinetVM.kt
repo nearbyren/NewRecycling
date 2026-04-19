@@ -1649,7 +1649,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = "f1-20260320"
+    var chipName = "f1-20260320.bin"
 
     /***
      * 下载主芯片版本大小
@@ -2455,7 +2455,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     enum class UpgradeStep {
-        IDLE, INSTALL_DOW, INSTALL_APK, INSTALL_SAME, INSTALL_FUALT, UPGRADE_DOW, UPGRADE_FUALT, QUERY_VERSION, QUERY_VERSION_FUALT, ENTER_STATUS, ENTER_STATUS_FUALT, QUERY_STATUS, QUERY_STATUS_FUALT, SEND_FILE, SEND_FILE_FUALT, SEND_FILE_END, SEND_FILE_END_FUALT, RESTART_APP, RESTART_APP_FUALT, UPGRADE_END,
+        IDLE, INSTALL_DOW, INSTALL_APK, INSTALL_SAME, INSTALL_FUALT, UPGRADE_DOW, UPGRADE_ERROR, UPGRADE_FUALT, QUERY_VERSION, QUERY_VERSION_FUALT, ENTER_STATUS, ENTER_STATUS_FUALT, QUERY_STATUS, QUERY_STATUS_FUALT, SEND_FILE, SEND_FILE_FUALT, SEND_FILE_END, SEND_FILE_END_FUALT, RESTART_APP, RESTART_APP_FUALT, UPGRADE_END,
     }
 
     // 建议将这些变量放在 ViewModel 中统一管理
@@ -2793,10 +2793,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         _chipStep.value = UpgradeStep.ENTER_STATUS
                     }
                 }.onFailure { e ->
-                    _chipStep.value = UpgradeStep.ENTER_STATUS_FUALT
                     Loge.d("升级流程： chipStep7 = ${e.message} ")
                     val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                     BoxToolLogUtils.savePrintln("升级流程：进入升级指令失败 $sRow ENTER_STATUS_FUALT = ${e.message} ")
+                    _chipStep.value = UpgradeStep.ENTER_STATUS_FUALT
                     return@launch
                 }
                 delay(2000)
@@ -2908,10 +2908,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     }
 
                                 } catch (e: Exception) {
-                                    _chipStep.value = UpgradeStep.SEND_FILE_FUALT
                                     Loge.e("升级流程：文件处理异常: ${e.message}")
                                     val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                                     BoxToolLogUtils.savePrintln("升级流程：文件处理异常 $sRow SEND_FILE_FUALT")
+                                    _chipStep.value = UpgradeStep.SEND_FILE_FUALT
                                 }
                             }
                         }
@@ -2933,27 +2933,26 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     } else if (payload.contentEquals(failBytes)) {
                                         Loge.e("升级流程：查询重启指令 - 失败")
                                         // 处理失败逻辑，例如设置错误状态或重试
-                                        _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                         val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                                         BoxToolLogUtils.savePrintln("升级流程：$sRow 进入文件校验指令 SEND_FILE_END_FUALT = 字节校验失败")
-                                    } else {
                                         _chipStep.value = UpgradeStep.RESTART_APP_FUALT
+                                    } else {
                                         val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                                         BoxToolLogUtils.savePrintln("升级流程：$sRow 进入文件校验指令 SEND_FILE_END_FUALT = 非法字节")
-
+                                        _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                     }
                                 } else {
-                                    _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                     val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                                     BoxToolLogUtils.savePrintln("升级流程：$sRow 进入文件校验指令 SEND_FILE_END_FUALT = 字节不够")
+                                    _chipStep.value = UpgradeStep.RESTART_APP_FUALT
 
                                 }
 
                             }.onFailure { e ->
-                                _chipStep.value = UpgradeStep.SEND_FILE_END_FUALT
                                 Loge.d("升级流程：chipStep9 = ${e.message} ")
                                 val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                                 BoxToolLogUtils.savePrintln("升级流程：$sRow 进入文件校验指令 SEND_FILE_END_FUALT = ${e.message}")
+                                _chipStep.value = UpgradeStep.SEND_FILE_END_FUALT
                                 return@launch
                             }
                         }
@@ -2970,10 +2969,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     _chipStep.value = UpgradeStep.RESTART_APP
                                 }
                             }.onFailure { e ->
-                                _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                 Loge.d("升级流程： chipStep10 = ${e.message} ")
                                 val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                                 BoxToolLogUtils.savePrintln("升级流程：$sRow 进入重启指令 RESTART_APP_FUALT = ${e.message}")
+                                _chipStep.value = UpgradeStep.RESTART_APP_FUALT
                                 return@launch
                             }
                         }
@@ -2981,12 +2980,15 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     } else {
                         val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                         BoxToolLogUtils.savePrintln("升级流程：$sRow 进入升级状态指令 QUERY_STATUS = 文件大小有问题")
+                        _chipStep.value = UpgradeStep.QUERY_STATUS_FUALT
                     }
                 }
             } catch (e: Exception) {
                 val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                 BoxToolLogUtils.savePrintln("升级流程：异常情况 $sRow ${e.message}")
+                _chipStep.value = UpgradeStep.UPGRADE_ERROR
             } finally {
+                _chipStep.value = UpgradeStep.UPGRADE_END
                 BoxToolLogUtils.savePrintln("升级流程：流程 finally ${chipStep.value}")
             }
         }
