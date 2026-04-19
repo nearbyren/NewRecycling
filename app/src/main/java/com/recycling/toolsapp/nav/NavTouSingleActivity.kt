@@ -730,7 +730,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                             })
                         }
 
-                        CabinetVM.UpgradeStep.UPGRADE_FUALT, CabinetVM.UpgradeStep.UPGRADE_ERROR, CabinetVM.UpgradeStep.RESTART_APP_FUALT, CabinetVM.UpgradeStep.QUERY_VERSION_FUALT, CabinetVM.UpgradeStep.ENTER_STATUS_FUALT, CabinetVM.UpgradeStep.QUERY_STATUS_FUALT, CabinetVM.UpgradeStep.SEND_FILE_FUALT, CabinetVM.UpgradeStep.SEND_FILE_END_FUALT, CabinetVM.UpgradeStep.RESTART_APP_FUALT -> {
+                        CabinetVM.UpgradeStep.UPGRADE_FUALT, CabinetVM.UpgradeStep.UPGRADE_ERROR, CabinetVM.UpgradeStep.RESTART_APP_FUALT, CabinetVM.UpgradeStep.QUERY_VERSION_FUALT, CabinetVM.UpgradeStep.ENTER_STATUS_FUALT, CabinetVM.UpgradeStep.QUERY_STATUS_FUALT, CabinetVM.UpgradeStep.SEND_FILE_FUALT, CabinetVM.UpgradeStep.SEND_FILE_END_FUALT-> {
                             binding.clPrompt.isVisible = false
                             Loge.d("流程 芯片升级 接收指令${it} 没来回调")
                             cabinetVM.tipMessage("固件升级失败")
@@ -747,10 +747,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                                 msg = "升级进行中-$it"
                                 time = AppUtils.getDateYMDHMS()
                             })
-                            if (it == CabinetVM.UpgradeStep.RESTART_APP || it == CabinetVM.UpgradeStep.UPGRADE_END) {
-                                delay(1000)
-                                OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
-                            }
+
                         }
 
                     }

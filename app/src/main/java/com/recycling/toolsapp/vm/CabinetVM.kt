@@ -2966,7 +2966,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             }
                         }
 
-                        if (chipStep.value == UpgradeStep.SEND_FILE_END) {
+                        if (chipStep.value == UpgradeStep.RESTART_APP) {
                             delay(3000)
                             val chipStep10 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD10, byteArrayOf(0xa7.toByte(), 0xa8.toByte(), 0xa9.toByte()))
                             chipStep10.onSuccess { bytes ->
@@ -2975,7 +2975,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 if (payload?.size == 3) {
                                     SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
                                     BoxToolLogUtils.savePrintln("升级流程：进入重启指令 onSuccess = ${payload}")
-                                    _chipStep.value = UpgradeStep.RESTART_APP
+                                    _chipStep.value = UpgradeStep.UPGRADE_END
                                 }
                             }.onFailure { e ->
                                 Loge.d("升级流程： chipStep10 = ${e.message} ")
@@ -3002,7 +3002,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     val result = upgradeCount + 1
                     SPreUtil.put(AppUtils.getContext(), AppUtils.getDateYMD(), result)
                 }
-                _chipStep.value = UpgradeStep.UPGRADE_END
                 BoxToolLogUtils.savePrintln("升级流程：流程 finally ${chipStep.value}")
                 println("升级流程：我进入 finally ${chipStep.value}")
                 delay(1500)
