@@ -406,4 +406,20 @@ class SerialPortCoreSdk private constructor() {
             )
         }
     }
+    /** 查询版本 */
+    suspend fun startQueryVersion(): Result<DoorResult> {
+        val sendByte = byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte())
+        return execute(SerialPortSdk.CMD11, sendByte).mapCatching { bytes ->
+            val cmd = bytes[SerialPortSdk.CMD_POS]
+            Loge.e("我的数据 cmd $cmd")
+            if (cmd != SerialPortSdk.CMD11) DoorResult(cmd = 11, cmdByte = SerialPortSdk.CMD11, cmdStatus = false)
+            val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
+            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            if (payload.size < 0) throw Exception("返回数据长度不足")
+            val chipVersionValue = ProtocolCodec.bytesToInt(payload)
+            DoorResult(
+                locker = payload[0].toInt(), chipVersion = chipVersionValue, cmd = 11, cmdByte = SerialPortSdk.CMD11, cmdStatus = true
+            )
+        }
+    }
 }

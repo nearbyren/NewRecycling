@@ -316,7 +316,6 @@ class NavTouSingleActivity : AppCompatActivity() {
     }
 
     private fun initPort() {
-        cabinetVM.startChipVersion()
         // 启动门控制系统
         cabinetVM.startContainersStatus()
         //启动检查故障

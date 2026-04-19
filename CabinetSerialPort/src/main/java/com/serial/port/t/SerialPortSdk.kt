@@ -195,4 +195,11 @@ object SerialPortSdk {
         _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
+    /** 查询版本 */
+    suspend fun startQueryVersion(): Result<DoorResult> {
+        if (!isInit) return Result.failure(Exception("SDK未初始化"))
+        val result = SerialPortCoreSdk.instance.startQueryVersion()
+        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+        return result
+    }
 }

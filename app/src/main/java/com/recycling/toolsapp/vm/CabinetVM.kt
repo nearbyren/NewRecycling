@@ -4509,6 +4509,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
         containersJob = null
     }
 
+    val isQueryVersion = false
+
     /****
      * 投递柜状态查询
      */
@@ -4659,6 +4661,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
                     }.onFailure { e ->
                         BoxToolLogUtils.savePrintln("业务流：轮询onFailure: ${e.message}")
+                    }
+                    Loge.e("查询版本开始 $isQueryVersion")
+                    if (!isQueryVersion) {
+                        startChipVersion()
                     }
                 } catch (e: TimeoutCancellationException) {
                     BoxToolLogUtils.savePrintln("业务流：轮询超时: ${e.message}")
@@ -4846,23 +4852,14 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 查询版本
      */
-    fun startChipVersion() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val chipStep11 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD11, byteArrayOf(0xaa.toByte(), 0xbb.toByte(), 0xcc.toByte()))
-            chipStep11.onSuccess { bytes ->
-                // 解析 Payload (逻辑同你之前的代码)
-                val payload = ProtocolCodec.getSafePayload(bytes)
-                if (payload != null) {
-                    if (payload.isNotEmpty()) {
-                        val chipVersion = HexConverter.byteArrayToInt(payload)
-                        SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
-                        BoxToolLogUtils.savePrintln("业务流：查询版本【$chipVersion】")
-                    }
-                }
-            }.onFailure { e ->
-                BoxToolLogUtils.savePrintln("业务流：查询版本失败【${e.message}】")
-                return@launch
-            }
+    suspend fun startChipVersion() = withContext(Dispatchers.IO) {
+        SerialPortSdk.startQueryVersion().onSuccess { result ->
+            isQueryVersion = true
+            val chipVersion = HexConverter.byteArrayToInt(payload)
+            SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipVersion)
+            BoxToolLogUtils.savePrintln("业务流：查询版本【$chipVersion】")
+        }.onFailure { e ->
+            BoxToolLogUtils.savePrintln("业务流：查询版本失败【${e.message}】")
         }
     }
 
