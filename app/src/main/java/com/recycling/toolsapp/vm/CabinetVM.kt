@@ -2623,11 +2623,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
         }
     }
+
     /***
      * 升级流程
      */
-    private fun startDowChipFlow(row: Long = -1) {
-        val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0]  as Int
+    fun startDowChipFlow(row: Long = -1) {
+        val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0] as Int
         if (upgradeCount > 5) {
             BoxToolLogUtils.savePrintln("升级流程：今天超过升级次数 $upgradeCount 不再继续升级")
             return
@@ -3011,7 +3012,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
             }
         }
     }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

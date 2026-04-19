@@ -340,7 +340,7 @@ class NavTouSingleActivity : AppCompatActivity() {
             }
         }
         binding.tvNetwork.setOnClickListener {
-            cabinetVM.startUpgradeWorkflow()
+            cabinetVM.startDowChipFlow()
         }
         //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
