@@ -2843,9 +2843,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     val totalBlocks = (allBytes.size + CHUNK_SIZE - 1) / CHUNK_SIZE
 
                                     var currentBlockIndex = 0
-                                    val maxRetriesPerBlock = 5 // 每包最大重试次数
+                                    val maxRetriesPerBlock = 10 // 每包最大重试次数
 
                                     Loge.d("升级流程：开始发送，总块数: $totalBlocks")
+                                    BoxToolLogUtils.savePrintln("升级流程：进入发送文件 开始发送，总块数: $totalBlocks")
 
                                     // 2. 升级中的文件发送循环
                                     while (isActive && currentBlockIndex < totalBlocks) {
@@ -2874,9 +2875,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                                     isBlockSuccess = true
                                                 } else {
                                                     Loge.e("升级流程：块[$currentBlockIndex] 数据不匹配! 期待:${ByteUtils.toHexString(blockToSend)}, 收到:${ByteUtils.toHexString(returnedPayload ?: byteArrayOf())}")
+                                                    BoxToolLogUtils.savePrintln("升级流程：进入发送文件 块[$currentBlockIndex] 数据不匹配! 期待:${ByteUtils.toHexString(blockToSend)}, 收到:${ByteUtils.toHexString(returnedPayload ?: byteArrayOf())}")
                                                 }
                                             }.onFailure { e ->
                                                 Loge.e("升级流程：块[$currentBlockIndex] 通信失败: ${e.message}")
+                                                BoxToolLogUtils.savePrintln("升级流程：进入发送文件 块[$currentBlockIndex] 通信失败: ${e.message}")
                                             }
 
                                             if (isBlockSuccess) break // 匹配成功，跳出重试循环
@@ -2891,13 +2894,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         if (isBlockSuccess) {
                                             currentBlockIndex++ // 只有匹配成功才发下一个块
                                         } else {
-                                            _chipStep.value = UpgradeStep.SEND_FILE_FUALT
+                                            _chipStep.value = UpgradeStep.SEND_FILE _FUALT
                                             Loge.e("升级流程：块[$currentBlockIndex] 达到最大重试次数，升级终止")
                                             val sRow = DatabaseManager.deletedResEntity(AppUtils.getContext(), row)
                                             BoxToolLogUtils.savePrintln("升级流程：块[$currentBlockIndex] 连续失败，退出 $sRow SEND_FILE_FUALT")
                                             return@launch
                                         }
-                                        delay(10)
                                     }
 
                                     // 5. 全部发送完成校验

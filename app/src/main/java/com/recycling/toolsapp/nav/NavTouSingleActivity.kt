@@ -739,7 +739,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                                 msg = "升级失败-$it"
                                 time = AppUtils.getDateYMDHMS()
                             })
-                            delay(1500)
+                            delay(1000)
                             OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
 
                         }
