@@ -24,7 +24,6 @@ object SPreUtil {
     const val type_grid = "type_grid"
     const val init_sn = "init_sn"
     const val gversion = "gversion"
-    const val upgradeCount = "upgradeCount"
     const val setImsi = "setImsi"
     const val setImei = "setImei"
     const val setIccid = "setIccid"
