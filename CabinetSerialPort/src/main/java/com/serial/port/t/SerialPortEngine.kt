@@ -1,0 +1,209 @@
+package com.serial.port.t
+
+import com.serial.port.utils.BoxToolLogUtils
+import com.serial.port.utils.ByteUtils
+import com.serial.port.utils.Loge
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.coroutineContext
+
+// 将原本 SerialVM 的逻辑搬迁到单例中
+object SerialPortEngine {
+    enum class PortStatus { IDLE, CONNECTING, CONNECTED, ERROR }
+
+    private val _portStatus = MutableStateFlow(PortStatus.IDLE)
+    val portStatus = _portStatus.asStateFlow()
+
+    private val isRunning = AtomicBoolean(false)
+    private var fis: FileInputStream? = null
+    private var fos: FileOutputStream? = null
+
+    private val sendMutex = Mutex()
+    private var responseWaiter: CompletableDeferred<ByteArray>? = null
+
+    private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var readJob: Job? = null
+
+    // 统一的数据分发：所有的解析回包都通过这里
+    private val extractor = FrameExtractor { packet ->
+        responseWaiter?.complete(packet)
+    }
+
+    fun start(path: String, baud: Int) {
+        if (isRunning.getAndSet(true)) return
+
+        readJob = engineScope.launch {
+            var retryDelay = 1000L
+            while (isActive && isRunning.get()) {
+                _portStatus.value = PortStatus.CONNECTING
+                val success = SerialPortManagerSdk.instance.openDevice(path, baud)
+
+                if (success) {
+                    // 获取并赋值给类成员，供发送方法使用
+                    fis = SerialPortManagerSdk.instance.getInputStream()
+                    fos = SerialPortManagerSdk.instance.getOutputStream()
+
+                    _portStatus.value = PortStatus.CONNECTED
+                    retryDelay = 1000L
+
+                    try {
+                        readLoop() // 调用提取出来的读取循环
+                    } catch (e: Exception) {
+                        Loge.e("读取中断: ${e.message}")
+                    } finally {
+                        _portStatus.value = PortStatus.ERROR
+                        closeStreams()
+                    }
+                } else {
+                    _portStatus.value = PortStatus.ERROR
+                }
+
+                if (isRunning.get()) {
+                    delay(retryDelay)
+                    retryDelay = (retryDelay * 2).coerceAtMost(10000L)
+                }
+            }
+        }
+    }
+
+    private fun readLoop() {
+        val buffer = ByteArray(4096)
+        try {
+            while (isRunning.get()) {
+                val len = fis?.read(buffer) ?: -1
+                if (len == -1) break
+                if (len > 0) {
+                    // 拷贝当前读取到的实际有效长度
+                    val validData = buffer.copyOfRange(0, len)
+                    // 喂给提取器
+                    extractor.push(validData)
+                }
+            }
+        } catch (e: Exception) {
+            Loge.e("串口读取异常: ${e.message}")
+            BoxToolLogUtils.savePrintln("业务流：串口读取异常: ${e.message}")
+        }
+    }
+
+    /**
+     * 统一发送入口
+     */
+    suspend fun sendOnce(data: ByteArray, timeout: Long = 5000): Result<ByteArray> {
+        if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
+
+        return sendMutex.withLock {
+            val waiter = CompletableDeferred<ByteArray>()
+            responseWaiter = waiter
+            try {
+                withContext(Dispatchers.IO) {
+                    Loge.i("SerialPort", "发送: ${ByteUtils.toHexString(data)}")
+                    BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
+                    fos?.write(data)
+                    delay(10)
+//                    fos?.flush()
+                }
+                val response = withTimeout(timeout) { waiter.await() }
+                Result.success(response)
+            } catch (e: Exception) {
+                Result.failure(e)
+            } finally {
+                responseWaiter = null
+            }
+        }
+    }
+
+    /**
+     * 芯片升级逻辑：也复用 sendOnce 的锁
+     */
+    suspend fun executeChipDirect(setCmd: Byte, data: ByteArray, timeout: Long = 20000): Result<ByteArray> {
+        if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
+        return withContext(Dispatchers.IO) {
+            val waiter = CompletableDeferred<ByteArray>()
+            responseWaiter = waiter
+            try {
+                BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
+                fos?.write(data)
+//                fos?.flush()
+                delay(5)
+                // 挂起直到收到数据或超时
+                val response = withTimeout(timeout) { waiter.await() }
+                Result.success(response)
+            } catch (e: TimeoutCancellationException) {
+                // 超时处理：清理状态
+                Result.failure(Exception("下位机响应超时(${timeout}ms)"))
+            } catch (e: Exception) {
+                Result.failure(e)
+            } catch (e: Exception) {
+                Result.failure(e)
+            } finally {
+                responseWaiter = null
+            }
+        }
+    }
+
+    /**
+     * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
+     */
+    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 10, timeout: Long = 30000): Result<ByteArray> {
+        var lastErr: Exception? = null
+        repeat(maxRetries) { attempt ->
+            val res = sendOnce(data, timeout)
+            if (res.isSuccess) return res
+            lastErr = res.exceptionOrNull() as? Exception
+            delay(150L * (attempt + 1))
+        }
+        return Result.failure(lastErr ?: Exception("执行失败"))
+    }
+
+    /**
+     * 柜体状态查询
+     * @param data 业务数据
+     * @param timeout 超时时间（毫秒）
+     */
+    suspend fun sendWithRetryStatus(data: ByteArray, maxRetries: Int = 5, timeout: Long = 30000): Result<ByteArray> {
+        var lastErr: Exception? = null
+        repeat(maxRetries) { attempt ->
+            val res = sendOnce(data, timeout)
+            if (res.isSuccess) return res
+            lastErr = res.exceptionOrNull() as? Exception
+        }
+        return Result.failure(lastErr ?: Exception("执行失败"))
+    }
+
+    fun stop() {
+        isRunning.set(false)
+        _portStatus.value = PortStatus.IDLE
+        readJob?.cancel()
+        closeStreams()
+        extractor.clear()
+        responseWaiter?.cancel()
+        // 彻底释放硬件
+        SerialPortManagerSdk.instance.closeAllSerialPort()
+    }
+
+    private fun closeStreams() {
+        kotlin.runCatching {
+            fis?.close()
+            fos?.close()
+        }
+        fis = null
+        fos = null
+    }
+}

@@ -52,27 +52,27 @@ class SerialVM : ViewModel() {
     fun startMonitor(path: String, baud: Int) {
         if (isRunning.getAndSet(true)) return
         viewModelScope.launch(Dispatchers.IO) {
-            var retryDelay = 1000L
-            while (isActive && isRunning.get()) {
-                try {
-                    _portStatus.value = PortStatus.CONNECTING
-                    val fd = SerialPortManagerSdk.instance.openDevice(path, baud)
-                    if (fd != null) {
-                        fis = FileInputStream(fd)
-                        fos = FileOutputStream(fd)
-                        _portStatus.value = PortStatus.CONNECTED
-                        retryDelay = 1000L // 成功重连，重置时间
-                        readLoop()
-                    } else throw IOException("FD is null")
-                } catch (e: Exception) {
-                    _portStatus.value = PortStatus.ERROR
-                    Loge.i("我的数据 接收处理 物理链路断开，${retryDelay}ms 后尝试重连")
-                    BoxToolLogUtils.savePrintln("我的数据 接收处理 物理链路断开，${retryDelay}ms 后尝试重连")
-                    closeStreams()
-                    delay(retryDelay)
-                    retryDelay = (retryDelay * 2).coerceAtMost(10000L) // 指数退避
-                }
-            }
+//            var retryDelay = 1000L
+//            while (isActive && isRunning.get()) {
+//                try {
+//                    _portStatus.value = PortStatus.CONNECTING
+//                    val fd = SerialPortManagerSdk.instance.openDevice(path, baud)
+//                    if (fd != null) {
+//                        fis = FileInputStream(fd)
+//                        fos = FileOutputStream(fd)
+//                        _portStatus.value = PortStatus.CONNECTED
+//                        retryDelay = 1000L // 成功重连，重置时间
+//                        readLoop()
+//                    } else throw IOException("FD is null")
+//                } catch (e: Exception) {
+//                    _portStatus.value = PortStatus.ERROR
+//                    Loge.i("我的数据 接收处理 物理链路断开，${retryDelay}ms 后尝试重连")
+//                    BoxToolLogUtils.savePrintln("我的数据 接收处理 物理链路断开，${retryDelay}ms 后尝试重连")
+//                    closeStreams()
+//                    delay(retryDelay)
+//                    retryDelay = (retryDelay * 2).coerceAtMost(10000L) // 指数退避
+//                }
+//            }
         }
     }
 

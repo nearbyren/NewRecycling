@@ -338,7 +338,7 @@ class NavTouSingleActivity : AppCompatActivity() {
             }
         }
         binding.tvNetwork.setOnClickListener {
-            cabinetVM.startDowChipFlow()
+//            cabinetVM.startDowChipFlow()
         }
         //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
@@ -473,14 +473,13 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_RESTART -> {
                         val restartModel = Gson().fromJson(json, RestartBean::class.java)
-                        lifecycleScope.launch { // 确保在协程中执行
                             when (restartModel.type) {
                                 1 -> {
                                     // 1. 给用户一个提示（可选）
                                     cabinetVM.tipMessage("业务流：系统将在5秒后重启")
 
                                     // 2. 等待缓冲
-                                    delay(5000)
+                                    delay(3000)
 
                                     // 3. 关键：调用 ViewModel 的清理方法
                                     // 停止所有轮询、关闭 Socket、关闭串口
@@ -491,7 +490,6 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                                     // 5. 正式重启
                                     OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
-                                }
                             }
                         }
                     }

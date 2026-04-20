@@ -29,22 +29,20 @@ class SerialPortCoreSdk private constructor() {
         val instance by lazy { SerialPortCoreSdk() }
     }
 
-    private val vm get() = SerialPortManagerSdk.instance.serialVM
-
     private suspend fun execute(cmd: Byte, data: ByteArray): Result<ByteArray> {
         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-        return vm?.sendWithRetry(frame) ?: Result.failure(Exception("Communication VM is null"))
+        return SerialPortEngine.sendWithRetry(frame) ?: Result.failure(Exception("Communication VM is null"))
     }
 
     private suspend fun executeStatus(cmd: Byte, data: ByteArray): Result<ByteArray> {
         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-        return vm?.sendWithRetryStatus(frame)
+        return SerialPortEngine.sendWithRetryStatus(frame)
             ?: Result.failure(Exception("Communication VM is null"))
     }
 
     suspend fun executeChipNew(cmd: Byte, data: ByteArray): Result<ByteArray> {
         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-        return vm?.executeChipDirect(cmd, frame)
+        return SerialPortEngine.executeChipDirect(cmd, frame)
             ?: Result.failure(Exception("Communication VM is null"))
     }
 
@@ -64,7 +62,7 @@ class SerialPortCoreSdk private constructor() {
             val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
 
             // 2. 调用 VM 的基础发送方法 (替换掉不存在的 sendDirect)
-            val rawResult = vm?.sendOnce(frame) ?: Result.failure(Exception("串口服务未初始化"))
+            val rawResult = SerialPortEngine.sendOnce(frame) ?: Result.failure(Exception("串口服务未初始化"))
 
             // 3. 解析校验
             rawResult.mapCatching { bytes ->
@@ -87,7 +85,7 @@ class SerialPortCoreSdk private constructor() {
         // 提交到调度器
         return scheduler.submit(priority) {
             val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-            val rawResult = vm?.sendWithRetry(frame) ?: Result.failure(Exception("串口不可用"))
+            val rawResult = SerialPortEngine.sendWithRetry(frame) ?: Result.failure(Exception("串口不可用"))
 
             rawResult.mapCatching { bytes ->
                 val payload = ProtocolCodec.getSafePayload(bytes)
@@ -116,7 +114,7 @@ class SerialPortCoreSdk private constructor() {
         scheduler.submit(Priority.IMMEDIATE, maxRetries = 5) {
             val frame = ProtocolCodec.encode(SerialPortSdk.CMD1, SerialPortSdk.ADDR, byteArrayOf(locker.toByte(), 0x01))
             // 注意：这里调用底层 VM 时不需要再写 retry，因为调度器层已经接管了 retry
-            vm?.sendWithRetry(frame)?.mapCatching {
+            SerialPortEngine.sendWithRetry(frame)?.mapCatching {
                 val payload = ProtocolCodec.getSafePayload(it) ?: throw Exception("解析Payload失败")
                 DoorResult(locker = payload[0].toInt(), status = payload[1].toInt())
             } ?: Result.failure(Exception("串口未就绪"))

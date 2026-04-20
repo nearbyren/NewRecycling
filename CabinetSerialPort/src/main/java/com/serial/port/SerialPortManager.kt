@@ -6,7 +6,7 @@ import com.serial.port.utils.ShellUtils
 import com.serial.port.vm.SerialVM
 
 
-class SerialPortManager private constructor() : SerialPort() {
+class SerialPortManager private constructor() : SerialPort("/dev/ttyS0", 115200) {
     private var mSdk232: ConfigurationSdk? = null
     private var mSdk485: ConfigurationSdk? = null
 
@@ -78,36 +78,7 @@ class SerialPortManager private constructor() : SerialPort() {
      * 打开串口232
      *
      */
-    private fun openSerialPort232() {
-        close232SerialPort()
-        mSdk232?.device?.let { device ->
-            if (!device.canRead() || !device.canWrite()) {
-                val chmod777: Boolean = chmod777(device)
-                if (!chmod777) {
-                    Loge.d("授权成功 打开串口232失败 没有权限")
-                    return@let
-                }
-            }
-            if (!device.canRead() || !device.canWrite()) {
-                try {
-                    val command: MutableList<String> = ArrayList()
-                    command.add("chmod 777 " + device.absolutePath)
-                    ShellUtils.execCommand(command, true)
-                } catch (e: Exception) {
-                    Loge.d("授权成功 打开串口232失败 授权失败")
-                    e.printStackTrace()
-                    throw SecurityException()
-                }
-            }
-            try {
-                val fileDescriptor = open(device.absolutePath, mSdk232!!.baudRate, 0)
-                serialVM?.fd232?.value = fileDescriptor
-            } catch (e: Exception) {
-                Loge.d("授权成功 打开串口232失败 catch异常")
-                e.printStackTrace()
-            }
-        }
-    }
+    private fun openSerialPort232() {}
 
     /**
      * 关闭所有串口
@@ -124,7 +95,7 @@ class SerialPortManager private constructor() : SerialPort() {
     fun close232SerialPort() {
         isInit = false
         serialVM?.fd232?.let {
-            close(1)
+//            close(1)
         }
         serialVM?.close232SerialPort()
     }

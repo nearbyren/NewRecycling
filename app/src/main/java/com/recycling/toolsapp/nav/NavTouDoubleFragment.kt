@@ -60,25 +60,30 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
                     ?: "0.00", cabinetVM.curG2Weight ?: "0.00", cabinetVM.curG2Weight ?: "0.00"
             )
         }
+        refreshQrCodeRes()
         val warningContent1 = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText1, BusType.BUS_NORMAL] as String
         val warningContent2 = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText2, BusType.BUS_NORMAL] as String
         initWarningContent(warningContent1, 1)
         initWarningContent(warningContent2, 2)
     }
 
+    private fun refreshQrCodeRes() {
+        val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
+            .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
+        Glide.with(AppUtils.getContext()).load(File("${AppUtils.getContext().filesDir}/res/qrCode.png")).apply(options).into(binding.acivCodeNet)
+    }
+
     private fun latestBusiness() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.refHomeCodeStateFlow.collect {
-                    Loge.e("业务流：刷新首页二维码 -> $it")
-                    if (it == null) return@collect
-                    val refreshType = it.refreshType
-                    val bitmap = it.homeCodeBitmap
-                    when (refreshType) {
-                        RefBusType.REFRESH_TYPE_6 -> {
-                            if(bitmap!=null){
-                                Glide.with(AppUtils.getContext()).load(bitmap).into(binding.acivCodeNet)
-                            }
+            cabinetVM.refHomeCodeStateFlow.collect {
+                Loge.e("业务流：刷新首页二维码 -> $it")
+                if (it == null) return@collect
+                val refreshType = it.refreshType
+                val bitmap = it.homeCodeBitmap
+                when (refreshType) {
+                    RefBusType.REFRESH_TYPE_6 -> {
+                        if (bitmap != null) {
+                            Glide.with(AppUtils.getContext()).load(bitmap).into(binding.acivCodeNet)
                         }
                     }
                 }
@@ -212,7 +217,8 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
                         binding.acivStatusNet.isVisible = true
                         val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
                             .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
-                        Glide.with(AppUtils.getContext()).asBitmap().apply(options).load(File("${AppUtils.getContext().filesDir}/res/maintaining.png")).into(object : CustomTarget<Bitmap?>() {
+                        Glide.with(AppUtils.getContext()).asBitmap().apply(options).load(File("${AppUtils.getContext().filesDir}/res/maintaining.png")).into(object :
+                            CustomTarget<Bitmap?>() {
                             override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap?>?) {
                                 binding.acivStatusNet.setImageBitmap(resource)
 
@@ -261,7 +267,8 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
                             if (cabinetVM.mMaintaining == null) {
                                 val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
                                     .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
-                                Glide.with(AppUtils.getContext()).asBitmap().apply(options).load(File("${AppUtils.getContext().filesDir}/res/maintaining.png")).into(object : CustomTarget<Bitmap?>() {
+                                Glide.with(AppUtils.getContext()).asBitmap().apply(options).load(File("${AppUtils.getContext().filesDir}/res/maintaining.png")).into(object :
+                                    CustomTarget<Bitmap?>() {
                                     override fun onResourceReady(
                                         resource: Bitmap,
                                         transition: Transition<in Bitmap?>?,

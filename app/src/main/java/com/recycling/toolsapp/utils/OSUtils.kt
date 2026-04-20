@@ -141,7 +141,7 @@ object OSUtils {
             activity.finishAffinity()
             activity.startActivity(intent)
             Runtime.getRuntime().exit(0)
-        }, 1000)  // 100ms延迟足够，不需要5秒
+        }, 3000)  // 100ms延迟足够，不需要5秒
     }
 }
 

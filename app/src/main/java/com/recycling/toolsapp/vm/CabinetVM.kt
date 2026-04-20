@@ -996,7 +996,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         curG1Weight = states.weigh.toString()
                                         if (!oneInit) {
                                             Loge.e("流程 toGoCmdOtaBin 进来了 1")
-                                            restartAppCloseDoor(CmdCode.GE1)
+//                                            restartAppCloseDoor(CmdCode.GE1)
                                         }
                                     }
 
@@ -1006,7 +1006,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         curG2Weight = states.weigh.toString()
                                         if (!oneInit) {
                                             Loge.e("流程 toGoCmdOtaBin 进来了 2")
-                                            restartAppCloseDoor(CmdCode.GE2)
+//                                            restartAppCloseDoor(CmdCode.GE2)
                                         }
                                     }
                                 }
@@ -1195,7 +1195,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
     private fun downResBitmap(oneInit: Boolean, path: String, res: Int, status: Int) {
         val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
             .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
-        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/${path}")).apply(options).into(object : CustomTarget<Bitmap?>() {
+        Glide.with(AppUtils.getContext()).asBitmap().load(File("${AppUtils.getContext().filesDir}/${path}")).apply(options).into(object :
+            CustomTarget<Bitmap?>() {
             override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap?>?) {
                 if (res == 1) {
                     mHomeBg = resource
@@ -2616,11 +2617,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * 升级流程
      */
     fun startDowChipFlow(row: Long = -1) {
-        val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0] as Int
-        if (upgradeCount > 5) {
-            BoxToolLogUtils.savePrintln("升级流程：今天超过升级次数 $upgradeCount 不再继续升级")
-            return
-        }
+//        val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0] as Int
+//        if (upgradeCount > 5) {
+//            BoxToolLogUtils.savePrintln("升级流程：今天超过升级次数 $upgradeCount 不再继续升级")
+//            return
+//        }
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 _chipStep.value = UpgradeStep.UPGRADE_DOW
@@ -2732,6 +2733,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             if (retryCount < maxRetriesPerBlock) {
                                                 delay(100) // 重试前稍作停顿，给下位机缓冲时间
                                             }
+                                            delay(10)
                                         }
 
                                         // 4. 判断当前块是否彻底失败
@@ -2773,7 +2775,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     val failBytes = byteArrayOf(0xB4.toByte(), 0xB5.toByte(), 0xB6.toByte())
                                     if (payload.contentEquals(successBytes)) {
                                         SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
-                                        BoxToolLogUtils.savePrintln("升级流程：进入文件校验指令 onSuccess = ${payload}")
+                                        BoxToolLogUtils.savePrintln("升级流程：进入文件校验指令 onSuccess = ${ByteUtils.toHexString(payload)}")
                                         Loge.d("升级流程：查询重启指令 - 成功")
                                         _chipStep.value = UpgradeStep.RESTART_APP
                                     } else if (payload.contentEquals(failBytes)) {
@@ -2811,7 +2813,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 val payload = ProtocolCodec.getSafePayload(bytes)
                                 if (payload?.size == 3) {
                                     SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
-                                    BoxToolLogUtils.savePrintln("升级流程：进入重启指令 onSuccess = ${payload}")
+                                    BoxToolLogUtils.savePrintln("升级流程：进入重启指令 onSuccess = ${ByteUtils.toHexString(payload)}")
                                     _chipStep.value = UpgradeStep.UPGRADE_END
                                 }
                             }.onFailure { e ->
@@ -2834,15 +2836,14 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("升级流程：异常情况 $sRow ${e.message}")
                 _chipStep.value = UpgradeStep.UPGRADE_ERROR
             } finally {
-                if (chipStep.value != UpgradeStep.RESTART_APP) {
-                    val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0] as Int
-                    val result = upgradeCount + 1
-                    SPreUtil.put(AppUtils.getContext(), AppUtils.getDateYMD(), result)
-                }
+//                if (chipStep.value != UpgradeStep.RESTART_APP) {
+//                    val upgradeCount = SPreUtil[AppUtils.getContext(), AppUtils.getDateYMD(), 0] as Int
+//                    val result = upgradeCount + 1
+//                    SPreUtil.put(AppUtils.getContext(), AppUtils.getDateYMD(), result)
+//                }
                 BoxToolLogUtils.savePrintln("升级流程：流程 finally ${chipStep.value}")
                 println("升级流程：我进入 finally ${chipStep.value}")
                 delay(5000)
-                stopAll()
                 FaceApplication.getInstance().baseActivity?.let { OSUtils.restartAppFrontDesk(it) }
             }
         }
@@ -2974,9 +2975,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
         jobInstall?.cancel()
         jobInstall = null
     }
+
     /***apk升级**/
     private fun installDowApk(text: String) {
-        jobInstall = viewModelScope.launch(Dispatchers.IO) {
+        jobInstall = ioScope.launch {
             val queryResource = DatabaseManager.queryResNewAPk(AppUtils.getContext(), CmdValue.CMD_OTA_APK)
             //版本一致更新安装了
             val verName = AppUtils.getVersionName()
@@ -3480,12 +3482,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 BoxToolLogUtils.savePrintln("业务流：正在执行开门动作【${SendTurnText.fromStatus(openType)}】 开门前重量:$weightBeforeOpen")
                 dbBeforeWeight(weightBeforeOpen, model)
+                delay(2000)
                 val turnDoor = SerialPortSdk.turnDoor(openType)
                 if (turnDoor.isFailure) throw Exception("业务流：开门指令接收失败: ${turnDoor.exceptionOrNull()?.message}")
                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_10, transId)
                 // --- 第二阶段：轮询等待门开启 ---
                 _currentStep.value = LockerStep.WAITING_OPEN_DOOR
-
+                delay(1000)
                 BoxToolLogUtils.savePrintln("业务流：等待门物理状态变为【开启】")
                 // 使用 withTimeout 防止传感器故障导致协程永久挂起
                 withTimeout(30000) { // 30秒超时
@@ -3498,6 +3501,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             setRefBusStaChannel(MonitorWeight().apply {
                                 refreshType = RefBusType.REFRESH_TYPE_3
                             })
+                            delay(1000)
 //                            noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_NORMAL, false)
                             val weightAfterOpeningCmd = SerialPortSdk.queryWeight(doorGex)
                             if (weightAfterOpeningCmd.isFailure) throw Exception("业务流：确认开门瞬间重量 获取重量指令失败: ${weightAfterOpeningCmd.exceptionOrNull()?.message}")
@@ -3514,7 +3518,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             BoxToolLogUtils.savePrintln("业务流：门开前格口-门开故障 打开后的重量：$weightBeforeOpen")
                             throw Exception("业务流：门开前格口-门开故障: 3 $doorStatus")
                         }
-                        delay(1000)
+                        delay(2000)
                     }
                 }
                 // --- 第三阶段：监测重量变化 ---
@@ -3547,6 +3551,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         // --- 第五阶段：轮询等待门关闭 ---
                         if (currentStep.value == LockerStep.CLOSING) {
                             withTimeout(30000) { // 30秒超时
+                                delay(1000)
                                 val doorStatusValue = SerialPortSdk.turnDoorStatus(doorGex)
                                 if (doorStatusValue.isFailure) throw Exception("业务流：门关动作获取投门状态失败: ${doorStatusValue.exceptionOrNull()?.message}")
                                 val doorStatus = doorStatusValue.getOrNull()?.status
@@ -3576,8 +3581,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
                             delay(1000)
                         }
-                        //每秒查询一次重量
-                        delay(1000)
+                        //每2秒查询一次重量
+                        delay(2000)
                     }
                 }
 
@@ -4333,7 +4338,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     data class MonitorHomeCode(
         /** 5.刷新背景图 6.二维码 */
-        var refreshType: Int = -1, var homeCodeBitmap: Bitmap? = null)
+        var refreshType: Int = -1,
+        var homeCodeBitmap: Bitmap? = null,
+    )
 
     private val _refBusStaStateFlow = MutableStateFlow<MonitorWeight?>(null)
     val refBusStaStateFlow: StateFlow<MonitorWeight?> = _refBusStaStateFlow.asStateFlow()
@@ -4500,10 +4507,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
             BoxToolLogUtils.savePrintln("业务流：查询柜体状态 轮询已在运行")
             return
         }
-
+        Loge.e("业务流：startStatus onstart ")
         containersJob = ioScope.launch {
             while (isActive) {
                 try {
+                    Loge.e("业务流：startStatus onstart ")
                     SerialPortSdk.queryStatus().onSuccess { result ->
                         if (containersDB.isEmpty()) {
                             containersDB = DatabaseManager.queryStateList(AppUtils.getContext()).toMutableList()
@@ -4643,9 +4651,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         BoxToolLogUtils.savePrintln("业务流：轮询onFailure: ${e.message}")
                     }
                     Loge.e("查询版本开始 $isQueryVersion")
-                    if (!isQueryVersion) {
-                        startChipVersion()
-                    }
+//                    if (!isQueryVersion) {
+//                        startChipVersion()
+//                    }
                 } catch (e: TimeoutCancellationException) {
                     BoxToolLogUtils.savePrintln("业务流：轮询超时: ${e.message}")
                 } catch (e: Exception) {
@@ -4806,13 +4814,14 @@ class CabinetVM @Inject constructor() : ViewModel() {
         queryStatusJob?.cancel()
         queryStatusJob = null
     }
+
     /*** 测试页 查询柜体信息*/
     fun startQueryStatus(stateResult: (containers: MutableList<ContainersResult>) -> Unit) {
         if (queryStatusJob?.isActive == true) {
             BoxToolLogUtils.savePrintln("业务流：查询测试页柜体状态 轮询已在运行")
             return
         }
-        queryStatusJob = viewModelScope.launch(Dispatchers.IO) {
+        queryStatusJob = ioScope.launch {
             while (isActive && isLookState) {
                 SerialPortSdk.queryStatus().onSuccess { result ->
                     stateResult(result.containers)
@@ -5026,6 +5035,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
 
     fun stopAll() {
+        BoxToolLogUtils.savePrintln("业务流：收到指令重启：资源已释放，执行重启 stopAll")
         cancelContainersStatusJob()
         cancelStartQueryStatus()
         cancelServiceClose()

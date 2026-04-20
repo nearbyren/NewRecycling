@@ -179,146 +179,17 @@ JNIEXPORT jobject JNICALL Java_com_serial_port_SerialPort_open
  */
 JNIEXPORT void JNICALL Java_com_serial_port_SerialPort_close
         (JNIEnv *env, jobject thiz, jint closeFdType) {
-
     jclass SerialPortClass = (*env)->GetObjectClass(env, thiz);
     jclass FileDescriptorClass = (*env)->FindClass(env, "java/io/FileDescriptor");
 
-    jfieldID serialVMFieldID = (*env)->GetFieldID(env, SerialPortClass, "serialVM",
-                                                  "Lcom/serial/port/vm/SerialVM;");
-    LOGD("授权成功 执行close");
-    jobject serialVMObject = (*env)->GetObjectField(env, thiz, serialVMFieldID);
-    if (serialVMObject == NULL) {
-        LOGD("授权成功 SerialVM object is NULL");
-        return;
-    }
-    jclass serialVMClass = (*env)->GetObjectClass(env, serialVMObject);
-    if (closeFdType == 1) {
+    jfieldID mFdID = (*env)->GetFieldID(env, SerialPortClass, "mFd", "Ljava/io/FileDescriptor;");
+    jfieldID descriptorID = (*env)->GetFieldID(env, FileDescriptorClass, "descriptor", "I");
 
-        // 获取 SerialVM 类中的 fd232 字段
-        jfieldID mFdID = (*env)->GetFieldID(env, serialVMClass, "fd232",
-                "Lkotlinx/coroutines/flow/MutableStateFlow;");
-        if (mFdID == NULL) {
-            LOGD("授权成功 Field fd232 not found in SerialVM");
-            return;
-        }
+    jobject mFd = (*env)->GetObjectField(env, thiz, mFdID);
+    jint descriptor = (*env)->GetIntField(env, mFd, descriptorID);
 
-        // 获取 232fd 字段的值
-        jobject mFdObject = (*env)->GetObjectField(env, serialVMObject, mFdID);
-        if (mFdObject == NULL) {
-            LOGD("授权成功 fd232 is NULL");
-            return;
-        }
-
-        // 获取 MutableStateFlow 的 value 字段，注意 fd232 持有的是 FileDescriptor 类型的对象
-        jclass mutableStateFlowClass = (*env)->GetObjectClass(env, mFdObject);
-        jmethodID getValueMethodID = (*env)->GetMethodID(env, mutableStateFlowClass, "getValue",
-                "()Ljava/lang/Object;");
-        if (getValueMethodID == NULL) {
-            LOGD("授权成功 fd232 Method getValue not found in MutableStateFlow");
-            return;
-        }
-        // 调用 getValue 来获取实际的 FileDescriptor 对象
-        jobject fileDescriptorObject = (*env)->CallObjectMethod(env, mFdObject, getValueMethodID);
-        if (fileDescriptorObject == NULL) {
-            LOGD("授权成功 fd232 FileDescriptor object is NULL");
-            return;
-        }
-        // 获取 FileDescriptor 的 descriptor 字段
-        jclass fileDescriptorClass = (*env)->FindClass(env, "java/io/FileDescriptor");
-        jfieldID descriptorID = (*env)->GetFieldID(env, fileDescriptorClass, "descriptor", "I");
-        if (descriptorID == NULL) {
-            LOGD("授权成功 fd232 descriptorID is NULL");
-            return;
-        }
-
-        jint descriptor = (*env)->GetIntField(env, fileDescriptorObject, descriptorID);
-        LOGD("授权成功 fd232 close(fd = %d)", descriptor);
-        close(descriptor);
-    } else if (closeFdType == 2) {
-
-        // 获取 SerialVM 类中的 _485fd 字段
-        jfieldID mFdID = (*env)->GetFieldID(env, serialVMClass, "fd485",
-                "Lkotlinx/coroutines/flow/MutableStateFlow;");
-        if (mFdID == NULL) {
-            LOGD("授权成功 Field fd485 not found in SerialVM");
-            return;
-        }
-
-        // 获取 485fd 字段的值
-        jobject mFdObject = (*env)->GetObjectField(env, serialVMObject, mFdID);
-        if (mFdObject == NULL) {
-            LOGD("授权成功 fd485 is NULL");
-            return;
-        }
-
-        // 获取 MutableStateFlow 的 value 字段，注意 fd485 持有的是 FileDescriptor 类型的对象
-        jclass mutableStateFlowClass = (*env)->GetObjectClass(env, mFdObject);
-        jmethodID getValueMethodID = (*env)->GetMethodID(env, mutableStateFlowClass, "getValue",
-                "()Ljava/lang/Object;");
-        if (getValueMethodID == NULL) {
-            LOGD("授权成功 fd485 Method getValue not found in MutableStateFlow");
-            return;
-        }
-        // 调用 getValue 来获取实际的 FileDescriptor 对象
-        jobject fileDescriptorObject = (*env)->CallObjectMethod(env, mFdObject, getValueMethodID);
-        if (fileDescriptorObject == NULL) {
-            LOGD("授权成功 fd485 FileDescriptor object is NULL");
-            return;
-        }
-        // 获取 FileDescriptor 的 descriptor 字段
-        jclass fileDescriptorClass = (*env)->FindClass(env, "java/io/FileDescriptor");
-        jfieldID descriptorID = (*env)->GetFieldID(env, fileDescriptorClass, "descriptor", "I");
-        if (descriptorID == NULL) {
-            LOGD("授权成功 fd485 descriptorID is NULL");
-            return;
-        }
-
-        jint descriptor = (*env)->GetIntField(env, fileDescriptorObject, descriptorID);
-        LOGD("授权成功 fd485 close(fd = %d)", descriptor);
-        close(descriptor);
-    } else if (closeFdType == 3) {
-
-        // 获取 SerialVM 类中的 _usbfd 字段
-        jfieldID mFdID = (*env)->GetFieldID(env, serialVMClass, "usbfd",
-                "Lkotlinx/coroutines/flow/MutableStateFlow;");
-        if (mFdID == NULL) {
-            LOGD("授权成功 Field usbfd not found in SerialVM");
-            return;
-        }
-
-        // 获取 usbfd 字段的值
-        jobject mFdObject = (*env)->GetObjectField(env, serialVMObject, mFdID);
-        if (mFdObject == NULL) {
-            LOGD("授权成功 usbfd is NULL");
-            return;
-        }
-
-        // 获取 MutableStateFlow 的 value 字段，注意 usbfd 持有的是 FileDescriptor 类型的对象
-        jclass mutableStateFlowClass = (*env)->GetObjectClass(env, mFdObject);
-        jmethodID getValueMethodID = (*env)->GetMethodID(env, mutableStateFlowClass, "getValue",
-                "()Ljava/lang/Object;");
-        if (getValueMethodID == NULL) {
-            LOGD("授权成功 usbfd Method getValue not found in MutableStateFlow");
-            return;
-        }
-        // 调用 getValue 来获取实际的 FileDescriptor 对象
-        jobject fileDescriptorObject = (*env)->CallObjectMethod(env, mFdObject, getValueMethodID);
-        if (fileDescriptorObject == NULL) {
-            LOGD("授权成功 usbfd FileDescriptor object is NULL");
-            return;
-        }
-        // 获取 FileDescriptor 的 descriptor 字段
-        jclass fileDescriptorClass = (*env)->FindClass(env, "java/io/FileDescriptor");
-        jfieldID descriptorID = (*env)->GetFieldID(env, fileDescriptorClass, "descriptor", "I");
-        if (descriptorID == NULL) {
-            LOGD("授权成功 usbfd descriptorID is NULL");
-            return;
-        }
-
-        jint descriptor = (*env)->GetIntField(env, fileDescriptorObject, descriptorID);
-        LOGD("授权成功 usbfd close(fd = %d)", descriptor);
-        close(descriptor);
-    }
+    LOGD("close(fd = %d)", descriptor);
+    close(descriptor);
 
 }
 

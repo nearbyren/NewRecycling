@@ -55,7 +55,7 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
         binding.clMobileNet.setOnClickListener {
             Navigation.findNavController(it).navigate(R.id.action_start_mobile)
         }
-//        refreshQrCodeRes()
+        refreshQrCodeRes()
         val warningContent = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText1, BusType.BUS_NORMAL] as String
         initWarningContent(warningContent)
 
@@ -69,20 +69,19 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
 
     private fun latestBusiness() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.refHomeCodeStateFlow.collect {
-                    Loge.e("业务流：刷新首页二维码 -> $it")
-                    if (it == null) return@collect
-                    val refreshType = it.refreshType
-                    val bitmap = it.homeCodeBitmap
-                    when (refreshType) {
-                        RefBusType.REFRESH_TYPE_6 -> {
-                            if(bitmap!=null){
-                                Glide.with(AppUtils.getContext()).load(bitmap).into(binding.acivCodeNet)
-                            }
+            cabinetVM.refHomeCodeStateFlow.collect {
+                Loge.e("业务流：刷新首页二维码 -> $it")
+                if (it == null) return@collect
+                val refreshType = it.refreshType
+                val bitmap = it.homeCodeBitmap
+                when (refreshType) {
+                    RefBusType.REFRESH_TYPE_6 -> {
+                        if (bitmap != null) {
+                            Glide.with(AppUtils.getContext()).load(bitmap).into(binding.acivCodeNet)
                         }
                     }
                 }
+
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -200,7 +199,8 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
                     if (cabinetVM.mMaintaining == null) {
                         val options = RequestOptions().skipMemoryCache(true) // 禁用内存缓存
                             .diskCacheStrategy(DiskCacheStrategy.NONE) // 禁用磁盘缓存
-                        Glide.with(AppUtils.getContext()).asBitmap().apply(options).load(File("${AppUtils.getContext().filesDir}/res/maintaining.png")).into(object : CustomTarget<Bitmap?>() {
+                        Glide.with(AppUtils.getContext()).asBitmap().apply(options).load(File("${AppUtils.getContext().filesDir}/res/maintaining.png")).into(object :
+                            CustomTarget<Bitmap?>() {
                             override fun onResourceReady(
                                 resource: Bitmap,
                                 transition: Transition<in Bitmap?>?,

@@ -1,5 +1,6 @@
 package com.serial.port.t
 
+import com.serial.port.utils.BoxToolLogUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -103,7 +104,7 @@ object SerialPortSdk {
 
     fun init(path232: String = "/dev/ttyS0", baudRate: Int = 115200) {
         if (isInit) return
-        SerialPortManagerSdk.instance.init(path232, baudRate)
+        SerialPortEngine.start(path232, baudRate)
         isInit = true
     }
 
@@ -112,7 +113,9 @@ object SerialPortSdk {
 
 
     fun release() {
-        SerialPortManagerSdk.instance.closeAllSerialPort()
+        BoxToolLogUtils.savePrintln("业务流：收到指令重启：资源已释放，执行重启 closeAllSerialPort")
+//        SerialPortManagerSdk.instance.closeAllSerialPort()
+        SerialPortEngine.stop()
         isInit = false
     }
 
