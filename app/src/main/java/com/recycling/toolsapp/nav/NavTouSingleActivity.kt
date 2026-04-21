@@ -682,7 +682,9 @@ class NavTouSingleActivity : AppCompatActivity() {
                 cabinetVM.chipStep.collect {
                     Loge.i("升级流程：返回的指令 -> $it")
                     when (it) {
-                        CabinetVM.UpgradeStep.IDLE -> {}
+                        CabinetVM.UpgradeStep.IDLE -> {
+                            binding.clPrompt.isVisible = false
+                        }
 
                         CabinetVM.UpgradeStep.INSTALL_DOW -> {
                             binding.clPrompt.isVisible = true

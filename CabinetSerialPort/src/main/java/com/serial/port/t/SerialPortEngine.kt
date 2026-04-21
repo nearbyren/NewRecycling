@@ -21,8 +21,8 @@ import kotlinx.coroutines.withTimeout
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.coroutineContext
 
 // 将原本 SerialVM 的逻辑搬迁到单例中
 object SerialPortEngine {
@@ -37,13 +37,17 @@ object SerialPortEngine {
 
     private val sendMutex = Mutex()
     private var responseWaiter: CompletableDeferred<ByteArray>? = null
+    private val pendingRequests = ConcurrentHashMap<String, CompletableDeferred<ByteArray>>()
+    private var sequenceId = 0
 
     private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var readJob: Job? = null
 
     // 统一的数据分发：所有的解析回包都通过这里
-    private val extractor = FrameExtractor { packet ->
-        responseWaiter?.complete(packet)
+    private val extractor = FrameExtractorNew{ packet ->
+//        responseWaiter?.complete(packet)
+        val cmd = packet[2].toString()
+        pendingRequests[cmd]?.complete(packet)
     }
 
     fun start(path: String, baud: Int) {
@@ -66,7 +70,7 @@ object SerialPortEngine {
                     try {
                         readLoop() // 调用提取出来的读取循环
                     } catch (e: Exception) {
-                        Loge.e("读取中断: ${e.message}")
+                        BoxToolLogUtils.savePrintln("业务流：读取中断: ${e.message}")
                     } finally {
                         _portStatus.value = PortStatus.ERROR
                         closeStreams()
@@ -107,10 +111,13 @@ object SerialPortEngine {
      */
     suspend fun sendOnce(data: ByteArray, timeout: Long = 5000): Result<ByteArray> {
         if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
-
         return sendMutex.withLock {
             val waiter = CompletableDeferred<ByteArray>()
-            responseWaiter = waiter
+            // 从协议中提取或生成消息ID
+            val msgId = data[2].toString()
+//            responseWaiter = waiter
+            // 保存到待处理队列
+            pendingRequests[msgId] = waiter
             try {
                 withContext(Dispatchers.IO) {
                     Loge.i("SerialPort", "发送: ${ByteUtils.toHexString(data)}")
@@ -124,10 +131,27 @@ object SerialPortEngine {
             } catch (e: Exception) {
                 Result.failure(e)
             } finally {
-                responseWaiter = null
+//                responseWaiter = null
+                pendingRequests.remove(msgId)
+
             }
         }
     }
+
+    /**
+      * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
+     */
+    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 10, timeout: Long = 30000): Result<ByteArray> {
+        var lastErr: Exception? = null
+        repeat(maxRetries) { attempt ->
+            val res = sendOnce(data, timeout)
+            if (res.isSuccess) return res
+            lastErr = res.exceptionOrNull() as? Exception
+            delay(150L * (attempt + 1))
+        }
+        return Result.failure(lastErr ?: Exception("执行失败"))
+    }
+
 
     /**
      * 芯片升级逻辑：也复用 sendOnce 的锁
@@ -159,20 +183,6 @@ object SerialPortEngine {
     }
 
     /**
-     * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
-     */
-    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 10, timeout: Long = 30000): Result<ByteArray> {
-        var lastErr: Exception? = null
-        repeat(maxRetries) { attempt ->
-            val res = sendOnce(data, timeout)
-            if (res.isSuccess) return res
-            lastErr = res.exceptionOrNull() as? Exception
-            delay(150L * (attempt + 1))
-        }
-        return Result.failure(lastErr ?: Exception("执行失败"))
-    }
-
-    /**
      * 柜体状态查询
      * @param data 业务数据
      * @param timeout 超时时间（毫秒）
@@ -194,6 +204,16 @@ object SerialPortEngine {
         closeStreams()
         extractor.clear()
         responseWaiter?.cancel()
+        val iterators = pendingRequests.entries.iterator()
+        while (iterators.hasNext()) {
+            val entry = iterators.next()
+            // 取消 Deferred，这会使得 await() 抛出 CancellationException
+            entry.value.cancel()
+            // 从 Map 中移除已取消的请求，防止内存泄漏
+            iterators.remove()
+        }
+        pendingRequests?.clear()
+
         // 彻底释放硬件
         SerialPortManagerSdk.instance.closeAllSerialPort()
     }

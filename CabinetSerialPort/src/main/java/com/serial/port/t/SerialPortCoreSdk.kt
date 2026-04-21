@@ -34,15 +34,9 @@ class SerialPortCoreSdk private constructor() {
         return SerialPortEngine.sendWithRetry(frame) ?: Result.failure(Exception("Communication VM is null"))
     }
 
-    private suspend fun executeStatus(cmd: Byte, data: ByteArray): Result<ByteArray> {
-        val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-        return SerialPortEngine.sendWithRetryStatus(frame)
-            ?: Result.failure(Exception("Communication VM is null"))
-    }
-
     suspend fun executeChipNew(cmd: Byte, data: ByteArray): Result<ByteArray> {
         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-        return SerialPortEngine.executeChipDirect(cmd, frame)
+        return SerialPortEngine.sendWithRetry(frame)
             ?: Result.failure(Exception("Communication VM is null"))
     }
 
@@ -243,7 +237,7 @@ class SerialPortCoreSdk private constructor() {
 
     /** 查询货柜状态 */
     suspend fun queryStatus(): Result<DoorResult> {
-        return executeStatus(SerialPortSdk.CMD5, byteArrayOf(0x01, 0x01)).mapCatching { bytes ->
+        return execute(SerialPortSdk.CMD5, byteArrayOf(0x01, 0x01)).mapCatching { bytes ->
             val cmd = bytes[SerialPortSdk.CMD_POS]
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD5) DoorResult(containers = mutableListOf(), cmd = 5, cmdByte = SerialPortSdk.CMD5, cmdStatus = false)
