@@ -18,6 +18,7 @@ import com.recycling.toolsapp.utils.CalculationUtil
 import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.vm.CabinetVM
+import com.recycling.toolsapp.vm.CabinetVM.LockerStep
 import com.recycling.toolsapp.vm.DeliveryTimer
 import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.CmdCode
@@ -140,7 +141,6 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
         binding.tvOperation.isEnabled = false
         binding.tvOperation.text = "正在开启仓门中"
         binding.tvOperation.setOnClickListener {
-            cabinetVM.deliverycancelTimer()
             binding.tvOperation.text = "正在关闭仓门中"
             cabinetVM.setFlowCurrentStep(CabinetVM.LockerStep.CLICK_CLOSE)
         }
@@ -170,7 +170,12 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
 
                         DeliveryTimer.CountdownState.Finished -> {
                             Loge.e("流程 deliveryState Finished")
-                            cabinetVM.setFlowCurrentStep(CabinetVM.LockerStep.CLICK_CLOSE)
+                            Loge.e("业务流：过程中最后一次重量 deliveryState Finished ${cabinetVM.currentStep.value}")
+                            val curStep = cabinetVM.currentStep.value
+                            //不等于这三种状态才可以触发
+                            if (curStep != LockerStep.CLICK_CLOSE && curStep != LockerStep.CLOSING && curStep != LockerStep.CLOSE){
+                                cabinetVM.setFlowCurrentStep(LockerStep.CLICK_CLOSE)
+                            }
                         }
 
                         is DeliveryTimer.CountdownState.Error -> {

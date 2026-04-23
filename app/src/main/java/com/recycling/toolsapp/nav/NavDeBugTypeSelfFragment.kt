@@ -29,6 +29,7 @@ import com.recycling.toolsapp.utils.MediaPlayerHelper
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.utils.TestByteData
 import com.recycling.toolsapp.vm.CabinetVM
+import com.recycling.toolsapp.vm.CabinetVM.MonitorCalibration
 import com.serial.port.EnumCabState
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.ByteUtils
@@ -639,7 +640,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             if (weightKg == -1) {
                 cabinetVM.tipMessage("请先点击称重校准")
 //                setRbEnabled(false)
-                setRbEnabled2(false, false)
+                setRbEnabled2(true, false)
                 return@setOnCheckedChangeListener
             }
             //校准kg禁止点击称重校准
@@ -707,49 +708,60 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             }
         }
 
-        //称重前校准操作
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.getCaliBefore2.collect { result ->
-                    if (result == -1) return@collect
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.refCalibrationStaStateFlow.collect {
+                    Loge.e("业务流：刷新校准 -> $it")
+                    if (it == null) return@collect
+                    //提示图关闭
                     binding.clWeight.isVisible = false
-                    //校准完成复原点击按钮
-                    binding.actvWeighing.isEnabled = true
-                    if (result == 1) {
-                        cabinetVM.tipMessage("校准前处理已完成，放入砝码，请选择校准类型")
+                    val status = it.curStatus
+                    when (it.refreshType) {
+                        1 -> {
+                            when (status) {
+                                11, 10 -> {
+                                    if (status == 11) {
+                                        cabinetVM.tipMessage("校准前处理已完成，放入砝码，请选择校准类型")
 //                    setRbEnabled(true)
-                        setRbEnabled2(false, false)
-                        weightKg = 0
-                    } else {
-                        cabinetVM.tipMessage("校准前处理未完成，请重新点击称重校准")
+                                        setRbEnabled2(false, false)
+                                        weightKg = 0
+                                    }
+
+                                    if (status == 10) {
+                                        cabinetVM.tipMessage("校准前处理未完成，请重新点击称重校准")
 //                    setRbEnabled(false)
-                        setRbEnabled2(false, false)
-                        weightKg = -1
+                                        setRbEnabled2(false, false)
+                                        weightKg = -1
+                                    }
+
+                                }
+                            }
+                        }
+
+                        2 -> {
+                            when (status) {
+                                1, 0 -> {
+                                    if (status == 1) {
+                                        cabinetVM.tipMessage("校准完成")
+                                        setRbEnabled2(false, false)
+                                    }
+
+                                    if (status == 0) {
+                                        cabinetVM.tipMessage("校准失败")
+                                        setRbEnabled2(true, false)
+                                    }
+                                    //校准完成复原点击按钮
+                                    binding.actvWeighing.isEnabled = true
+                                    weightKg = -1
+                                }
+                            }
+                        }
                     }
                 }
-
             }
         }
-
-        //称重效验结果
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.getCaliResult.collect { result ->
-                    if (result == -1) return@collect
-                    if (result == 1) {
-                        cabinetVM.tipMessage("校准完成")
-                        setRbEnabled2(false, true)
-                    } else {
-                        cabinetVM.tipMessage("校准失败")
-                        setRbEnabled2(false, false)
-                    }
-                    //校准完成复原点击按钮
-                    binding.actvWeighing.isEnabled = true
-                    binding.clWeight.isVisible = false
-                    weightKg = -1
-                }
-            }
-        }
+        //防止二次进去提示校准成功
+        cabinetVM.setRefCalibrationStaStateFlow(null)
     }
 
     /********************************************测试粘包问题***************************************************/

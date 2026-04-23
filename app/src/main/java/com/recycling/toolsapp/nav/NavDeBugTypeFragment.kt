@@ -90,7 +90,7 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
      * 为 AppCompatEditText 设置数字范围限制
      */
     fun AppCompatEditText.setupNumberRange(
-        minValue: Int = EntityType.ROD_HINDER_MIN, maxValue: Int = EntityType.ROD_HINDER_MAX, onValueChange: ((Int) -> Unit)? = null
+        minValue: Int = EntityType.ROD_HINDER_MIN, maxValue: Int = EntityType.ROD_HINDER_MAX, onValueChange: ((Int) -> Unit)? = null,
     ) {
 
         // 设置只能输入数字
@@ -124,7 +124,7 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
     }
 
     private fun handleNumberRange(
-        editText: AppCompatEditText, minValue: Int, maxValue: Int, onValueChange: ((Int) -> Unit)?
+        editText: AppCompatEditText, minValue: Int, maxValue: Int, onValueChange: ((Int) -> Unit)?,
     ) {
         val text = editText.text?.toString()?.trim()
 
@@ -305,6 +305,7 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
     override fun initialize(savedInstanceState: Bundle?) {
         val rodHinderValue1 = SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue1, mRodHinderValue1] as Int
         val rodHinderValue2 = SPreUtil[AppUtils.getContext(), SPreUtil.rodHinderValue2, mRodHinderValue2] as Int
+        cabinetVM.cancelContainersStatusJob()
         binding.acivLogo.setOnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -528,7 +529,7 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
                 else -> null
             }
             if (weightKg == -1) {
-                cabinetVM.tipMessage("请先点击称重校准")
+                cabinetVM.tipMessage("请先点击校准前")
 //                setRbEnabled(false)
                 setRbEnabled2(false, false)
                 return@setOnCheckedChangeListener
@@ -598,48 +599,60 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
             }
         }
 
-        //称重前校准操作
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.getCaliBefore2.collect { result ->
-                    if (result == -1) return@collect
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                cabinetVM.refCalibrationStaStateFlow.collect {
+                    Loge.e("业务流：刷新校准 -> $it")
+                    if (it == null) return@collect
+                    //提示图关闭
                     binding.clWeight.isVisible = false
-                    //校准完成复原点击按钮
-                    binding.actvWeighing.isEnabled = true
-                    if (result == 1) {
-                        cabinetVM.tipMessage("校准前处理已完成，放入砝码，请选择校准类型")
+                    val status = it.curStatus
+                    when (it.refreshType) {
+                        1 -> {
+                            when (status) {
+                                11, 10 -> {
+                                    if (status == 11) {
+                                        cabinetVM.tipMessage("校准前处理已完成，放入砝码，请选择校准类型")
 //                    setRbEnabled(true)
-                        setRbEnabled2(false, false)
-                        weightKg = 0
-                    } else {
-                        cabinetVM.tipMessage("校准前处理未完成，请重新点击称重校准")
-//                    setRbEnabled(false)
-                        setRbEnabled2(false, false)
-                        weightKg = -1
-                    }
-                }
-            }
-        }
+                                        setRbEnabled2(false, false)
+                                        weightKg = 0
+                                    }
 
-        //称重效验结果
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                cabinetVM.getCaliResult.collect { result ->
-                    if (result == -1) return@collect
-                    if (result == 1) {
-                        cabinetVM.tipMessage("校准完成")
-                        setRbEnabled2(false, true)
-                    } else {
-                        cabinetVM.tipMessage("校准失败")
-                        setRbEnabled2(false, false)
+                                    if (status == 10) {
+                                        cabinetVM.tipMessage("校准前处理未完成，请重新点击称重校准")
+//                    setRbEnabled(false)
+                                        setRbEnabled2(false, false)
+                                        weightKg = -1
+                                    }
+
+                                }
+                            }
+                        }
+
+                        2 -> {
+                            when (status) {
+                                1, 0 -> {
+                                    if (status == 1) {
+                                        cabinetVM.tipMessage("校准完成")
+                                        setRbEnabled2(false, false)
+                                    }
+
+                                    if (status == 0) {
+                                        cabinetVM.tipMessage("校准失败")
+                                        setRbEnabled2(true, false)
+                                    }
+                                    //校准完成复原点击按钮
+                                    binding.actvWeighing.isEnabled = true
+                                    weightKg = -1
+                                }
+                            }
+                        }
                     }
-                    //校准完成复原点击按钮
-                    binding.actvWeighing.isEnabled = true
-                    binding.clWeight.isVisible = false
-                    weightKg = -1
                 }
             }
         }
+        //防止二次进去提示校准成功
+        cabinetVM.setRefCalibrationStaStateFlow(null)
     }
 
     fun setRbEnabled2(isAll: Boolean, isEnabled: Boolean) {
@@ -649,10 +662,6 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
             binding.mrbKg3.isChecked = false
             binding.mrbKg4.isChecked = false
 
-            binding.mrbKg1.isEnabled = false
-            binding.mrbKg2.isEnabled = false
-            binding.mrbKg3.isEnabled = false
-            binding.mrbKg4.isEnabled = false
         } else {
             binding.mrbKg1.isEnabled = true
             binding.mrbKg2.isEnabled = true
@@ -717,5 +726,6 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
 
     override fun onDestroy() {
         super.onDestroy()
+        cabinetVM.startContainersStatus()
     }
 }

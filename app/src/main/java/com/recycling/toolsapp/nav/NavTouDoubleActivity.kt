@@ -34,7 +34,6 @@ import com.recycling.toolsapp.FaceApplication
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.NavTouDoubleActivityBinding
 import com.recycling.toolsapp.fitsystembar.showSystemBar
-import com.recycling.toolsapp.http.TaskRestartScheduler
 import com.recycling.toolsapp.model.LogEntity
 import com.recycling.toolsapp.socket.AdminOverflowBean
 import com.recycling.toolsapp.socket.ConfigBean
@@ -415,6 +414,8 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         var d = 0
                         var e = 0
                         var f = 0
+                        var dd1 = 5
+                        var dd2 = 5
                         var setWeightBeforeOpen = "0.00"
                         if (doorGex == CmdCode.GE1) {
                             a = CmdCode.GE1
@@ -422,6 +423,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             c = CmdCode.GE10
                             d = CmdCode.GE12
                             setWeightBeforeOpen = cabinetVM.curG1Weight ?: "0.00"
+                            dd1 = cabinetVM.closeCount1
 
                             e = CmdCode.CLEAR_OPEN_1_1
                             f = CmdCode.CLEAR_QUERY_1_0
@@ -432,6 +434,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             c = CmdCode.GE20
                             d = CmdCode.GE22
                             setWeightBeforeOpen = cabinetVM.curG2Weight ?: "0.00"
+                            dd2 = cabinetVM.closeCount2
 
                             e = CmdCode.CLEAR_OPEN_2_1
                             f = CmdCode.CLEAR_QUERY_2_0
@@ -439,11 +442,11 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         val openType = doorOpenModel.openType
                         when (openType) {
                             1 -> {
-                                cabinetVM.startLockerDoorWorkflow(doorOpenModel, setWeightBeforeOpen, a, b, c, d)
+                                cabinetVM.startLockerDoorWorkflow(doorOpenModel, setWeightBeforeOpen, a, b, c, d, dd1)
                             }
 
                             2 -> {
-                                cabinetVM.startLockerClearWorkflow(doorOpenModel, setWeightBeforeOpen, a, e, f)
+                                cabinetVM.startLockerClearWorkflow(doorOpenModel, setWeightBeforeOpen, a, e, f, dd2)
                             }
                         }
                     }
@@ -607,7 +610,6 @@ class NavTouDoubleActivity : AppCompatActivity() {
     }
 
 
-
     override fun onDestroy() {
         super.onDestroy()
         Loge.e("流程 home onDestroy")
@@ -727,7 +729,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             })
                         }
 
-                        CabinetVM.UpgradeStep.UPGRADE_FUALT, CabinetVM.UpgradeStep.UPGRADE_ERROR, CabinetVM.UpgradeStep.RESTART_APP_FUALT, CabinetVM.UpgradeStep.QUERY_VERSION_FUALT, CabinetVM.UpgradeStep.ENTER_STATUS_FUALT, CabinetVM.UpgradeStep.QUERY_STATUS_FUALT, CabinetVM.UpgradeStep.SEND_FILE_FUALT, CabinetVM.UpgradeStep.SEND_FILE_END_FUALT-> {
+                        CabinetVM.UpgradeStep.UPGRADE_FUALT, CabinetVM.UpgradeStep.UPGRADE_ERROR, CabinetVM.UpgradeStep.RESTART_APP_FUALT, CabinetVM.UpgradeStep.QUERY_VERSION_FUALT, CabinetVM.UpgradeStep.ENTER_STATUS_FUALT, CabinetVM.UpgradeStep.QUERY_STATUS_FUALT, CabinetVM.UpgradeStep.SEND_FILE_FUALT, CabinetVM.UpgradeStep.SEND_FILE_END_FUALT -> {
                             binding.clPrompt.isVisible = false
                             Loge.d("流程 芯片升级 接收指令${it} 没来回调")
                             cabinetVM.tipMessage("固件升级失败")

@@ -141,7 +141,7 @@ object SerialPortEngine {
     /**
       * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
      */
-    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 10, timeout: Long = 30000): Result<ByteArray> {
+    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 10, timeout: Long = 60000): Result<ByteArray> {
         var lastErr: Exception? = null
         repeat(maxRetries) { attempt ->
             val res = sendOnce(data, timeout)
