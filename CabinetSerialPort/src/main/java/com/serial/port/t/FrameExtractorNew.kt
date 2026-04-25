@@ -17,208 +17,148 @@ import java.io.ByteArrayOutputStream
  */
 
 
+/**
+ * 帧提取器优化版
+ * 解决了：分段截断、伪帧头堆积、校验失败回写等问题
+ */
 class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
-    /***
-     * 缓冲区管理
-     */
-    private val bufferNew232 = ByteArrayOutputStream(1024)
+
+    private val buffer = ByteArrayOutputStream(1024)
     private var lastProcessTime = 0L
-//    private val PROCESS_TIMEOUT = 5000L // 5秒超时
-    private val PROCESS_TIMEOUT = 1000L // 1秒超时
+    private val PROCESS_TIMEOUT = 2000L // 稍微延长至2秒，给分段包留足时间
 
-    /*** 指令位 2x*/
-    val CMD_POS = 2
+    // 协议常量定义
+    private val MIN_FRAME_SIZE = 6 // 帧头1+地址1+命令1+长度1+校验1+帧尾1
+    private val MAX_FRAME_SIZE = 128 // 防护位：防止异常长度导致死等
+    private val POS_DATA_LEN = 3 // 长度位下标
 
-    /***x* 取出校验码位 2*/
-    val CHECK_POS_DATA = 2
+    @Synchronized
+    fun push(input: ByteArray) {
+        if (input.isEmpty()) return
 
-    /*** 取出数据域位 3  */
-    val DATA_POS_LENGTH = 3
+        try {
+            val currentTime = System.currentTimeMillis()
 
-    /***  前四位 4*/
-    val BEFORE_FOUR_POS = 4
+            // 1. 超时重置逻辑
+            if (currentTime - lastProcessTime > PROCESS_TIMEOUT && buffer.size() > 0) {
+                BoxToolLogUtils.savePush2("业务流：解析超时，重置缓冲区")
+                buffer.reset()
+            }
+            lastProcessTime = currentTime
 
-    /*** 完整包 6x*/
-    val COMPLETE_PACKAGE = 6
+            // 2. 写入新数据
+            buffer.write(input)
 
-    /***
-     * @param buffer 完整数据域
-     * @param startIndex
-     * 查找帧头
-     */
-    private fun findFrameHeader(buffer: ByteArray, startIndex: Int): Int {
-        for (i in startIndex until buffer.size) {
-            if (buffer[i] == SendByteData.RE_FRAME_HEADER) return i
+            // 3. 循环解析缓冲区
+            processBuffer()
+
+        } catch (e: Exception) {
+            BoxToolLogUtils.savePush2("业务流：解析异常: ${e.message}")
+            buffer.reset()
+        }
+    }
+
+    private fun processBuffer() {
+        var currentData = buffer.toByteArray()
+        var currentIndex = 0
+        var lastValidEnd = 0 // 记录最后一次处理完的位置
+
+        while (currentIndex < currentData.size) {
+            // A. 查找帧头 0x9B
+            val headerIndex = findFrameHeader(currentData, currentIndex)
+            if (headerIndex == -1) {
+                // 全缓冲区没有帧头，全部标记为已处理
+                lastValidEnd = currentData.size
+                break
+            }
+
+            // 只要找到了帧头，帧头之前的所有数据都判定为垃圾，推进已处理指针
+            lastValidEnd = headerIndex
+
+            // B. 检查长度位是否已接收
+            if (headerIndex + POS_DATA_LEN >= currentData.size) {
+                // 数据不够读长度位，跳出，等待下一次 push 拼接
+                BoxToolLogUtils.savePush2("业务流：数据不够读长度位，跳出，等待下一次 push 拼接")
+                break
+            }
+
+            // C. 获取协议声明的长度
+            val dataContentLen = currentData[headerIndex + POS_DATA_LEN].toInt() and 0xFF
+            val totalFrameLen = MIN_FRAME_SIZE + dataContentLen
+
+            // D. 安全防护：检查长度是否合法
+            if (totalFrameLen > MAX_FRAME_SIZE) {
+                BoxToolLogUtils.savePush2("业务流：检测到非法长度 $totalFrameLen，跳过此帧头")
+                currentIndex = headerIndex + 1
+                lastValidEnd = currentIndex
+                continue
+            }
+
+            // E. 检查缓冲区是否已包含完整包
+            if (headerIndex + totalFrameLen > currentData.size) {
+                // 包不完整，等待后续数据
+                BoxToolLogUtils.savePush2("业务流：包不完整，等待后续数 $totalFrameLen，跳过此帧头")
+                break
+            }
+
+            // F. 检查帧尾 0x9A
+            val frameEndIndex = headerIndex + totalFrameLen - 1
+            if (currentData[frameEndIndex] != SendByteData.RE_FRAME_END) {
+                BoxToolLogUtils.savePush2("业务流：帧尾校验失败，跳过此帧头")
+                currentIndex = headerIndex + 1
+                lastValidEnd = currentIndex
+                continue
+            }
+
+            // G. 提取完整包并校验和
+            val packet = currentData.copyOfRange(headerIndex, headerIndex + totalFrameLen)
+            if (validateCheckSum(packet)) {
+                // --- 校验通过，执行回调 ---
+                BoxToolLogUtils.savePush2("业务流：完整接收包: ${ByteUtils.toHexString(packet)}")
+                onFrameFound(packet)
+
+                // 推进指针到包末尾
+                currentIndex = headerIndex + totalFrameLen
+                lastValidEnd = currentIndex
+            } else {
+                BoxToolLogUtils.savePush2("业务流：校验和错误，丢弃此包")
+                currentIndex = headerIndex + 1
+                lastValidEnd = currentIndex
+            }
+        }
+
+        // 4. 清理已处理的数据，保留残留数据
+        buffer.reset()
+        if (lastValidEnd < currentData.size) {
+            val remaining = currentData.copyOfRange(lastValidEnd, currentData.size)
+            buffer.write(remaining)
+        }
+    }
+
+    private fun findFrameHeader(data: ByteArray, start: Int): Int {
+        for (i in start until data.size) {
+            if (data[i] == SendByteData.RE_FRAME_HEADER) return i
         }
         return -1
     }
 
-    /***
-     * @param packet 完整数据域
-     * 验证校验码 即是末尾前一位
-     */
-    private fun validateCheckCode(packet: ByteArray): Boolean {
-        if (packet.size < COMPLETE_PACKAGE) {
-//            Loge.i("串口", "接232 测试新的方式 数据包长度不足: ${packet.size}")
-            return false
-        }
+    private fun validateCheckSum(packet: ByteArray): Boolean {
+        if (packet.size < MIN_FRAME_SIZE) return false
 
-        // 获取数据长度
-        val dataLength = packet[DATA_POS_LENGTH].toInt() and 0xFF
+        val dataLen = packet[POS_DATA_LEN].toInt() and 0xFF
+        val checkSumIndex = 4 + dataLen // 校验码位置 = 帧头(1)+地址(1)+命令(1)+长度(1)+数据(N)
 
-        // 验证包长度是否匹配
-        val expectedTotalLength = COMPLETE_PACKAGE + dataLength
-        if (packet.size != expectedTotalLength) {
-//            Loge.i("串口", "接232 测试新的方式 数据包长度不匹配: 期望=$expectedTotalLength, 实际=${packet.size}")
-            return false
-        }
-
-        // 计算校验和的范围：从帧头开始到数据区域结束
-        // 数据区域结束位置 = 帧头(1) + 地址(1) + 命令(1) + 长度(1) + 数据(dataLength) = 4 + dataLength
-        val dataEndIndex = BEFORE_FOUR_POS + dataLength  // 数据区域结束位置（不包括校验码）
-
-        // 计算从帧头到数据区域结束的所有字节的无符号和
         var sum = 0
-        for (i in 0 until dataEndIndex) {
+        for (i in 0 until checkSumIndex) {
             sum += packet[i].toInt() and 0xFF
         }
 
-        // 计算校验码：和除以256的余数
-        val calculatedCheckCode = sum % 256
-
-        // 获取包中的实际校验码（位置在数据区域之后）
-        val actualCheckCode = packet[dataEndIndex].toInt() and 0xFF
-
-        // 记录校验信息（调试用）
-//        Loge.d(
-//            """接232 测试新的方式
-//        校验码验证:
-//        - 数据长度: $dataLength
-//        - 计算范围: 0~${dataEndIndex - 1} (${dataEndIndex}字节)
-//        - 字节和: $sum
-//        - 计算校验码: $calculatedCheckCode (0x${calculatedCheckCode.toString(16).uppercase()})
-//        - 实际校验码: $actualCheckCode (0x${actualCheckCode.toString(16).uppercase()})
-//        - 验证结果: ${calculatedCheckCode == actualCheckCode}
-//    """.trimIndent()
-//        )
-//        BoxToolLogUtils.savePush("验证结果: ${calcul/atedCheckCode == actualCheckCode}")
-        return calculatedCheckCode == actualCheckCode
-    }
-
-    /**
-     * 记录缓冲区状态
-     */
-    private fun logBufferStatus(totalSize: Int, processedBytes: Int) {
-        val remaining = totalSize - processedBytes
-//        Loge.d("缓冲区处理: 总共${totalSize}字节, 已处理${processedBytes}字节, 剩余${remaining}字节")
-    }
-
-    @Synchronized
-    fun push(input: ByteArray) {
-//        Loge.i("串口232", "接232 测试新的方式 大小：${input.size} 原始：${ByteUtils.toHexString(input)}")
-        try {
-            BoxToolLogUtils.savePush("业务流：input:${ByteUtils.toHexString(input)}")
-
-            val currentTime = System.currentTimeMillis()
-
-            // 如果距离上次处理时间过长，清空缓冲区（避免处理残留的无效数据）
-            if (currentTime - lastProcessTime > PROCESS_TIMEOUT && bufferNew232.size() > 0) {
-//                Loge.i("串口232", "接232 测试新的方式 处理超时，清空缓冲区残留数据: ${bufferNew232.size()}字节")
-                bufferNew232.reset()
-            }
-
-            lastProcessTime = currentTime
-            // 1. 追加新数据到缓冲区
-            bufferNew232.write(input)
-            val currentBuffer = bufferNew232.toByteArray()
-
-            // 2. 处理缓冲区中的数据
-            var processedBytes = 0
-            var currentIndex = 0
-
-            while (currentIndex < currentBuffer.size) {
-                // 3. 查找帧头 (0x9B)
-                val headerIndex = findFrameHeader(currentBuffer, currentIndex)
-                if (headerIndex == -1) {
-                    // 没有找到帧头，所有数据都无法处理
-                    processedBytes = currentBuffer.size
-                    BoxToolLogUtils.savePush2("业务流：没有找到帧头，所有数据都无法处理: ${ByteUtils.toHexString(currentBuffer)}}")
-                    break
-                }
-
-                // 4. 检查是否有足够的数据获取长度字段 (header + 3)
-                if (headerIndex + DATA_POS_LENGTH >= currentBuffer.size) {
-                    BoxToolLogUtils.savePush2("业务流：检查是否有足够的数据获取长度字段: ${ByteUtils.toHexString(currentBuffer)}}")
-                    // 数据不足，保留从帧头开始的所有数据
-                    processedBytes = headerIndex
-                    break
-                }
-
-                // 5. 获取数据长度 (第4个字节)
-                val dataLength = currentBuffer[headerIndex + DATA_POS_LENGTH].toInt() and 0xFF
-
-                // 6. 计算完整包长度 (修正：6 + dataLength)
-                val totalLength = COMPLETE_PACKAGE + dataLength  // 帧头1 + 地址1 + 命令1 + 长度1 + 数据N + 校验码1 + 帧尾1
-
-                // 7. 检查完整数据包
-                if (headerIndex + totalLength > currentBuffer.size) {
-                    BoxToolLogUtils.savePush2("业务流：数据包不完整，保留从帧头开始的数据: ${ByteUtils.toHexString(currentBuffer)}}")
-                    // 数据包不完整，保留从帧头开始的数据
-                    processedBytes = headerIndex
-                    break
-                }
-
-                // 8. 检查帧尾 (0x9A)
-                val frameEndIndex = headerIndex + totalLength - 1  // 帧尾在最后一个位置
-                if (currentBuffer[frameEndIndex] != SendByteData.RE_FRAME_END) {
-                    BoxToolLogUtils.savePush2("业务流：帧尾异常！预期0x9A, 实际: ${String.format("%02X", currentBuffer[frameEndIndex])}")
-                    // 帧尾错误，跳过这个帧头继续查找
-                    currentIndex = headerIndex + 1
-                    continue
-                }
-
-                // 9. 提取完整数据包
-                val packet = currentBuffer.copyOfRange(headerIndex, headerIndex + totalLength)
-
-                // 10. 校验和验证
-                if (!validateCheckCode(packet)) {
-                    // 校验失败，跳过这个包继续查找下一个
-                    BoxToolLogUtils.savePush2("业务流：校验和失败！包内容: ${ByteUtils.toHexString(packet)}")
-                    currentIndex = headerIndex + 1
-                    continue
-                }
-
-                // 11. 处理有效数据包
-                onFrameFound(packet)//新方式2
-                BoxToolLogUtils.savePush("业务流：完整：${ByteUtils.toHexString(packet)}")
-                // 12. 移动处理位置到下一个包
-                currentIndex = headerIndex + totalLength
-                processedBytes = currentIndex
-            }
-
-            // 13. 保存未处理数据到缓冲区
-            bufferNew232.reset()
-            if (processedBytes < currentBuffer.size) {
-                val remainingData = currentBuffer.copyOfRange(processedBytes, currentBuffer.size)
-                bufferNew232.write(remainingData)
-
-                // 调试信息：显示保留的未处理数据长度
-                if (remainingData.isNotEmpty()) {
-//                    Loge.d("保留未处理数据: ${remainingData.size} 字节")
-                }
-            }
-
-            // 调试信息：显示缓冲区状态
-            logBufferStatus(currentBuffer.size, processedBytes)
-
-        } catch (e: Exception) {
-//            Loge.e("处理接收数据时发生异常: ${e.message}")
-            // 发生异常时清空缓冲区，避免错误累积
-            bufferNew232.reset()
-        }
+        val calculated = sum % 256
+        val actual = packet[checkSumIndex].toInt() and 0xFF
+        return calculated == actual
     }
 
     fun clear() {
-        bufferNew232.reset()
+        buffer.reset()
     }
 }

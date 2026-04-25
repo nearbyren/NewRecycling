@@ -1005,7 +1005,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         curG1Weight = states.weigh.toString()
                                         if (!oneInit) {
                                             Loge.e("流程 toGoCmdOtaBin 进来了 1")
-//                                            restartAppCloseDoor(CmdCode.GE1)
+                                            restartAppCloseDoor(CmdCode.GE1)
                                         }
                                     }
 
@@ -1015,7 +1015,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         curG2Weight = states.weigh.toString()
                                         if (!oneInit) {
                                             Loge.e("流程 toGoCmdOtaBin 进来了 2")
-//                                            restartAppCloseDoor(CmdCode.GE2)
+                                            restartAppCloseDoor(CmdCode.GE2)
                                         }
                                     }
                                 }
