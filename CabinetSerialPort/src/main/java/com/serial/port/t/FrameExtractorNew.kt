@@ -23,8 +23,8 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
      */
     private val bufferNew232 = ByteArrayOutputStream(1024)
     private var lastProcessTime = 0L
-    private val PROCESS_TIMEOUT = 5000L // 5秒超时
-//    private val PROCESS_TIMEOUT = 1000L // 1秒超时
+//    private val PROCESS_TIMEOUT = 5000L // 5秒超时
+    private val PROCESS_TIMEOUT = 1000L // 1秒超时
 
     /*** 指令位 2x*/
     val CMD_POS = 2
@@ -142,12 +142,13 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
                 if (headerIndex == -1) {
                     // 没有找到帧头，所有数据都无法处理
                     processedBytes = currentBuffer.size
+                    BoxToolLogUtils.savePush2("业务流：没有找到帧头，所有数据都无法处理: ${ByteUtils.toHexString(currentBuffer)}}")
                     break
                 }
 
                 // 4. 检查是否有足够的数据获取长度字段 (header + 3)
                 if (headerIndex + DATA_POS_LENGTH >= currentBuffer.size) {
-                    BoxToolLogUtils.savePush("业务流：数据包不完整，DATA_POS_LENGTH: ${String.format("%02X", currentBuffer[headerIndex])}")
+                    BoxToolLogUtils.savePush2("业务流：检查是否有足够的数据获取长度字段: ${ByteUtils.toHexString(currentBuffer)}}")
                     // 数据不足，保留从帧头开始的所有数据
                     processedBytes = headerIndex
                     break
@@ -161,7 +162,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
 
                 // 7. 检查完整数据包
                 if (headerIndex + totalLength > currentBuffer.size) {
-                    BoxToolLogUtils.savePush("业务流：数据包不完整，totalLength: ${String.format("%02X", currentBuffer[headerIndex])}")
+                    BoxToolLogUtils.savePush2("业务流：数据包不完整，保留从帧头开始的数据: ${ByteUtils.toHexString(currentBuffer)}}")
                     // 数据包不完整，保留从帧头开始的数据
                     processedBytes = headerIndex
                     break
@@ -170,7 +171,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
                 // 8. 检查帧尾 (0x9A)
                 val frameEndIndex = headerIndex + totalLength - 1  // 帧尾在最后一个位置
                 if (currentBuffer[frameEndIndex] != SendByteData.RE_FRAME_END) {
-                    BoxToolLogUtils.savePush("业务流：帧尾异常！预期0x9A, 实际: ${String.format("%02X", currentBuffer[frameEndIndex])}")
+                    BoxToolLogUtils.savePush2("业务流：帧尾异常！预期0x9A, 实际: ${String.format("%02X", currentBuffer[frameEndIndex])}")
                     // 帧尾错误，跳过这个帧头继续查找
                     currentIndex = headerIndex + 1
                     continue
@@ -182,7 +183,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
                 // 10. 校验和验证
                 if (!validateCheckCode(packet)) {
                     // 校验失败，跳过这个包继续查找下一个
-                    BoxToolLogUtils.savePush("业务流：校验和失败！包内容: ${ByteUtils.toHexString(packet)}")
+                    BoxToolLogUtils.savePush2("业务流：校验和失败！包内容: ${ByteUtils.toHexString(packet)}")
                     currentIndex = headerIndex + 1
                     continue
                 }

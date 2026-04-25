@@ -113,7 +113,18 @@ object SerialPortEngine {
         if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
         val msgId = data[2].toInt() and 0xFF // 统一 ID 取法
         return sendMutex.withLock {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val available = fis?.available() ?: 0
+                    if (available > 0) {
+                        val skipBuffer = ByteArray(available)
+                        fis?.read(skipBuffer) // 彻底排空旧缓冲区
+                    }
+                }
+            }
             val waiter = CompletableDeferred<ByteArray>()
+            // 存入前清理同 ID 的旧请求（虽然有锁，但在超时重试场景下这是双保险）
+            pendingRequests.remove(msgId)?.cancel()
 //            responseWaiter = waiter
             // 保存到待处理队列
             pendingRequests[msgId] = waiter
@@ -122,8 +133,9 @@ object SerialPortEngine {
                     Loge.i("SerialPort", "发送: ${ByteUtils.toHexString(data)}")
 //                    BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
                     fos?.write(data)
+                    fos?.flush()
 //                    delay(10)
-//                    fos?.flush()
+
                 }
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)

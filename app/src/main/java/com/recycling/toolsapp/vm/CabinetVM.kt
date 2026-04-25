@@ -3554,7 +3554,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
                     }
 //
-                    delay(5000)
+                    delay(3000)
                 }
                 // --- 第三阶段：监测重量变化 ---
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
@@ -3597,7 +3597,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
                     // --- 第五阶段：轮询等待门关闭 ---
                     if (currentStep.value == LockerStep.CLOSING) {
-                        withTimeout(30000) { // 30秒超时
+                        withTimeout(60000) { // 60秒超时
                             val doorStatusValue = SerialPortSdk.turnDoorStatus(doorGex)
                             if (doorStatusValue.isFailure) {
                                 BoxToolLogUtils.savePrintln("业务流：门关动作获取投门状态失败: ${doorStatusValue.exceptionOrNull()?.message}")
@@ -3811,9 +3811,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             val doorStatus = doorClearStatus?.status ?: 0
                             BoxToolLogUtils.savePrintln("业务流：门开后等待门物理状态变为 0 0 【${clearType}】|【${doorStatus}】")
                             if (clearType == CmdCode.GE_CLOSE && doorStatus == CmdCode.GE_CLOSE) {
+                                enqueuePhotoAction(0)//清运关闭后的拍照=
                                 _currentStep.value = LockerStep.CLOSE
                                 startLockerClearDoorSwitch(CmdCode.GE_CLOSE, doorGeX, closeCount)
-                                enqueuePhotoAction(0)//清运关闭后的拍照=
                                 DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
                                 return@withTimeout
                             }
