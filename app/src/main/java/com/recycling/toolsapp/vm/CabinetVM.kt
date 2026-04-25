@@ -1401,247 +1401,258 @@ class CabinetVM @Inject constructor() : ViewModel() {
             return
         }
         pollingFaultJob = ioScope.launch {
-            while (isActive) {
-                //故障
-                var doorT1Abnormal = false
-                //故障
-                var doorT2Abnormal = false
-                //满溢
-                var doorT1Overflow = false
-                //满溢
-                var doorT2Overflow = false
-                maptDoorFault.forEach { (key, value) ->
-                    Loge.e("模拟故障满溢状态 $key ${EnumFaultState.getDescByCode(key)} - $value")
-                    val postValue = when (key) {
-                        FaultType.FAULT_CODE_111 -> {
-                            if (value) "投送门一开门异常" else null
-                        }
+            try {
+                while (isActive) {
+                    if (isRunning) {
+                        BoxToolLogUtils.savePrintln("业务流：查询 有正在业务执行中")
+                    }
+                    if (!isRunning) {
+                        //故障
+                        var doorT1Abnormal = false
+                        //故障
+                        var doorT2Abnormal = false
+                        //满溢
+                        var doorT1Overflow = false
+                        //满溢
+                        var doorT2Overflow = false
+                        maptDoorFault.forEach { (key, value) ->
+                            Loge.e("模拟故障满溢状态 $key ${EnumFaultState.getDescByCode(key)} - $value")
+                            val postValue = when (key) {
+                                FaultType.FAULT_CODE_111 -> {
+                                    if (value) "投送门一开门异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_121 -> {
-                            if (value) "投送门二开门异常" else null
-                        }
+                                FaultType.FAULT_CODE_121 -> {
+                                    if (value) "投送门二开门异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_110 -> {
-                            if (value) "投递门一关门异常" else null
-                        }
+                                FaultType.FAULT_CODE_110 -> {
+                                    if (value) "投递门一关门异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_120 -> {
-                            if (value) "投递门二关门异常" else null
-                        }
+                                FaultType.FAULT_CODE_120 -> {
+                                    if (value) "投递门二关门异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_311 -> {
-                            if (value) "清运门一开门异常" else null
-                        }
+                                FaultType.FAULT_CODE_311 -> {
+                                    if (value) "清运门一开门异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_321 -> {
-                            if (value) "清运门二开门异常" else null
-                        }
+                                FaultType.FAULT_CODE_321 -> {
+                                    if (value) "清运门二开门异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_5 -> {
-                            if (value) "摄像头异常" else null
-                        }
+                                FaultType.FAULT_CODE_5 -> {
+                                    if (value) "摄像头异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_51 -> {
-                            if (value) "内摄像头异常" else null
-                        }
+                                FaultType.FAULT_CODE_51 -> {
+                                    if (value) "内摄像头异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_52 -> {
-                            if (value) "外摄像头异常" else null
-                        }
+                                FaultType.FAULT_CODE_52 -> {
+                                    if (value) "外摄像头异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_6 -> {
-                            if (value) "电磁锁异常" else null
-                        }
+                                FaultType.FAULT_CODE_6 -> {
+                                    if (value) "电磁锁异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_7 -> {
-                            if (value) "内灯异常" else null
-                        }
+                                FaultType.FAULT_CODE_7 -> {
+                                    if (value) "内灯异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_8 -> {
-                            if (value) "外灯异常" else null
-                        }
+                                FaultType.FAULT_CODE_8 -> {
+                                    if (value) "外灯异常" else null
+                                }
 
-                        FaultType.FAULT_CODE_91 -> {
-                            if (value) {
-                                doorT1Abnormal = true
-                                "推杆一异常"
+                                FaultType.FAULT_CODE_91 -> {
+                                    if (value) {
+                                        doorT1Abnormal = true
+                                        "推杆一异常"
+                                    } else {
+                                        doorT1Abnormal = false
+                                        null
+                                    }
+                                }
+
+                                FaultType.FAULT_CODE_92 -> {
+                                    if (value) {
+                                        doorT2Abnormal = true
+                                        "推杆二异常"
+                                    } else {
+                                        doorT2Abnormal = false
+                                        null
+                                    }
+
+                                }
+
+                                FaultType.FAULT_CODE_1111 -> {
+                                    if (value) {
+                                        doorT1Overflow = true
+                                        "格口一满溢"
+                                    } else {
+                                        doorT1Overflow = false
+                                        null
+                                    }
+                                }
+
+                                FaultType.FAULT_CODE_1112 -> {
+                                    if (value) {
+                                        doorT2Overflow = true
+                                        "格口二满溢"
+                                    } else {
+                                        doorT2Overflow = false
+                                        null
+                                    }
+                                }
+
+                                FaultType.FAULT_CODE_2110 -> {
+                                    if (value) {
+                                        doorT1Overflow = true
+                                        "格口一满溢网络下发"
+                                    } else {
+                                        doorT1Overflow = false
+                                        null
+                                    }
+                                }
+
+                                FaultType.FAULT_CODE_2120 -> {
+                                    if (value) {
+                                        doorT2Overflow = true
+                                        "格口二满溢网络下发"
+                                    } else {
+                                        doorT2Overflow = false
+                                        null
+                                    }
+                                }
+
+                                FaultType.FAULT_CODE_211 -> {
+                                    //红外满溢+可超重量
+                                    val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
+                                    val isTouOverflow = if (maptDoorFault[FaultType.FAULT_CODE_11] == true) {
+                                        //红外满溢提示加上红外可投的重量 小于当前重量则可继续投递
+                                        val curTotalWeight = CalculationUtil.addFloats(curG1TotalWeight, irOverflow.toString())
+                                        //当前小于红外总重量则不超重
+                                        val bl1 = CalculationUtil.isLess(
+                                            curG1Weight ?: "0.00", curTotalWeight
+                                        )
+                                        if (bl1) {
+                                            maptDoorFault[FaultType.FAULT_CODE_211] = false
+                                            true
+                                        } else {
+                                            maptDoorFault[FaultType.FAULT_CODE_211] = true
+                                            false
+                                        }
+                                    } else {
+                                        true
+                                    }
+                                    if (isTouOverflow) null else "格口一超重"
+                                }
+
+                                FaultType.FAULT_CODE_212 -> {
+                                    //红外满溢+可超重量
+                                    val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
+                                    val isTouOverflow = if (maptDoorFault[FaultType.FAULT_CODE_12] == true) {
+                                        //红外满溢提示加上红外可投的重量 小于当前重量则可继续投递
+                                        val curTotalWeight = CalculationUtil.addFloats(curG2TotalWeight, irOverflow.toString())
+                                        //当前小于红外总重量则不超重
+                                        val bl2 = CalculationUtil.isLess(
+                                            curG2Weight ?: "0.00", curTotalWeight
+                                        )
+                                        if (bl2) {
+                                            maptDoorFault[FaultType.FAULT_CODE_212] = false
+                                            true
+                                        } else {
+                                            maptDoorFault[FaultType.FAULT_CODE_212] = true
+                                            false
+                                        }
+                                    } else {
+                                        true
+                                    }
+                                    if (isTouOverflow) null else "格口二超重"
+                                }
+
+                                else -> {
+                                    null
+                                }
+                            }
+                            postValue?.let { pValue ->
+                                Loge.e("模拟故障满溢状态 定时器 执行 $pValue")
+                                toGoCmdUpFault(key, 0, pValue)
+                            }
+
+                        }
+                        Loge.e("模拟故障满溢状态 $doorT1Overflow - $doorT1Abnormal")
+                        //先满溢再故障
+                        if (doorT1Overflow) {
+                            if (doorT1Abnormal) {
+                                setRefBusStaChannel(MonitorWeight().apply {
+                                    doorGeX = CmdCode.GE1
+                                    refreshType = RefBusType.REFRESH_TYPE_2
+                                    warningContent = BusType.BUS_FAULT
+                                })
                             } else {
-                                doorT1Abnormal = false
-                                null
+                                setRefBusStaChannel(MonitorWeight().apply {
+                                    doorGeX = CmdCode.GE1
+                                    refreshType = RefBusType.REFRESH_TYPE_2
+                                    warningContent = BusType.BUS_OVERFLOW
+                                })
+                            }
+                        } else {
+                            if (doorT1Abnormal) {
+                                setRefBusStaChannel(MonitorWeight().apply {
+                                    doorGeX = CmdCode.GE1
+                                    refreshType = RefBusType.REFRESH_TYPE_2
+                                    warningContent = BusType.BUS_FAULT
+                                })
+                            } else {
+                                setRefBusStaChannel(MonitorWeight().apply {
+                                    doorGeX = CmdCode.GE1
+                                    refreshType = RefBusType.REFRESH_TYPE_2
+                                    warningContent = BusType.BUS_NORMAL
+                                })
                             }
                         }
-
-                        FaultType.FAULT_CODE_92 -> {
-                            if (value) {
-                                doorT2Abnormal = true
-                                "推杆二异常"
-                            } else {
-                                doorT2Abnormal = false
-                                null
-                            }
-
-                        }
-
-                        FaultType.FAULT_CODE_1111 -> {
-                            if (value) {
-                                doorT1Overflow = true
-                                "格口一满溢"
-                            } else {
-                                doorT1Overflow = false
-                                null
-                            }
-                        }
-
-                        FaultType.FAULT_CODE_1112 -> {
-                            if (value) {
-                                doorT2Overflow = true
-                                "格口二满溢"
-                            } else {
-                                doorT2Overflow = false
-                                null
-                            }
-                        }
-
-                        FaultType.FAULT_CODE_2110 -> {
-                            if (value) {
-                                doorT1Overflow = true
-                                "格口一满溢网络下发"
-                            } else {
-                                doorT1Overflow = false
-                                null
-                            }
-                        }
-
-                        FaultType.FAULT_CODE_2120 -> {
-                            if (value) {
-                                doorT2Overflow = true
-                                "格口二满溢网络下发"
-                            } else {
-                                doorT2Overflow = false
-                                null
-                            }
-                        }
-
-                        FaultType.FAULT_CODE_211 -> {
-                            //红外满溢+可超重量
-                            val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
-                            val isTouOverflow = if (maptDoorFault[FaultType.FAULT_CODE_11] == true) {
-                                //红外满溢提示加上红外可投的重量 小于当前重量则可继续投递
-                                val curTotalWeight = CalculationUtil.addFloats(curG1TotalWeight, irOverflow.toString())
-                                //当前小于红外总重量则不超重
-                                val bl1 = CalculationUtil.isLess(
-                                    curG1Weight ?: "0.00", curTotalWeight
-                                )
-                                if (bl1) {
-                                    maptDoorFault[FaultType.FAULT_CODE_211] = false
-                                    true
+                        if (doorGeXType == CmdCode.GE) {
+                            if (doorT2Overflow) {
+                                if (doorT2Abnormal) {
+                                    setRefBusStaChannel(MonitorWeight().apply {
+                                        doorGeX = CmdCode.GE2
+                                        refreshType = RefBusType.REFRESH_TYPE_2
+                                        warningContent = BusType.BUS_FAULT
+                                    })
                                 } else {
-                                    maptDoorFault[FaultType.FAULT_CODE_211] = true
-                                    false
+                                    setRefBusStaChannel(MonitorWeight().apply {
+                                        doorGeX = CmdCode.GE2
+                                        refreshType = RefBusType.REFRESH_TYPE_2
+                                        warningContent = BusType.BUS_OVERFLOW
+                                    })
                                 }
                             } else {
-                                true
-                            }
-                            if (isTouOverflow) null else "格口一超重"
-                        }
-
-                        FaultType.FAULT_CODE_212 -> {
-                            //红外满溢+可超重量
-                            val irOverflow = SPreUtil[AppUtils.getContext(), SPreUtil.irOverflow, 10] as Int
-                            val isTouOverflow = if (maptDoorFault[FaultType.FAULT_CODE_12] == true) {
-                                //红外满溢提示加上红外可投的重量 小于当前重量则可继续投递
-                                val curTotalWeight = CalculationUtil.addFloats(curG2TotalWeight, irOverflow.toString())
-                                //当前小于红外总重量则不超重
-                                val bl2 = CalculationUtil.isLess(
-                                    curG2Weight ?: "0.00", curTotalWeight
-                                )
-                                if (bl2) {
-                                    maptDoorFault[FaultType.FAULT_CODE_212] = false
-                                    true
+                                if (doorT2Abnormal) {
+                                    setRefBusStaChannel(MonitorWeight().apply {
+                                        doorGeX = CmdCode.GE2
+                                        refreshType = RefBusType.REFRESH_TYPE_2
+                                        warningContent = BusType.BUS_FAULT
+                                    })
                                 } else {
-                                    maptDoorFault[FaultType.FAULT_CODE_212] = true
-                                    false
+                                    setRefBusStaChannel(MonitorWeight().apply {
+                                        doorGeX = CmdCode.GE2
+                                        refreshType = RefBusType.REFRESH_TYPE_2
+                                        warningContent = BusType.BUS_NORMAL
+                                    })
                                 }
-                            } else {
-                                true
                             }
-                            if (isTouOverflow) null else "格口二超重"
                         }
-
-                        else -> {
-                            null
-                        }
-                    }
-                    postValue?.let { pValue ->
-                        Loge.e("模拟故障满溢状态 定时器 执行 $pValue")
-                        toGoCmdUpFault(key, 0, pValue)
-                    }
-
-                }
-                Loge.e("模拟故障满溢状态 $doorT1Overflow - $doorT1Abnormal")
-                //先满溢再故障
-                if (doorT1Overflow) {
-                    if (doorT1Abnormal) {
-                        setRefBusStaChannel(MonitorWeight().apply {
-                            doorGeX = CmdCode.GE1
-                            refreshType = RefBusType.REFRESH_TYPE_2
-                            warningContent = BusType.BUS_FAULT
-                        })
-                    } else {
-                        setRefBusStaChannel(MonitorWeight().apply {
-                            doorGeX = CmdCode.GE1
-                            refreshType = RefBusType.REFRESH_TYPE_2
-                            warningContent = BusType.BUS_OVERFLOW
-                        })
-                    }
-                } else {
-                    if (doorT1Abnormal) {
-                        setRefBusStaChannel(MonitorWeight().apply {
-                            doorGeX = CmdCode.GE1
-                            refreshType = RefBusType.REFRESH_TYPE_2
-                            warningContent = BusType.BUS_FAULT
-                        })
-                    } else {
-                        setRefBusStaChannel(MonitorWeight().apply {
-                            doorGeX = CmdCode.GE1
-                            refreshType = RefBusType.REFRESH_TYPE_2
-                            warningContent = BusType.BUS_NORMAL
-                        })
+                        delay(8000L)
                     }
                 }
-                if (doorGeXType == CmdCode.GE) {
-                    if (doorT2Overflow) {
-                        if (doorT2Abnormal) {
-                            setRefBusStaChannel(MonitorWeight().apply {
-                                doorGeX = CmdCode.GE2
-                                refreshType = RefBusType.REFRESH_TYPE_2
-                                warningContent = BusType.BUS_FAULT
-                            })
-                        } else {
-                            setRefBusStaChannel(MonitorWeight().apply {
-                                doorGeX = CmdCode.GE2
-                                refreshType = RefBusType.REFRESH_TYPE_2
-                                warningContent = BusType.BUS_OVERFLOW
-                            })
-                        }
-                    } else {
-                        if (doorT2Abnormal) {
-                            setRefBusStaChannel(MonitorWeight().apply {
-                                doorGeX = CmdCode.GE2
-                                refreshType = RefBusType.REFRESH_TYPE_2
-                                warningContent = BusType.BUS_FAULT
-                            })
-                        } else {
-                            setRefBusStaChannel(MonitorWeight().apply {
-                                doorGeX = CmdCode.GE2
-                                refreshType = RefBusType.REFRESH_TYPE_2
-                                warningContent = BusType.BUS_NORMAL
-                            })
-                        }
-                    }
-                }
-                delay(8000L)
+            }catch (e :Exception){
+                e.printStackTrace()
             }
+
+
         }
     }
 
@@ -3543,7 +3554,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
                     }
 //
-                    delay(3000)
+                    delay(5000)
                 }
                 // --- 第三阶段：监测重量变化 ---
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
@@ -3644,6 +3655,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
             } finally {
+                _isRunning.set(false)
                 _cameraLifecycleEvent.emit(CameraOp.DESTROY)
 //                endCameraUploadPhoto()
                 //保持门要关闭
@@ -3652,7 +3664,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
-                _isRunning.set(false)
                 weightRunning = false
                 _currentStep.value = LockerStep.IDLE
                 if (doorGex == CmdCode.GE1) {
@@ -3845,12 +3856,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
             } finally {
+                _isRunning.set(false)
                 _cameraLifecycleEvent.emit(CameraOp.DESTROY)
                 setCurrentUiStep(LockerUiStep.CLEAR_END)
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
-                doorGeX = CmdCode.GE
-                _isRunning.set(false)
                 doorGeX = CmdCode.GE
                 _currentStep.value = LockerStep.IDLE
                 if (doorGex == CmdCode.GE1) {

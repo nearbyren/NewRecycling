@@ -120,7 +120,7 @@ object SerialPortEngine {
             try {
                 withContext(Dispatchers.IO) {
                     Loge.i("SerialPort", "发送: ${ByteUtils.toHexString(data)}")
-                    BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
+//                    BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
                     fos?.write(data)
 //                    delay(10)
 //                    fos?.flush()
