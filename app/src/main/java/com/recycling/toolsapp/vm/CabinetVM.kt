@@ -3449,6 +3449,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
         if (!_isRunning.compareAndSet(false, true)) {
             return
         }
+        // 1. 核心状态初始化
+        cancelPollingFaultJob()
+        cancelContainersStatusJob()
         viewModelScope.launch(Dispatchers.IO) {
             var toWeightAfterClosing = "0"  // 彻底关门后重量
             try {
@@ -3463,9 +3466,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 weightRunning = true
                 startWorkflow()
                 setCurrentUiStep(LockerUiStep.MOBILE_END)
-                // 1. 核心状态初始化
-                cancelPollingFaultJob()
-                cancelContainersStatusJob()
                 //指令下发防夹手回弹次数
                 var closeCount = executeCount
                 modelOpenBean = model
@@ -3509,126 +3509,120 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 delay(2000)
                 BoxToolLogUtils.savePrintln("业务流：等待门物理状态变为【开启】")
                 // 使用 withTimeout 防止传感器故障导致协程永久挂起
-                withTimeout(30000) { // 30秒超时
-                    while (isActive) {
-                        val doorStatusValue = SerialPortSdk.turnDoorStatus(doorGex)
-                        if (doorStatusValue.isFailure) {
-                            BoxToolLogUtils.savePrintln("业务流：门开动作获取投门状态失败: ${doorStatusValue.exceptionOrNull()?.message}")
-                        } else {
-                            val doorStatus = doorStatusValue.getOrNull()?.status
-                            BoxToolLogUtils.savePrintln("业务流：门开动作等待门物理状态变为 1 【${doorStatus}】")
-                            if (doorStatus == CmdCode.GE_OPEN) {
-                                setRefBusStaChannel(MonitorWeight().apply {
-                                    refreshType = RefBusType.REFRESH_TYPE_3
-                                    time = AppUtils.getDateYMDHMS()
-                                })
-                                delay(3000)
+                while (isActive) {
+                    val doorStatusValue = SerialPortSdk.turnDoorStatus(doorGex)
+                    if (doorStatusValue.isFailure) {
+                        BoxToolLogUtils.savePrintln("业务流：门开动作获取投门状态失败: ${doorStatusValue.exceptionOrNull()?.message}")
+                    } else {
+                        val doorStatus = doorStatusValue.getOrNull()?.status
+                        BoxToolLogUtils.savePrintln("业务流：门开动作等待门物理状态变为 1 【${doorStatus}】")
+                        if (doorStatus == CmdCode.GE_OPEN) {
+                            setRefBusStaChannel(MonitorWeight().apply {
+                                refreshType = RefBusType.REFRESH_TYPE_3
+                                time = AppUtils.getDateYMDHMS()
+                            })
 //                            noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_NORMAL, false)
-                                val weightAfterOpeningCmd = SerialPortSdk.queryWeight(doorGex)
-                                if (weightAfterOpeningCmd.isFailure) {
-                                    BoxToolLogUtils.savePrintln("业务流：确认开门瞬间重量 获取重量指令失败: ${weightAfterOpeningCmd.exceptionOrNull()?.message}")
-                                } else {
-                                    weightAfterOpening = weightAfterOpeningCmd.getOrNull()?.weight.toString()
-                                }
-                                BoxToolLogUtils.savePrintln("业务流：打开后的重量：$weightAfterOpening")
-                                //更新业务门开完成
-                                DatabaseManager.upTransOpenStatus(AppUtils.getContext(), CmdCode.GE_OPEN, transId)
-                                dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, defaultWeight, defaultWeight, openModel = model, flowEnd = false)
-                                break// 门已确认开启
+                            val weightAfterOpeningCmd = SerialPortSdk.queryWeight(doorGex)
+                            if (weightAfterOpeningCmd.isFailure) {
+                                BoxToolLogUtils.savePrintln("业务流：确认开门瞬间重量 获取重量指令失败: ${weightAfterOpeningCmd.exceptionOrNull()?.message}")
+                            } else {
+                                weightAfterOpening = weightAfterOpeningCmd.getOrNull()?.weight.toString()
                             }
-                            if (doorStatus == CmdCode.GE_OPEN_CLOSE_ING) {
-                            }
-                            if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
-//                            noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT, true)
-                                BoxToolLogUtils.savePrintln("业务流：门开前格口-门开故障 打开后的重量：$weightBeforeOpen")
-                                throw Exception("业务流：门开前格口-门开故障: 3 $doorStatus")
-                            }
+                            BoxToolLogUtils.savePrintln("业务流：打开后的重量：$weightAfterOpening")
+                            //更新业务门开完成
+                            DatabaseManager.upTransOpenStatus(AppUtils.getContext(), CmdCode.GE_OPEN, transId)
+                            dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, defaultWeight, defaultWeight, openModel = model, flowEnd = false)
+                            break// 门已确认开启
                         }
-//
-                        delay(3000)
+                        if (doorStatus == CmdCode.GE_OPEN_CLOSE_ING) {
+                        }
+                        if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
+//                            noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT, true)
+                            BoxToolLogUtils.savePrintln("业务流：门开前格口-门开故障 打开后的重量：$weightBeforeOpen")
+                            throw Exception("业务流：门开前格口-门开故障: 3 $doorStatus")
+                        }
                     }
+//
+                    delay(3000)
                 }
                 // --- 第三阶段：监测重量变化 ---
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
                 BoxToolLogUtils.savePrintln("业务流：门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
-                withTimeout(120000) { // 2分钟/超时
-                    while (isActive) {
-                        Loge.e("业务流：过程中最后一次重量 ${currentStep.value}")
-                        //关闭中 和 已经关闭 不查重量
-                        if (currentStep.value != LockerStep.CLOSING && currentStep.value != LockerStep.CLOSE) {
-                            val weightDuringOpeningCmd = SerialPortSdk.queryWeight(doorGex)
-                            if (weightDuringOpeningCmd.isFailure) {
-                                BoxToolLogUtils.savePrintln("业务流：过程中最后一次重量 获取重量指令失败: ${weightDuringOpeningCmd.exceptionOrNull()?.message}")
-                            } else {
-                                weightDuringOpening = weightDuringOpeningCmd.getOrNull()?.weight.toString()
-                            }
-                            if (doorGex == CmdCode.GE1) {
-                                curG1Weight = weightDuringOpening
-                            } else {
-                                curG2Weight = weightDuringOpening
-                            }
-                            BoxToolLogUtils.savePrintln("业务流：打开后持续的重量 ：$weightDuringOpening")
+                while (isActive) {
+                    Loge.e("业务流：过程中最后一次重量 ${currentStep.value}")
+                    //关闭中 和 已经关闭 不查重量
+                    if (currentStep.value != LockerStep.CLOSING && currentStep.value != LockerStep.CLOSE) {
+                        val weightDuringOpeningCmd = SerialPortSdk.queryWeight(doorGex)
+                        if (weightDuringOpeningCmd.isFailure) {
+                            BoxToolLogUtils.savePrintln("业务流：过程中最后一次重量 获取重量指令失败: ${weightDuringOpeningCmd.exceptionOrNull()?.message}")
                         } else {
-                            BoxToolLogUtils.savePrintln("业务流：打开后持续的重量 关门中：$weightDuringOpening")
+                            weightDuringOpening = weightDuringOpeningCmd.getOrNull()?.weight.toString()
                         }
-                        dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, defaultWeight, openModel = model, flowEnd = false)
-                        if (currentStep.value == LockerStep.CLOSE) {
-                            BoxToolLogUtils.savePrintln("业务流：门已经关闭 跳出查询重量 ")
-                            enqueuePhotoAction(0)//投口关闭后的拍照
-                            break
+                        if (doorGex == CmdCode.GE1) {
+                            curG1Weight = weightDuringOpening
+                        } else {
+                            curG2Weight = weightDuringOpening
                         }
-                        // --- 第四阶段：执行关门动作 ---
-                        if (currentStep.value == LockerStep.CLICK_CLOSE) {
-                            _currentStep.value = LockerStep.CLOSING
-                            BoxToolLogUtils.savePrintln("业务流：监测到关门信号，下发关门指令【${SendTurnText.fromStatus(closeType)}】")
-                            val closeRes = SerialPortSdk.turnDoor(closeType)
-                            if (closeRes.isFailure) {
-                                BoxToolLogUtils.savePrintln("业务流：关门指令发送失败: ${turnDoor.exceptionOrNull()?.message}")
+                        BoxToolLogUtils.savePrintln("业务流：打开后持续的重量 ：$weightDuringOpening")
+                    } else {
+                        BoxToolLogUtils.savePrintln("业务流：打开后持续的重量 关门中：$weightDuringOpening")
+                    }
+                    dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, defaultWeight, openModel = model, flowEnd = false)
+                    if (currentStep.value == LockerStep.CLOSE) {
+                        BoxToolLogUtils.savePrintln("业务流：门已经关闭 跳出查询重量 ")
+                        enqueuePhotoAction(0)//投口关闭后的拍照
+                        break
+                    }
+                    // --- 第四阶段：执行关门动作 ---
+                    if (currentStep.value == LockerStep.CLICK_CLOSE) {
+                        _currentStep.value = LockerStep.CLOSING
+                        BoxToolLogUtils.savePrintln("业务流：监测到关门信号，下发关门指令【${SendTurnText.fromStatus(closeType)}】")
+                        val closeRes = SerialPortSdk.turnDoor(closeType)
+                        if (closeRes.isFailure) {
+                            BoxToolLogUtils.savePrintln("业务流：关门指令发送失败: ${turnDoor.exceptionOrNull()?.message}")
+                        } else {
+                            BoxToolLogUtils.savePrintln("业务流：关门指令接收成功")
+                        }
+                    }
+                    // --- 第五阶段：轮询等待门关闭 ---
+                    if (currentStep.value == LockerStep.CLOSING) {
+                        withTimeout(30000) { // 30秒超时
+                            val doorStatusValue = SerialPortSdk.turnDoorStatus(doorGex)
+                            if (doorStatusValue.isFailure) {
+                                BoxToolLogUtils.savePrintln("业务流：门关动作获取投门状态失败: ${doorStatusValue.exceptionOrNull()?.message}")
                             } else {
-                                BoxToolLogUtils.savePrintln("业务流：关门指令接收成功")
-                            }
-                        }
-                        // --- 第五阶段：轮询等待门关闭 ---
-                        if (currentStep.value == LockerStep.CLOSING) {
-                            withTimeout(30000) { // 30秒超时
-                                val doorStatusValue = SerialPortSdk.turnDoorStatus(doorGex)
-                                if (doorStatusValue.isFailure) {
-                                    BoxToolLogUtils.savePrintln("业务流：门关动作获取投门状态失败: ${doorStatusValue.exceptionOrNull()?.message}")
-                                } else {
-                                    val doorStatus = doorStatusValue.getOrNull()?.status
-                                    BoxToolLogUtils.savePrintln("业务流：门关动作等待门物理状态变为 0【${doorStatus}】")
-                                    if (doorStatus == CmdCode.GE_CLOSE) {
+                                val doorStatus = doorStatusValue.getOrNull()?.status
+                                BoxToolLogUtils.savePrintln("业务流：门关动作等待门物理状态变为 0【${doorStatus}】")
+                                if (doorStatus == CmdCode.GE_CLOSE) {
 //                                noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_NORMAL, false)
-                                        _currentStep.value = LockerStep.CLOSE
-                                        BoxToolLogUtils.savePrintln("业务流：收到门关闭")
-                                        DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
-                                        return@withTimeout
-                                    }
-                                    if (doorStatus == CmdCode.GE_OPEN) {
-                                        closeCount -= 1
-                                        BoxToolLogUtils.savePrintln("业务流：防夹手状态 当前循环次数 $closeCount")
-                                        if (closeCount <= 0) {
-                                            SerialPortSdk.turnDoor(forcedCloseType)
-                                        } else {
-                                            SerialPortSdk.turnDoor(closeType)
-                                        }
-                                    }
-                                    if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
-//                                noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT, true)
-                                        BoxToolLogUtils.savePrintln("业务流：门开后格口-门关故障 打开后的重量：$weightDuringOpening")
-                                        _currentStep.value = LockerStep.CLOSE
-                                        return@withTimeout
+                                    _currentStep.value = LockerStep.CLOSE
+                                    BoxToolLogUtils.savePrintln("业务流：收到门关闭")
+                                    DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
+                                    return@withTimeout
+                                }
+                                if (doorStatus == CmdCode.GE_OPEN) {
+                                    closeCount -= 1
+                                    BoxToolLogUtils.savePrintln("业务流：防夹手状态 当前循环次数 $closeCount")
+                                    if (closeCount <= 0) {
+                                        SerialPortSdk.turnDoor(forcedCloseType)
+                                    } else {
+                                        SerialPortSdk.turnDoor(closeType)
                                     }
                                 }
+                                if (doorStatus == CmdCode.GE_OPEN_CLOSE_FAULT) {
+//                                noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_FAULT, true)
+                                    BoxToolLogUtils.savePrintln("业务流：门开后格口-门关故障 打开后的重量：$weightDuringOpening")
+                                    _currentStep.value = LockerStep.CLOSE
+                                    return@withTimeout
+                                }
                             }
-                            // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
-                            delay(1000)
                         }
-                        //每3秒查询一次重量
-                        delay(3000)
+                        // 这里可以增加一个逻辑：如果检测到重量稳定增加超过 X 秒，也可以自动触发下一步
+                        delay(1000)
                     }
+                    //每3秒查询一次重量
+                    delay(3000)
                 }
-
                 _currentStep.value = LockerStep.WAITING_CLOSE
                 // --- 第六阶段：结算最终重量 ---
 
@@ -3682,6 +3676,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * @param setWeightBeforeOpen 开门前重量
      */
     fun startLockerClearWorkflow(model: DoorOpenBean, setWeightBeforeOpen: String, doorGex: Int, openType: Int, queryType: Int, executeCount: Int = 5) {
+        // 1. 核心状态初始化
+        cancelPollingFaultJob()
+        cancelContainersStatusJob()
         viewModelScope.launch(Dispatchers.IO) {
             var toWeightAfterClosing = "0"  // 彻底关门后重量
             try {
@@ -3690,9 +3687,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 if (_isRunning.getAndSet(true)) {
                     return@launch
                 }
-                // 1. 核心状态初始化
-                cancelPollingFaultJob()
-                cancelContainersStatusJob()
+
                 //指令下发防夹手回弹次数
                 var closeCount = executeCount
                 modelOpenBean = model
@@ -4109,7 +4104,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }
                         val json = JsonBuilder.convertToJsonString(doorClose)
                         sendText(json)
-                        BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 再次上报：${doorClose}")
+                        BoxToolLogUtils.savePrintln("   业务流：定时检测服务器未下发指令 -> 再次上报：${doorClose}")
                     }
                 } else {
                     BoxToolLogUtils.savePrintln("业务流：定时检测服务器未下发指令 -> 有业务在处理中")
@@ -4145,7 +4140,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 ) //刷新事务信息 根据事务id来
                 Loge.e("流程 refreshWeightStatus 刷新本地事务数据 $s ${Gson().toJson(trans)}")
             }
-            BoxToolLogUtils.savePrintln("接收到服务器 关闭 $transId 门打开:${queryTrans.openStatus} | 门关闭：${queryTrans.closeStatus} 业务：${weight?.status ?: -1}")
+            BoxToolLogUtils.savePrintln("   接收到服务器 关闭 $transId 门打开:${queryTrans.openStatus} | 门关闭：${queryTrans.closeStatus} 业务：${weight?.status ?: -1}")
         }
     }
 

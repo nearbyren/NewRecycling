@@ -37,7 +37,7 @@ object SerialPortEngine {
 
     private val sendMutex = Mutex()
     private var responseWaiter: CompletableDeferred<ByteArray>? = null
-    private val pendingRequests = ConcurrentHashMap<String, CompletableDeferred<ByteArray>>()
+    private val pendingRequests = ConcurrentHashMap<Int , CompletableDeferred<ByteArray>>()
     private var sequenceId = 0
 
     private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -46,8 +46,8 @@ object SerialPortEngine {
     // 统一的数据分发：所有的解析回包都通过这里
     private val extractor = FrameExtractorNew{ packet ->
 //        responseWaiter?.complete(packet)
-        val cmd = packet[2].toString()
-        pendingRequests[cmd]?.complete(packet)
+        val cmdId = packet[2].toInt() and 0xFF // 强制转为 0~255 的整数
+        pendingRequests.remove(cmdId)?.complete(packet)
     }
 
     fun start(path: String, baud: Int) {
@@ -111,10 +111,9 @@ object SerialPortEngine {
      */
     suspend fun sendOnce(data: ByteArray, timeout: Long = 5000): Result<ByteArray> {
         if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
+        val msgId = data[2].toInt() and 0xFF // 统一 ID 取法
         return sendMutex.withLock {
             val waiter = CompletableDeferred<ByteArray>()
-            // 从协议中提取或生成消息ID
-            val msgId = data[2].toString()
 //            responseWaiter = waiter
             // 保存到待处理队列
             pendingRequests[msgId] = waiter
@@ -123,7 +122,7 @@ object SerialPortEngine {
                     Loge.i("SerialPort", "发送: ${ByteUtils.toHexString(data)}")
                     BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
                     fos?.write(data)
-                    delay(10)
+//                    delay(10)
 //                    fos?.flush()
                 }
                 val response = withTimeout(timeout) { waiter.await() }
@@ -141,58 +140,13 @@ object SerialPortEngine {
     /**
       * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
      */
-    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 10, timeout: Long = 60000): Result<ByteArray> {
+    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 10, timeout: Long = 20000): Result<ByteArray> {
         var lastErr: Exception? = null
         repeat(maxRetries) { attempt ->
             val res = sendOnce(data, timeout)
             if (res.isSuccess) return res
             lastErr = res.exceptionOrNull() as? Exception
             delay(150L * (attempt + 1))
-        }
-        return Result.failure(lastErr ?: Exception("执行失败"))
-    }
-
-
-    /**
-     * 芯片升级逻辑：也复用 sendOnce 的锁
-     */
-    suspend fun executeChipDirect(setCmd: Byte, data: ByteArray, timeout: Long = 20000): Result<ByteArray> {
-        if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
-        return withContext(Dispatchers.IO) {
-            val waiter = CompletableDeferred<ByteArray>()
-            responseWaiter = waiter
-            try {
-                BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
-                fos?.write(data)
-//                fos?.flush()
-                delay(5)
-                // 挂起直到收到数据或超时
-                val response = withTimeout(timeout) { waiter.await() }
-                Result.success(response)
-            } catch (e: TimeoutCancellationException) {
-                // 超时处理：清理状态
-                Result.failure(Exception("下位机响应超时(${timeout}ms)"))
-            } catch (e: Exception) {
-                Result.failure(e)
-            } catch (e: Exception) {
-                Result.failure(e)
-            } finally {
-                responseWaiter = null
-            }
-        }
-    }
-
-    /**
-     * 柜体状态查询
-     * @param data 业务数据
-     * @param timeout 超时时间（毫秒）
-     */
-    suspend fun sendWithRetryStatus(data: ByteArray, maxRetries: Int = 5, timeout: Long = 30000): Result<ByteArray> {
-        var lastErr: Exception? = null
-        repeat(maxRetries) { attempt ->
-            val res = sendOnce(data, timeout)
-            if (res.isSuccess) return res
-            lastErr = res.exceptionOrNull() as? Exception
         }
         return Result.failure(lastErr ?: Exception("执行失败"))
     }
