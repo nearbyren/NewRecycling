@@ -3533,16 +3533,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 time = AppUtils.getDateYMDHMS()
                             })
 //                            noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_NORMAL, false)
-                            val weightAfterOpeningCmd = SerialPortSdk.queryWeight(doorGex)
-                            if (weightAfterOpeningCmd.isFailure) {
-                                BoxToolLogUtils.savePrintln("业务流：确认开门瞬间重量 获取重量指令失败: ${weightAfterOpeningCmd.exceptionOrNull()?.message}")
-                            } else {
-                                weightAfterOpening = weightAfterOpeningCmd.getOrNull()?.weight.toString()
-                            }
-                            BoxToolLogUtils.savePrintln2("业务流：打开后的重量：$weightAfterOpening")
                             //更新业务门开完成
                             DatabaseManager.upTransOpenStatus(AppUtils.getContext(), CmdCode.GE_OPEN, transId)
-                            dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, defaultWeight, defaultWeight, openModel = model, flowEnd = false)
                             break// 门已确认开启
                         }
                         if (doorStatus == CmdCode.GE_OPEN_CLOSE_ING) {
@@ -3556,6 +3548,16 @@ class CabinetVM @Inject constructor() : ViewModel() {
 //
                     delay(3000)
                 }
+
+                val weightAfterOpeningCmd = SerialPortSdk.queryWeight(doorGex)
+                if (weightAfterOpeningCmd.isFailure) {
+                    BoxToolLogUtils.savePrintln("业务流：确认开门瞬间重量 获取重量指令失败: ${weightAfterOpeningCmd.exceptionOrNull()?.message}")
+                } else {
+                    weightAfterOpening = weightAfterOpeningCmd.getOrNull()?.weight.toString()
+                }
+                BoxToolLogUtils.savePrintln2("业务流：打开后的重量：$weightAfterOpening")
+                dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, defaultWeight, defaultWeight, openModel = model, flowEnd = false)
+                delay(1000)
                 // --- 第三阶段：监测重量变化 ---
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
                 BoxToolLogUtils.savePrintln2("业务流：门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
@@ -3655,7 +3657,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
             } finally {
-                _isRunning.set(false)
                 _cameraLifecycleEvent.emit(CameraOp.DESTROY)
 //                endCameraUploadPhoto()
                 //保持门要关闭
@@ -3664,6 +3665,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
+                _isRunning.set(false)
                 weightRunning = false
                 _currentStep.value = LockerStep.IDLE
                 if (doorGex == CmdCode.GE1) {
@@ -3856,12 +3858,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 BoxToolLogUtils.savePrintln("业务流：异常中断: ${e.message}")
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
             } finally {
-                _isRunning.set(false)
                 _cameraLifecycleEvent.emit(CameraOp.DESTROY)
                 setCurrentUiStep(LockerUiStep.CLEAR_END)
                 BoxToolLogUtils.savePrintln("业务流：完毕 finally")
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
+                _isRunning.set(false)
                 _currentStep.value = LockerStep.IDLE
                 if (doorGex == CmdCode.GE1) {
                     curG1Weight = toWeightAfterClosing
@@ -4806,7 +4808,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 } catch (e: Exception) {
                     BoxToolLogUtils.savePrintln("业务流：轮询异常: ${e.message}")
                 }
-                delay(2000)
+                delay(5000)
             }
         }
     }
