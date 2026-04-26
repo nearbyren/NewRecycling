@@ -70,7 +70,31 @@ object BoxToolLogUtils {
 //            Loge.d("BoxToolLogUtils recordLowerBox an error occured while writing file...$e")
 //        }
     }
-
+    fun savePrintln2(text: String) {
+        try {
+            val builder = StringBuilder()
+            val time = AppUtils.getDateYMDHMS()
+            builder.append(time).append("\n").append(text).append('\n')
+            val fileName = "a-task---${AppUtils.getDateYMD()}.txt"
+            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
+            val dirs = File(path)
+            if (!dirs.exists()) {
+                dirs.mkdirs()
+            }
+            val file = File(path, fileName)
+            if (!file.exists()) {
+                file.createNewFile()
+            }
+            // 追加写入模式
+            val fos = FileOutputStream(file, true)
+            val bos = BufferedOutputStream(fos)
+            bos.write(builder.toString().toByteArray())
+            bos.flush()
+            bos.close()
+        } catch (e: SecurityException) {
+            Loge.d("BoxToolLogUtils recordLowerBox an error occured while writing file...$e")
+        }
+    }
     fun saveCamera(text: String) {
 //        try {
 //            val builder = StringBuilder()
@@ -147,6 +171,32 @@ object BoxToolLogUtils {
             Loge.d("BoxToolLogUtils recordLowerBox an error occured while writing file...$e")
         }
     }
+    fun savePush3(text: String) {
+        try {
+            val builder = StringBuilder()
+            val time = AppUtils.getDateYMDHMS()
+            builder.append(time).append("\n").append(text).append('\n')
+            val fileName = "a-send---${AppUtils.getDateYMD()}.txt"
+            val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
+            val dirs = File(path)
+            if (!dirs.exists()) {
+                dirs.mkdirs()
+            }
+            val file = File(path, fileName)
+            if (!file.exists()) {
+                file.createNewFile()
+            }
+            // 追加写入模式
+            val fos = FileOutputStream(file, true)
+            val bos = BufferedOutputStream(fos)
+            bos.write(builder.toString().toByteArray())
+            bos.flush()
+            bos.close()
+        } catch (e: SecurityException) {
+            Loge.d("BoxToolLogUtils recordLowerBox an error occured while writing file...$e")
+        }
+    }
+
     /***
      * 所有日志信息
      */

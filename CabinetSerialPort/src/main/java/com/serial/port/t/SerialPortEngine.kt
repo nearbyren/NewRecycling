@@ -47,7 +47,16 @@ object SerialPortEngine {
     private val extractor = FrameExtractorNew{ packet ->
 //        responseWaiter?.complete(packet)
         val cmdId = packet[2].toInt() and 0xFF // 强制转为 0~255 的整数
-        pendingRequests.remove(cmdId)?.complete(packet)
+        // --- 关键日志 3: 打印回包提取的 ID ---
+        val waiter = pendingRequests[cmdId]
+
+        if (waiter != null) {
+            BoxToolLogUtils.savePush2("业务流：串口匹配：[回包] 匹配成功 ID=$cmdId, 准备触发回调")
+            pendingRequests.remove(cmdId)?.complete(packet)
+        } else {
+            // 这行日志最重要：如果出现了这行，说明 ID 没对上或者对应的请求已经超时移除了
+            BoxToolLogUtils.savePush2("业务流：串口匹配：[回包] 匹配失败！收到 ID=$cmdId, 但 Map 中找不到对应的请求。当前 Map 中的 Keys=${pendingRequests.keys()}")
+        }
     }
 
     fun start(path: String, baud: Int) {
@@ -128,10 +137,11 @@ object SerialPortEngine {
 //            responseWaiter = waiter
             // 保存到待处理队列
             pendingRequests[msgId] = waiter
+            BoxToolLogUtils.savePush2("业务流：串口匹配：[发送] 注册 ID=$msgId, 当前待处理队列 size=${pendingRequests.size}")
             try {
                 withContext(Dispatchers.IO) {
                     Loge.i("SerialPort", "发送: ${ByteUtils.toHexString(data)}")
-//                    BoxToolLogUtils.sendOriginalLower(0, ByteUtils.toHexString(data))
+//                    BoxToolLogUtils.savePush3(ByteUtils.toHexString(data))
                     fos?.write(data)
                     fos?.flush()
 //                    delay(10)
@@ -140,6 +150,7 @@ object SerialPortEngine {
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)
             } catch (e: Exception) {
+                BoxToolLogUtils.savePush2("业务流：串口匹配：[异常] ID=$msgId 失败: ${e.javaClass.simpleName} - ${e.message}")
                 Result.failure(e)
             } finally {
 //                responseWaiter = null
@@ -167,19 +178,16 @@ object SerialPortEngine {
         isRunning.set(false)
         _portStatus.value = PortStatus.IDLE
         readJob?.cancel()
+        responseWaiter?.cancel()
+        // 清理所有挂起的请求并抛出取消异常
+        pendingRequests.values.forEach { it.cancel() }
+        pendingRequests.clear()
+
+        responseWaiter?.cancel()
+        responseWaiter = null
+
         closeStreams()
         extractor.clear()
-        responseWaiter?.cancel()
-        val iterators = pendingRequests.entries.iterator()
-        while (iterators.hasNext()) {
-            val entry = iterators.next()
-            // 取消 Deferred，这会使得 await() 抛出 CancellationException
-            entry.value.cancel()
-            // 从 Map 中移除已取消的请求，防止内存泄漏
-            iterators.remove()
-        }
-        pendingRequests?.clear()
-
         // 彻底释放硬件
         SerialPortManagerSdk.instance.closeAllSerialPort()
     }

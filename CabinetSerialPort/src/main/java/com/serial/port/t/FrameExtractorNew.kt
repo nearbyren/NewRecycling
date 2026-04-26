@@ -97,7 +97,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             // E. 检查缓冲区是否已包含完整包
             if (headerIndex + totalFrameLen > currentData.size) {
                 // 包不完整，等待后续数据
-                BoxToolLogUtils.savePush2("业务流：包不完整，等待后续数 $totalFrameLen，跳过此帧头")
+                BoxToolLogUtils.savePush2("业务流：数据量不足(${currentData.size}/$totalFrameLen)，等待分段拼包")
                 break
             }
 

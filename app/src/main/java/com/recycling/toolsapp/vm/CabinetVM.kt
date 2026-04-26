@@ -3539,7 +3539,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             } else {
                                 weightAfterOpening = weightAfterOpeningCmd.getOrNull()?.weight.toString()
                             }
-                            BoxToolLogUtils.savePrintln("业务流：打开后的重量：$weightAfterOpening")
+                            BoxToolLogUtils.savePrintln2("业务流：打开后的重量：$weightAfterOpening")
                             //更新业务门开完成
                             DatabaseManager.upTransOpenStatus(AppUtils.getContext(), CmdCode.GE_OPEN, transId)
                             dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, defaultWeight, defaultWeight, openModel = model, flowEnd = false)
@@ -3558,7 +3558,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 // --- 第三阶段：监测重量变化 ---
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
-                BoxToolLogUtils.savePrintln("业务流：门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
+                BoxToolLogUtils.savePrintln2("业务流：门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
                 while (isActive) {
                     Loge.e("业务流：过程中最后一次重量 ${currentStep.value}")
                     //关闭中 和 已经关闭 不查重量
@@ -3646,7 +3646,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
                 toWeightAfterClosing = weightAfterClosing
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
-                BoxToolLogUtils.savePrintln("业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
+                BoxToolLogUtils.savePrintln2("业务流：业务流完毕！ 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
                 _currentStep.value = LockerStep.FINISHED
             } catch (e: TimeoutCancellationException) {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", true)
