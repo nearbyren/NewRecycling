@@ -124,10 +124,13 @@ object SerialPortEngine {
         return sendMutex.withLock {
             withContext(Dispatchers.IO) {
                 runCatching {
+                    // 1. 清除解析器内部的逻辑缓存（这步非常重要！）
+                    extractor.clear()
                     val available = fis?.available() ?: 0
                     if (available > 0) {
                         val skipBuffer = ByteArray(available)
                         fis?.read(skipBuffer) // 彻底排空旧缓冲区
+                        BoxToolLogUtils.savePush2("业务流：串口匹配：[预处理] 已丢弃缓冲区残留数据: $available 字节")
                     }
                 }
             }
