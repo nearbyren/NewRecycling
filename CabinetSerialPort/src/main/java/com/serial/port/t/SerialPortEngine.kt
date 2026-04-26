@@ -166,13 +166,22 @@ object SerialPortEngine {
     /**
       * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
      */
-    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 10, timeout: Long = 20000): Result<ByteArray> {
+    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 5, timeout: Long = 20000): Result<ByteArray> {
         var lastErr: Exception? = null
         repeat(maxRetries) { attempt ->
+            // 如果不是第一次发送，说明之前失败了，发送前先给一点点物理缓冲
+            if (attempt > 0) {
+                // 给单片机和驱动一点恢复时间，防止连续冲突
+                delay(100L + (attempt * 50L))
+            }
+
             val res = sendOnce(data, timeout)
             if (res.isSuccess) return res
+
             lastErr = res.exceptionOrNull() as? Exception
-            delay(150L * (attempt + 1))
+
+            // 记录一下重试日志，方便排查
+            BoxToolLogUtils.savePush2("业务流：ID=${data[2]} 第 ${attempt + 1} 次重试中...")
         }
         return Result.failure(lastErr ?: Exception("执行失败"))
     }
