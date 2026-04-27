@@ -154,8 +154,10 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
     }
 
     private fun findFrameHeader(data: ByteArray, start: Int): Int {
+        val target = 0x9B // 我们期待的无符号值
         for (i in start until data.size) {
-            if (data[i] == SendByteData.RE_FRAME_HEADER) return i
+            val current = data[i].toInt() and 0xFF // 转为 155
+            if (current == target) return i
         }
         return -1
     }
