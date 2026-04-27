@@ -54,12 +54,11 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
         binding.clMobileNet.setOnClickListener {
             Navigation.findNavController(it).navigate(R.id.action_start_mobile)
         }
-        FlowBus.with<ResEvent>("ResEvent").register(this) {
-            refreshWeightPrice(
-                CmdCode.GE1, cabinetVM.curGe1Price ?: "0.60", cabinetVM.curG1Weight
-                    ?: "0.00", cabinetVM.curG2Weight ?: "0.00", cabinetVM.curG2Weight ?: "0.00"
-            )
-        }
+        refreshWeightPrice(
+            CmdCode.GE1,
+            cabinetVM.curGe1Price ?: "0.00", cabinetVM.curGe2Price ?: "0.00",
+            cabinetVM.curG1Weight ?: "0.00", cabinetVM.curG2Weight ?: "0.00"
+        )
         refreshQrCodeRes()
         val warningContent1 = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText1, BusType.BUS_NORMAL] as String
         val warningContent2 = SPreUtil[AppUtils.getContext(), SPreUtil.netStatusText2, BusType.BUS_NORMAL] as String

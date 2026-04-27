@@ -31,7 +31,14 @@ class SerialPortCoreSdk private constructor() {
 
     private suspend fun execute(cmd: Byte, data: ByteArray): Result<ByteArray> {
         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-        return SerialPortEngine.sendWithRetry(frame) ?: Result.failure(Exception("Communication VM is null"))
+        // 如果是 ID=5 (通常是 0x05)
+        return if (cmd == 0x05.toByte()) {
+            // ID=5：只试 1 次，超时给短一点。失败了立刻放锁，让给 1/2/4
+            SerialPortEngine.sendWithRetry(frame, maxRetries = 1, timeout = 1500)
+        } else {
+            // 其他控制指令：可以多试几次
+            SerialPortEngine.sendWithRetry(frame, maxRetries = 3, timeout = 2000)
+        }
     }
 
     suspend fun executeChipNew(cmd: Byte, data: ByteArray): Result<ByteArray> {

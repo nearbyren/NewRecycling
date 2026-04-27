@@ -51,6 +51,11 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
 
     override fun initialize(savedInstanceState: Bundle?) {
         cabinetVM.doorGeXType = CmdCode.GE1
+        refreshWeightPrice(
+            CmdCode.GE1,
+            cabinetVM.curGe1Price ?: "0.00", cabinetVM.curGe2Price ?: "0.00",
+            cabinetVM.curG1Weight ?: "0.00", cabinetVM.curG2Weight ?: "0.00"
+        )
         latestBusiness()
         binding.clMobileNet.setOnClickListener {
             Navigation.findNavController(it).navigate(R.id.action_start_mobile)

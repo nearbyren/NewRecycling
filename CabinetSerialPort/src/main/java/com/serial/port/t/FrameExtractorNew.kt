@@ -47,13 +47,15 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
                 BoxToolLogUtils.savePush2("业务流：解析超时，重置缓冲区")
                 buffer.reset()
             }
-            lastProcessTime = currentTime
 
             // 2. 写入新数据
             buffer.write(input)
 
             // 3. 循环解析缓冲区
             processBuffer(currentTime)
+
+            // 4. 【关键】处理完了，再更新时间戳为最新
+            lastProcessTime = currentTime
 
         } catch (e: Exception) {
             BoxToolLogUtils.savePush2("业务流：解析异常: ${e.message}")

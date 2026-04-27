@@ -105,6 +105,7 @@ object SerialPortEngine {
                 if (len > 0) {
                     // 拷贝当前读取到的实际有效长度
                     val validData = buffer.copyOfRange(0, len)
+                    BoxToolLogUtils.savePush3("业务流：读取 ${ByteUtils.toHexString(validData)}")
                     // 喂给提取器
                     extractor.push(validData)
                 }
@@ -166,7 +167,7 @@ object SerialPortEngine {
     /**
       * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
      */
-    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 5, timeout: Long = 20000): Result<ByteArray> {
+    suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 5, timeout: Long = 2000): Result<ByteArray> {
         var lastErr: Exception? = null
         repeat(maxRetries) { attempt ->
             // 如果不是第一次发送，说明之前失败了，发送前先给一点点物理缓冲
