@@ -176,7 +176,7 @@ object BoxToolLogUtils {
             val builder = StringBuilder()
             val time = AppUtils.getDateYMDHMS()
             builder.append(time).append("\n").append(text).append('\n')
-            val fileName = "a-send---${AppUtils.getDateYMD()}.txt"
+            val fileName = "a-read---${AppUtils.getDateYMD()}.txt"
             val path = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
             val dirs = File(path)
             if (!dirs.exists()) {
