@@ -67,7 +67,6 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
         val currentData = buffer.toByteArray()
         var currentIndex = 0
         var lastValidEnd = 0 // 记录最后一次处理完的位置
-        BoxToolLogUtils.savePush2("业务流：currentIndex $currentIndex ")
         while (currentIndex < currentData.size) {
             // A. 查找帧头 0x9B
             val headerIndex = findFrameHeader(currentData, currentIndex)
