@@ -18,6 +18,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
@@ -96,6 +97,7 @@ object SerialPortEngine {
         }
     }
 
+    private val readBuffer = ByteArrayOutputStream(4096)
     private fun readLoop() {
         val buffer = ByteArray(4096)
         try {
@@ -106,8 +108,20 @@ object SerialPortEngine {
                     // 拷贝当前读取到的实际有效长度
                     val validData = buffer.copyOfRange(0, len)
                     BoxToolLogUtils.savePush3("业务流：读取 ${ByteUtils.toHexString(validData)}")
-                    // 喂给提取器
-                    extractor.push(validData)
+                    if (validData[0] == 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
+                        //完成帧
+                        readBuffer.write(validData)
+                        extractor.push(readBuffer.toByteArray())
+                        readBuffer.reset()
+                    } else if (validData[0] == 0x9b.toByte() && validData[len - 1] != 0x9a.toByte()) {
+                        //这里是读取帧数据 帧头为9b 帧尾不为9a的  存起来
+                        readBuffer.write(validData)
+                    } else if (validData[0] != 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
+                        //不是帧头为9b的 不是帧尾9a 第二部分
+                        readBuffer.write(validData)
+                        extractor.push(readBuffer.toByteArray())
+                        readBuffer.reset()
+                    }
                 }
             }
         } catch (e: Exception) {
