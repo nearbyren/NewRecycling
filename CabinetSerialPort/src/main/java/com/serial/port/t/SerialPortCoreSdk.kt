@@ -34,7 +34,7 @@ class SerialPortCoreSdk private constructor() {
         // 如果是 ID=5 (通常是 0x05)
         return if (cmd == 0x05.toByte()) {
             // ID=5：只试 1 次，超时给短一点。失败了立刻放锁，让给 1/2/4
-            SerialPortEngine.sendWithRetry(frame, maxRetries = 1, timeout = 1500)
+            SerialPortEngine.sendWithRetry(frame, maxRetries = 0, timeout = 1500)
         } else {
             // 其他控制指令：可以多试几次
             SerialPortEngine.sendWithRetry(frame, maxRetries = 3, timeout = 2000)
@@ -250,9 +250,9 @@ class SerialPortCoreSdk private constructor() {
             if (cmd != SerialPortSdk.CMD5) DoorResult(containers = mutableListOf(), cmd = 5, cmdByte = SerialPortSdk.CMD5, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
             Loge.i("我的数据 len ${payload.size} ${ByteUtils.toHexString(payload)}")
-            if (payload.size < 28) throw Exception("返回数据长度不足")
+            if (payload.size < 26) throw Exception("返回数据长度不足")
             val list = mutableListOf<ContainersResult>()
-            val STEP = 14 // 每组格口数据占据 14 字节
+            val STEP = 13 // 每组格口数据占据 14 字节
             // 使用之前 ProtocolCodec 中的分组工具
             val groups = ProtocolCodec.parseGroups(payload, STEP)
             groups.forEach { group ->

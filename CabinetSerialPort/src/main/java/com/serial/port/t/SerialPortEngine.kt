@@ -38,14 +38,14 @@ object SerialPortEngine {
 
     private val sendMutex = Mutex()
     private var responseWaiter: CompletableDeferred<ByteArray>? = null
-    private val pendingRequests = ConcurrentHashMap<Int , CompletableDeferred<ByteArray>>()
+    private val pendingRequests = ConcurrentHashMap<Int, CompletableDeferred<ByteArray>>()
     private var sequenceId = 0
 
     private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var readJob: Job? = null
 
     // 统一的数据分发：所有的解析回包都通过这里
-    private val extractor = FrameExtractorNew{ packet ->
+    private val extractor = FrameExtractorNew { packet ->
 //        responseWaiter?.complete(packet)
         val cmdId = packet[2].toInt() and 0xFF // 强制转为 0~255 的整数
         // --- 关键日志 3: 打印回包提取的 ID ---
@@ -80,7 +80,7 @@ object SerialPortEngine {
                     try {
                         readLoop() // 调用提取出来的读取循环
                     } catch (e: Exception) {
-                        BoxToolLogUtils.savePrintln("业务流：读取中断: ${e.message}")
+                        BoxToolLogUtils.savePush2("业务流：读取中断: ${e.message}")
                     } finally {
                         _portStatus.value = PortStatus.ERROR
                         closeStreams()
@@ -107,7 +107,7 @@ object SerialPortEngine {
                 if (len > 0) {
                     // 拷贝当前读取到的实际有效长度
                     val validData = buffer.copyOfRange(0, len)
-                    BoxToolLogUtils.savePush3("业务流：读取 ${ByteUtils.toHexString(validData)}")
+                    BoxToolLogUtils.savePush3("red:${ByteUtils.toHexString(validData)}")
                     if (validData[0] == 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
                         //完成帧
                         readBuffer.write(validData)
@@ -116,7 +116,7 @@ object SerialPortEngine {
                     } else if (validData[0] == 0x9b.toByte() && validData[len - 1] != 0x9a.toByte()) {
                         //这里是读取帧数据 帧头为9b 帧尾不为9a的  存起来
                         readBuffer.write(validData)
-                    } else if (validData[0] != 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
+                    } else if (validData[0] != 0x9b.toByte() && validData[len - 1] == 0x9a.toByte() ) {
                         //不是帧头为9b的 不是帧尾9a 第二部分
                         readBuffer.write(validData)
                         extractor.push(readBuffer.toByteArray())
@@ -126,7 +126,7 @@ object SerialPortEngine {
             }
         } catch (e: Exception) {
             Loge.e("串口读取异常: ${e.message}")
-            BoxToolLogUtils.savePrintln("业务流：串口读取异常: ${e.message}")
+            BoxToolLogUtils.savePush2("业务流：串口读取异常: ${e.message}")
         }
     }
 
@@ -179,25 +179,35 @@ object SerialPortEngine {
     }
 
     /**
-      * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
+     * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
      */
     suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 5, timeout: Long = 2000): Result<ByteArray> {
         var lastErr: Exception? = null
-        repeat(maxRetries) { attempt ->
-            // 如果不是第一次发送，说明之前失败了，发送前先给一点点物理缓冲
-            if (attempt > 0) {
-                // 给单片机和驱动一点恢复时间，防止连续冲突
-                delay(100L + (attempt * 50L))
-            }
+        if (maxRetries > 0) {
+            repeat(maxRetries) { attempt ->
+                // 如果不是第一次发送，说明之前失败了，发送前先给一点点物理缓冲
+                if (attempt > 0) {
+                    // 给单片机和驱动一点恢复时间，防止连续冲突
+                    delay(100L + (attempt * 50L))
+                }
 
+                val res = sendOnce(data, timeout)
+                if (res.isSuccess) return res
+
+                lastErr = res.exceptionOrNull() as? Exception
+
+                // 记录一下重试日志，方便排查
+                BoxToolLogUtils.savePush2("业务流：ID=${data[2]} 第 ${attempt + 1} 次重试中...")
+            }
+        } else {
             val res = sendOnce(data, timeout)
             if (res.isSuccess) return res
 
             lastErr = res.exceptionOrNull() as? Exception
+            BoxToolLogUtils.savePush2("业务流：ID=${data[2]} ")
 
-            // 记录一下重试日志，方便排查
-            BoxToolLogUtils.savePush2("业务流：ID=${data[2]} 第 ${attempt + 1} 次重试中...")
         }
+
         return Result.failure(lastErr ?: Exception("执行失败"))
     }
 

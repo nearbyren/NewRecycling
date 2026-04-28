@@ -13,6 +13,7 @@ import android.hardware.usb.UsbManager
 import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
+import android.util.Range
 import android.util.Size
 import android.view.Surface
 import android.view.TextureView
@@ -200,20 +201,20 @@ class NewDualUsbCameraManager(context: Context) {
         requests.map { req ->
             async(Dispatchers.IO) {
                 delay(1000)
-                takePictureSuspend(req.cameraId, req.switchType, req.inOut, req.saveFile)
+                takePictureSuspend(req.cameraId, req.switchType, req.inOut, req.saveFile, req.remoteOpenType)
 
             }
         }.awaitAll()
     }
 
-    data class PhotoRequest(val cameraId: String, val switchType: Int, val inOut: String, val saveFile: File)
+    data class PhotoRequest(val cameraId: String, val switchType: Int, val inOut: String, val saveFile: File, val remoteOpenType: Int)
 
     /**
      * 挂起函数版拍照
      */
-    suspend fun takePictureSuspend(cameraId: String, switchType: Int, inOut: String, saveFile: File): File? =
+    suspend fun takePictureSuspend(cameraId: String, switchType: Int, inOut: String, saveFile: File, remoteOpenType: Int): File? =
         suspendCancellableCoroutine { cont ->
-            this.takePicture(cameraId, switchType, inOut, saveFile) { file ->
+            this.takePicture(cameraId, switchType, inOut, saveFile, remoteOpenType) { file ->
                 if (cont.isActive) cont.resume(file)
             }
         }
@@ -221,7 +222,7 @@ class NewDualUsbCameraManager(context: Context) {
     /**
      * 基础拍照逻辑
      */
-    fun takePicture(cameraId: String, switchType: Int = -1, inOut: String, saveFile: File, onComplete: (File?) -> Unit) {
+    fun takePicture(cameraId: String, switchType: Int = -1, inOut: String, saveFile: File, remoteOpenType: Int, onComplete: (File?) -> Unit) {
         val holder = cameras[cameraId]
         if (holder == null || holder.isCapturing) {
             onComplete(null)
@@ -237,7 +238,7 @@ class NewDualUsbCameraManager(context: Context) {
                     delay(800)
                 }
 
-                val imageFile = captureImageInternal(cameraId, inOut, switchType, holder, saveFile)
+                val imageFile = captureImageInternal(cameraId, inOut, switchType, holder, saveFile, remoteOpenType)
                 withContext(Dispatchers.IO) { onComplete(imageFile) }
             } catch (e: Exception) {
                 BoxToolLogUtils.saveCamera("[$cameraId] 拍照异常: ${e.message}")
@@ -248,7 +249,7 @@ class NewDualUsbCameraManager(context: Context) {
         }
     }
 
-    private suspend fun captureImageInternal(cameraId: String, inOut: String, switchType: Int = -1, holder: CameraHolder, saveFile: File): File? =
+    private suspend fun captureImageInternal(cameraId: String, inOut: String, switchType: Int = -1, holder: CameraHolder, saveFile: File, remoteOpenType: Int): File? =
         suspendCancellableCoroutine { cont ->
             try {
                 val builder = holder.device?.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
@@ -267,10 +268,20 @@ class NewDualUsbCameraManager(context: Context) {
                     img.close()
 
                     scope.launch(Dispatchers.IO) {
-                        val text = when (switchType) {
-                            1 -> "投递前"
-                            0 -> "投递后"
-                            else -> "远程拍照"
+                        var text = ""
+                        if (remoteOpenType == 1) {
+                            text = when (switchType) {
+                                1 -> "投递前"
+                                0 -> "投递后"
+                                else -> "远程拍照"
+                            }
+
+                        } else if (remoteOpenType == 2) {
+                            text = when (switchType) {
+                                1 -> "清运前"
+                                0 -> "清运后"
+                                else -> "远程拍照"
+                            }
                         }
                         val watermarkText = "$text-$inOut-${AppUtils.getDateYMDHMS2()}"
                         val finalPath = saveImageWithWatermarkSync(bytes, saveFile, watermarkText)
@@ -387,30 +398,69 @@ class NewDualUsbCameraManager(context: Context) {
         }
 
     private fun initPreviewSession(cameraId: String, holder: CameraHolder, textureView: TextureView, previewSize: Size, startPaused: Boolean) {
-        val startSession = { surface: SurfaceTexture ->
-            surface.setDefaultBufferSize(previewSize.width, previewSize.height)
-            holder.previewSurface = Surface(surface)
-            val builder = holder.device!!.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
-            builder.addTarget(holder.previewSurface!!)
+        // 1. 安全检查：确保设备没有断开
+        val device = holder.device ?: return
 
-            holder.device?.createCaptureSession(listOf(holder.previewSurface, holder.reader!!.surface), object : CameraCaptureSession.StateCallback() {
-                override fun onConfigured(session: CameraCaptureSession) {
-                    holder.session = session
-                    if (!startPaused) {
-                        session.setRepeatingRequest(builder.build(), null, holder.handler)
-                        holder.isPreviewing = true
-                    }
+        val startSession = { surfaceTexture: SurfaceTexture ->
+            try {
+                surfaceTexture.setDefaultBufferSize(previewSize.width, previewSize.height)
+                holder.previewSurface = Surface(surfaceTexture)
+
+                // 2. 构造请求：明确指定预览模板
+                val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
+                    addTarget(holder.previewSurface!!)
+                    // 降低 USB 带宽压力：如果可以，稍微降低预览的帧率
+//                    set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(10, 20))
                 }
-                override fun onConfigureFailed(s: CameraCaptureSession) {}
-            }, holder.handler)
+
+                // 3. 准备输出配置（适配 API 级别）
+                val outputSurfaces = mutableListOf<Surface>().apply {
+                    add(holder.previewSurface!!)
+                    holder.reader?.surface?.let { add(it) }
+                }
+
+                // 4. 创建会话（加入异常捕获）
+                device.createCaptureSession(outputSurfaces, object :
+                    CameraCaptureSession.StateCallback() {
+                    override fun onConfigured(session: CameraCaptureSession) {
+                        if (holder.device == null) return // 过程中设备可能断开了
+                        holder.session = session
+                        try {
+                            if (!startPaused) {
+                                session.setRepeatingRequest(builder.build(), null, holder.handler)
+                                holder.isPreviewing = true
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    override fun onConfigureFailed(s: CameraCaptureSession) {
+                        BoxToolLogUtils.savePush2("摄像头 $cameraId 配置会话失败")
+                    }
+                }, holder.handler)
+
+            } catch (e: CameraAccessException) {
+                BoxToolLogUtils.savePush2("创建会话异常: ${e.message}")
+                cameraErrorListener?.cameraStatus(false, "all", "创建会话异常")
+            } catch (e: IllegalArgumentException) {
+                BoxToolLogUtils.savePush2("分辨率或 Surface 异常: ${e.message}")
+                cameraErrorListener?.cameraStatus(false, "all", "分辨率或 Surface 异常")
+            }
         }
 
-        if (textureView.isAvailable) startSession(textureView.surfaceTexture!!)
-        else textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-            override fun onSurfaceTextureAvailable(p0: SurfaceTexture, p1: Int, p2: Int) {  }
-             override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) {}
-            override fun onSurfaceTextureDestroyed(s: SurfaceTexture) = true
-            override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
+        if (textureView.isAvailable) {
+            startSession(textureView.surfaceTexture!!)
+        } else {
+            textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                override fun onSurfaceTextureAvailable(p0: SurfaceTexture, p1: Int, p2: Int) {
+                    startSession(p0)
+                }
+
+                override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) {}
+                override fun onSurfaceTextureDestroyed(s: SurfaceTexture) = true
+                override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
+            }
         }
     }
 
