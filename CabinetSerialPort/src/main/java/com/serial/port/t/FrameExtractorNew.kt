@@ -44,7 +44,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
 
             // 1. 超时重置逻辑
             if (currentTime - lastProcessTime > PROCESS_TIMEOUT && buffer.size() > 0) {
-                BoxToolLogUtils.savePush2("业务流：解析超时，重置缓冲区")
+                BoxToolLogUtils.savePush2("flow：Parsing timeout, resetting buffer")
                 buffer.reset()
             }
 
@@ -58,7 +58,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             lastProcessTime = currentTime
 
         } catch (e: Exception) {
-            BoxToolLogUtils.savePush2("业务流：解析异常: ${e.message}")
+            BoxToolLogUtils.savePush2("flow：Parsing exceptions: ${e.message}")
             buffer.reset()
         }
     }
@@ -73,7 +73,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             if (headerIndex == -1) {
                 // 全缓冲区没有帧头，全部标记为已处理
                 lastValidEnd = currentData.size
-                BoxToolLogUtils.savePush2("业务流：后面全是噪音")
+                BoxToolLogUtils.savePush2("flow：There's a lot of noise behind it")
                 break
             }
 
@@ -83,10 +83,10 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             // B. 检查长度位是否已接收
             if (headerIndex + POS_DATA_LEN >= currentData.size) {
                 // 数据不够读长度位，跳出，等待下一次 push 拼接
-                BoxToolLogUtils.savePush2("业务流：数据不够读长度位，跳出，等待下一次 push 拼接")
+                BoxToolLogUtils.savePush2("flow：Not enough data to read the length bit")
                 // 如果这个半包在缓冲区停留超过了 HALF_FRAME_MAX_STAY，强制跳过
                 if (currentTime - lastProcessTime > HALF_FRAME_MAX_STAY) {
-                    BoxToolLogUtils.savePush2("业务流：[丢弃] 指令位缺失包停留过久")
+                    BoxToolLogUtils.savePush2("flow：[ discard ] instruction bit Miss Packet has stayed too long")
                     currentIndex = headerIndex + 1
                     lastValidEnd = currentIndex
                     continue
@@ -100,7 +100,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
 
 
             if (totalFrameLen > MAX_FRAME_SIZE || totalFrameLen < MIN_FRAME_SIZE) {
-                BoxToolLogUtils.savePush2("业务流：[跳过] 非法包长度: $totalFrameLen")
+                BoxToolLogUtils.savePush2("flow：[ skip ] illegal packet length: $totalFrameLen")
                 currentIndex = headerIndex + 1
                 lastValidEnd = currentIndex
                 continue
@@ -110,7 +110,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             if (headerIndex + totalFrameLen > currentData.size) {
                 // 如果这个完整长度的包迟迟不来齐，不要一直憋着缓冲区
                 if (currentTime - lastProcessTime > HALF_FRAME_MAX_STAY) {
-                    BoxToolLogUtils.savePush2("业务流：[强制弹出] 半包延迟过高(${currentData.size}/$totalFrameLen)，丢弃旧头")
+                    BoxToolLogUtils.savePush2("flow：[强制弹出] 半包延迟过高(${currentData.size}/$totalFrameLen)，丢弃旧头")
                     currentIndex = headerIndex + 1
                     lastValidEnd = currentIndex
                     continue
@@ -121,7 +121,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             // F. 检查帧尾 0x9A
             val frameEndIndex = headerIndex + totalFrameLen - 1
             if (currentData[frameEndIndex] != SendByteData.RE_FRAME_END) {
-                BoxToolLogUtils.savePush2("业务流：帧尾校验失败，跳过此帧头")
+                BoxToolLogUtils.savePush2("flow：Frame end check failed, skip this frame header")
                 currentIndex = headerIndex + 1
                 lastValidEnd = currentIndex
                 continue
@@ -131,14 +131,14 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             val packet = currentData.copyOfRange(headerIndex, headerIndex + totalFrameLen)
             if (validateCheckSum(packet)) {
                 // --- 校验通过，执行回调 ---
-                BoxToolLogUtils.savePush2("业务流：[完成] 完整包: ${ByteUtils.toHexString(packet)}")
+                BoxToolLogUtils.savePush2("flow：[complete] packet: ${ByteUtils.toHexString(packet)}")
                 onFrameFound(packet)
 
                 // 推进指针到包末尾
                 currentIndex = headerIndex + totalFrameLen
                 lastValidEnd = currentIndex
             } else {
-                BoxToolLogUtils.savePush2("业务流：[丢弃] 校验和失败")
+                BoxToolLogUtils.savePush2("flow：[Checksum] failure")
                 currentIndex = headerIndex + 1
                 lastValidEnd = currentIndex
             }

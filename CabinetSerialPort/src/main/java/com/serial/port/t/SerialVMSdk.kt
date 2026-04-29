@@ -91,7 +91,7 @@ class SerialVM : ViewModel() {
             }
         } catch (e: Exception) {
             Loge.e("串口读取异常: ${e.message}")
-            BoxToolLogUtils.savePrintln("业务流：串口读取异常: ${e.message}")
+            BoxToolLogUtils.savePush2("flow：Serial port reading abnormal: ${e.message}")
         }
     }
 

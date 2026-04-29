@@ -44,19 +44,19 @@ object SerialPortEngine {
     private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var readJob: Job? = null
 
-    // 统一的数据分发：所有的解析回包都通过这里
+    // 统一的数据分发：所有的解析packet 都通过这里
     private val extractor = FrameExtractorNew { packet ->
 //        responseWaiter?.complete(packet)
         val cmdId = packet[2].toInt() and 0xFF // 强制转为 0~255 的整数
-        // --- 关键日志 3: 打印回包提取的 ID ---
+        // --- 关键日志 3: 打印packet 提取的 ID ---
         val waiter = pendingRequests[cmdId]
 
         if (waiter != null) {
-            BoxToolLogUtils.savePush2("业务流：串口匹配：[回包] 匹配成功 ID=$cmdId, 准备触发回调")
+            BoxToolLogUtils.savePush2("flow：Serial：[packet ] success ID=$cmdId, 准备触发回调")
             pendingRequests.remove(cmdId)?.complete(packet)
         } else {
             // 这行日志最重要：如果出现了这行，说明 ID 没对上或者对应的请求已经超时移除了
-            BoxToolLogUtils.savePush2("业务流：串口匹配：[回包] 匹配失败！收到 ID=$cmdId, 但 Map 中找不到对应的请求。当前 Map 中的 Keys=${pendingRequests.keys()}")
+            BoxToolLogUtils.savePush2("flow：Serial：[packet ] failure！ID=$cmdId, Map not find Keys=${pendingRequests.keys()}")
         }
     }
 
@@ -80,7 +80,7 @@ object SerialPortEngine {
                     try {
                         readLoop() // 调用提取出来的读取循环
                     } catch (e: Exception) {
-                        BoxToolLogUtils.savePush2("业务流：读取中断: ${e.message}")
+                        BoxToolLogUtils.savePush2("flow：Read interrupt: ${e.message}")
                     } finally {
                         _portStatus.value = PortStatus.ERROR
                         closeStreams()
@@ -107,7 +107,7 @@ object SerialPortEngine {
                 if (len > 0) {
                     // 拷贝当前读取到的实际有效长度
                     val validData = buffer.copyOfRange(0, len)
-                    BoxToolLogUtils.savePush3("red:${ByteUtils.toHexString(validData)}")
+                    BoxToolLogUtils.savePush3("flow：Read：${ByteUtils.toHexString(validData)}")
                     if (validData[0] == 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
                         //完成帧
                         readBuffer.write(validData)
@@ -126,7 +126,7 @@ object SerialPortEngine {
             }
         } catch (e: Exception) {
             Loge.e("串口读取异常: ${e.message}")
-            BoxToolLogUtils.savePush2("业务流：串口读取异常: ${e.message}")
+            BoxToolLogUtils.savePush2("flow：串口读取异常: ${e.message}")
         }
     }
 
@@ -145,7 +145,7 @@ object SerialPortEngine {
                     if (available > 0) {
                         val skipBuffer = ByteArray(available)
                         fis?.read(skipBuffer) // 彻底排空旧缓冲区
-                        BoxToolLogUtils.savePush2("业务流：串口匹配：[预处理] 已丢弃缓冲区残留数据: $available 字节")
+                        BoxToolLogUtils.savePush2("flow：Serial：[预处理] 已丢弃缓冲区残留数据: $available 字节")
                     }
                 }
             }
@@ -155,7 +155,7 @@ object SerialPortEngine {
 //            responseWaiter = waiter
             // 保存到待处理队列
             pendingRequests[msgId] = waiter
-            BoxToolLogUtils.savePush2("业务流：串口匹配：[发送] 注册 ID=$msgId, 当前待处理队列 size=${pendingRequests.size}")
+            BoxToolLogUtils.savePush2("flow：Serial：[发送] 注册 ID=$msgId, 当前待处理队列 size=${pendingRequests.size}")
             try {
                 withContext(Dispatchers.IO) {
                     Loge.i("SerialPort", "发送: ${ByteUtils.toHexString(data)}")
@@ -168,7 +168,7 @@ object SerialPortEngine {
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)
             } catch (e: Exception) {
-                BoxToolLogUtils.savePush2("业务流：串口匹配：[异常] ID=$msgId 失败: ${e.javaClass.simpleName} - ${e.message}")
+                BoxToolLogUtils.savePush2("flow：Serial：[异常] ID=$msgId 失败: ${e.javaClass.simpleName} - ${e.message}")
                 Result.failure(e)
             } finally {
 //                responseWaiter = null
@@ -197,14 +197,14 @@ object SerialPortEngine {
                 lastErr = res.exceptionOrNull() as? Exception
 
                 // 记录一下重试日志，方便排查
-                BoxToolLogUtils.savePush2("业务流：ID=${data[2]} 第 ${attempt + 1} 次重试中...")
+                BoxToolLogUtils.savePush2("flow：ID=${data[2]} no ${attempt + 1} second try...")
             }
         } else {
             val res = sendOnce(data, timeout)
             if (res.isSuccess) return res
 
             lastErr = res.exceptionOrNull() as? Exception
-            BoxToolLogUtils.savePush2("业务流：ID=${data[2]} ")
+            BoxToolLogUtils.savePush2("flow：ID=${data[2]} ")
 
         }
 

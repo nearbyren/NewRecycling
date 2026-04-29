@@ -113,7 +113,7 @@ object SerialPortSdk {
 
 
     fun release() {
-        BoxToolLogUtils.savePrintln("业务流：收到指令重启：资源已释放，执行重启 closeAllSerialPort")
+        BoxToolLogUtils.savePush2("flow：收到指令重启：资源已释放，执行重启 closeAllSerialPort")
 //        SerialPortManagerSdk.instance.closeAllSerialPort()
         SerialPortEngine.stop()
         isInit = false

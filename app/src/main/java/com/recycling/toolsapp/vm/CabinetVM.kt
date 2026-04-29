@@ -3610,7 +3610,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
                 BoxToolLogUtils.savePrintln2("业务流：门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
                 while (isActive) {
-                    Loge.e("业务流：过程中最后一次重量 ${currentStep.value}")
                     //关闭中 和 已经关闭 不查重量
                     if (currentStep.value != LockerStep.CLOSING && currentStep.value != LockerStep.CLOSE) {
                         val weightDuringOpeningCmd = SerialPortSdk.queryWeight(doorGex)
