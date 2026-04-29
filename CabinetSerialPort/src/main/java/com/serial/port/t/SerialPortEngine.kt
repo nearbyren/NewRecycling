@@ -52,7 +52,7 @@ object SerialPortEngine {
         val waiter = pendingRequests[cmdId]
 
         if (waiter != null) {
-            BoxToolLogUtils.savePush2("flow：Serial：[packet ] success ID=$cmdId, 准备触发回调")
+            BoxToolLogUtils.savePush2("flow：Serial：[packet ] success ID=$cmdId, Preparing to trigger a callback")
             pendingRequests.remove(cmdId)?.complete(packet)
         } else {
             // 这行日志最重要：如果出现了这行，说明 ID 没对上或者对应的请求已经超时移除了
@@ -155,7 +155,7 @@ object SerialPortEngine {
 //            responseWaiter = waiter
             // 保存到待处理队列
             pendingRequests[msgId] = waiter
-            BoxToolLogUtils.savePush2("flow：Serial：[发送] 注册 ID=$msgId, 当前待处理队列 size=${pendingRequests.size}")
+            BoxToolLogUtils.savePush2("flow：Serial：[send] Registration ID=$msgId, The current queue to be processed size=${pendingRequests.size}")
             try {
                 withContext(Dispatchers.IO) {
                     Loge.i("SerialPort", "发送: ${ByteUtils.toHexString(data)}")
