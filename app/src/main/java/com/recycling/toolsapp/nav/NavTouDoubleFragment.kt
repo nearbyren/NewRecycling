@@ -196,6 +196,19 @@ class NavTouDoubleFragment : BaseBindLazyTimeFragment<NavTouDoubleFragmentBindin
                 setTextColorFromPosition(binding.tvRightCurWeightNet, valueNet, 9, Color.YELLOW)
             }
         }
+        val hiddenTotalWeight = SPreUtil[AppUtils.getContext(), SPreUtil.hiddenTotalWeight, 0] as Int
+        val isHiddenTotalWeight = hiddenTotalWeight == 0
+        if (binding.tvLeftCurWeightNet.isVisible != isHiddenTotalWeight) {
+            binding.tvLeftCurWeightNet.isVisible = isHiddenTotalWeight
+            binding.tvRightCurWeightNet.isVisible = isHiddenTotalWeight
+        }
+
+        val hiddenPhonePost = SPreUtil[AppUtils.getContext(), SPreUtil.hiddenPhonePost, 0] as Int
+        val isHiddenPhonePost = hiddenPhonePost == 0
+        if (binding.clMobileNet.isVisible != isHiddenPhonePost) {
+            binding.clMobileNet.isVisible = isHiddenPhonePost
+        }
+
     }
 
     private fun initWarningContent(warningContent: String, doorGeX: Int) {

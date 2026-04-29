@@ -72,4 +72,22 @@ data class ConfigInfo(
      * 图片音频资源
      */
     var resourceList: List<ConfigRes>? = null,
+
+    /***
+     * 屏幕是否显示总重量, [0显示, 1隐藏] (可选配置)
+     */
+    var hiddenTotalWeight: Int,
+    /***
+     * 投递过程中，屏幕是否显示重量信息, [0显示, 1隐藏] (可选配置)
+     */
+    var hiddenPostWeight: Int,
+    /***
+     * 清运过程中，屏幕是否显示重量信息, [0显示, 1隐藏] (可选配置)
+     */
+    var hiddenCleanWeight: Int,
+    /***
+     * 手机号投递, [0显示, 1隐藏] (可选配置)
+     */
+    var hiddenPhonePost: Int,
+
 )

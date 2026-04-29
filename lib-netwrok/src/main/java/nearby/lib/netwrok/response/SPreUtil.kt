@@ -50,6 +50,10 @@ object SPreUtil {
     const val clearFaultDoor = "clearFaultDoor"
     const val saveIr1 = "saveIr1"
     const val saveIr2 = "saveIr2"
+    const val hiddenTotalWeight = "hiddenTotalWeight"
+    const val hiddenPostWeight = "hiddenPostWeight"
+    const val hiddenCleanWeight = "hiddenCleanWeight"
+    const val hiddenPhonePost = "hiddenPhonePost"
     /**
      * 保存在手机里面的文件名
      */

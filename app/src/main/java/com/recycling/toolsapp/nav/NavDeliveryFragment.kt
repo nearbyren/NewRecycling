@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.LinearLayoutCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -20,11 +21,13 @@ import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.CabinetVM.LockerStep
 import com.recycling.toolsapp.vm.DeliveryTimer
+import com.serial.port.utils.AppUtils
 import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import nearby.lib.netwrok.response.SPreUtil
 
 
 /***
@@ -148,7 +151,8 @@ class NavDeliveryFragment : BaseBindLazyTimeFragment<NavFragmentDeliveryBinding>
         cabinetVM.deliveryStartTimer(ResultType.DELIVERY_SECONDS)
         upgradeAi()
         latestBusiness()
-
+        val hiddenPostWeight = SPreUtil[AppUtils.getContext(), SPreUtil.hiddenPostWeight, 0] as Int
+        binding.clInfo.isVisible = hiddenPostWeight == 0
     }
 
     private fun upgradeAi() {

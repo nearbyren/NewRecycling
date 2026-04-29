@@ -836,6 +836,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     SPreUtil.put(
                         AppUtils.getContext(), SPreUtil.debugPasswd, config.debugPasswd ?: "123456"
                     )
+                    SPreUtil.put(AppUtils.getContext(), SPreUtil.hiddenTotalWeight, config.hiddenTotalWeight)
+                    SPreUtil.put(AppUtils.getContext(), SPreUtil.hiddenPostWeight, config.hiddenPostWeight)
+                    SPreUtil.put(AppUtils.getContext(), SPreUtil.hiddenCleanWeight, config.hiddenCleanWeight)
+                    SPreUtil.put(AppUtils.getContext(), SPreUtil.hiddenPhonePost, config.hiddenPhonePost)
+
                     val saveConfig = ConfigEntity().apply {
                         sn = snCode
                         heartBeatInterval = config.heartBeatInterval
@@ -1806,7 +1811,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 Loge.d("网络请求 拍照上传 onCatch ${e.errorMsg}")
                 insertInfoLog(LogEntity().apply {
                     cmd = "$activeType$photoType"
-                    msg = "$transId,onFileCatch"
+                    msg = "$transId,${e.errorMsg}"
                     time = AppUtils.getDateYMDHMS()
                 })
             }

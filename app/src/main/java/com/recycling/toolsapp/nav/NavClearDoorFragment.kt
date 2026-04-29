@@ -1,6 +1,7 @@
 package com.recycling.toolsapp.nav
 
 import android.os.Bundle
+import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -13,10 +14,12 @@ import com.recycling.toolsapp.utils.MonitorType
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.ClearTimer
+import com.serial.port.utils.AppUtils
 import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import nearby.lib.netwrok.response.SPreUtil
 
 
 /***
@@ -71,6 +74,8 @@ class NavClearDoorFragment : BaseBindLazyTimeFragment<NavFragmentClearDoorBindin
         binding.cpvView.setMaxProgress(ResultType.DELIVERY_CLEAR_SECONDS)
         cabinetVM.clearStartTimer(ResultType.DELIVERY_CLEAR_SECONDS)
         upgradeAi()
+        val hiddenCleanWeight = SPreUtil[AppUtils.getContext(), SPreUtil.hiddenCleanWeight, 0] as Int
+        binding.clInfo.isVisible = hiddenCleanWeight == 0
     }
 
     private fun upgradeAi() {
