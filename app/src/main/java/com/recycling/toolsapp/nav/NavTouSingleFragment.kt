@@ -183,16 +183,12 @@ class NavTouSingleFragment : BaseBindLazyTimeFragment<NavTouSingleFragmentBindin
 
         val hiddenTotalWeight = SPreUtil[AppUtils.getContext(), SPreUtil.hiddenTotalWeight, 0] as Int
         val isHiddenTotalWeight = hiddenTotalWeight == 0
-        println("刷新啊啊啊啊1 $isHiddenTotalWeight")
         if (binding.tvVotableValueNet.isVisible != isHiddenTotalWeight){
-            println("刷新啊啊啊啊1")
             binding.tvVotableValueNet.isVisible = isHiddenTotalWeight
         }
         val hiddenPhonePost = SPreUtil[AppUtils.getContext(), SPreUtil.hiddenPhonePost, 0] as Int
         val isHiddenPhonePost = hiddenPhonePost == 0
-        println("刷新啊啊啊啊2 $isHiddenPhonePost")
         if (binding.clMobileNet.isVisible != isHiddenPhonePost){
-            println("刷新啊啊啊啊2")
             binding.clMobileNet.isVisible = isHiddenPhonePost
         }
     }
