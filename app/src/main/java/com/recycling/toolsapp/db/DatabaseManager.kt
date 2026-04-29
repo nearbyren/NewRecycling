@@ -889,12 +889,50 @@ object DatabaseManager {
     /**
      * 提供外部 API 方法
      * @param context 上下文
+     * @param transId
+     * @return
+     */
+    fun queryFileEntitys(context: Context, transId: String): List<FileEntity> {
+        return getFileFlowDao(context).queryFileEntitys(transId)
+    }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @return
+     */
+    fun queryAllFileEntity(context: Context): List<FileEntity> {
+        return getFileFlowDao(context).queryAllFileEntity()
+    }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
      * @param FileEntity
      * @return
      */
     fun upFileEntity(context: Context, fileEntity: FileEntity): Int {
         return getFileFlowDao(context).upFileEntity(fileEntity)
     }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @return
+     */
+    fun deleteAllFileEntity(context: Context) {
+        getFileFlowDao(context).deleteAll()
+    }
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param id
+     * @return
+     */
+    fun deletedFileEntity(context: Context, id: Long) {
+        getFileFlowDao(context).deletedFileEntity(id)
+    }
+
 
     /***************************************获取 文件上传*************************************************/
 
