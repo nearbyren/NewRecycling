@@ -3533,10 +3533,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 _currentStep.value = LockerStep.START
                 delay(1000)
                 enqueuePhotoAction(1)//投口关闭前的拍照
-
                 // --- 第一阶段：下发开门 ---
                 _currentStep.value = LockerStep.OPENING
                 setCurrentUiStep(LockerUiStep.DELIVERY_START)
+                dbBeforeWeight(weightBeforeOpen, model)
                 // 记录“准备开门前”的初始重量（作为参考）
                 val weightBeforeOpenCmd = SerialPortSdk.queryWeight(doorGex)
                 if (weightBeforeOpenCmd.isFailure) {
@@ -3550,7 +3550,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     curG2Weight = weightBeforeOpen
                 }
                 BoxToolLogUtils.savePrintln("业务流：正在执行开门动作【${SendTurnText.fromStatus(openType)}】 开门前重量:$weightBeforeOpen")
-                dbBeforeWeight(weightBeforeOpen, model)
                 delay(2000)
                 val turnDoor = SerialPortSdk.turnDoor(openType)
                 if (turnDoor.isFailure) {
@@ -3773,6 +3772,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 // --- 第一阶段：下发开门 ---
                 _currentStep.value = LockerStep.OPENING
                 setCurrentUiStep(LockerUiStep.CLEAR_START)
+                dbBeforeWeight(weightBeforeOpen, model)
                 // 记录“准备开门前”的初始重量（作为参考）
                 val weightBeforeOpenCmd = SerialPortSdk.queryWeight(doorGex)
                 if (weightBeforeOpenCmd.isFailure) {
@@ -3786,7 +3786,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     curG2Weight = weightBeforeOpen
                 }
                 BoxToolLogUtils.savePrintln("业务流：正在执行开门动作【${SendTurnText.fromStatus(openType)}】 开门前重量:$weightBeforeOpen")
-                dbBeforeWeight(weightBeforeOpen, model)
                 val openClear = SerialPortSdk.openQueryClear(openType)
                 if (openClear.isFailure) {
                     BoxToolLogUtils.savePrintln("开门指令发送失败: ${openClear.exceptionOrNull()?.message}")
