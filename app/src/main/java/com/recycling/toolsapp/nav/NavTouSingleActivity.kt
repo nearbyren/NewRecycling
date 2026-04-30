@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.telephony.PhoneStateListener
 import android.telephony.SignalStrength
 import android.telephony.TelephonyManager
+import android.view.MotionEvent
 import android.view.View
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
@@ -202,11 +203,47 @@ class NavTouSingleActivity : AppCompatActivity() {
         }
     }
 
+    private var downTime = 0L
     private fun initVerSn(text: String? = "0") {
         val initSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""]
         val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION]
         binding.tvSn.text = "$initSn"
         binding.tvVersion.text = "版本号：$text-v${AppUtils.getVersionName()}-v${gversion}"
+        binding.tvSn.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    downTime = System.currentTimeMillis()
+                    true
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    if (System.currentTimeMillis() - downTime >= 10000) {
+                        // 执行5秒长按回调
+                        toGoDebug()
+                        true // 消耗事件
+                    } else false
+                }
+
+                else -> false
+            }
+        }
+    }
+
+    private fun toGoDebug() {
+        val navController = Navigation.findNavController(
+            this@NavTouSingleActivity, R.id.nav_host_fragment_single
+        )
+        if (navController.currentDestination?.id != R.id.action_start_debug_type) {
+            val args: Bundle = Bundle().apply {
+                putInt(
+                    NavDeBugTypeFragment.IS_INDEX, NavDeBugTypeFragment.IS_LEFT
+                )
+                putBoolean(NavDeBugTypeFragment.IS_SHOW, true)
+            }
+            Navigation.findNavController(
+                this@NavTouSingleActivity, R.id.nav_host_fragment_single
+            ).navigate(R.id.action_start_debug_type, args)
+        }
     }
 
     private val signalAnalyzer = SignalStrengthAnalyzer()

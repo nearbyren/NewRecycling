@@ -734,6 +734,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             try {
                 devWeiChaMapSend[0] = false
                 devWeiChaMapSend[1] = false
+                DatabaseManager.deleteAllFileEntity(AppUtils.getContext())
                 Loge.e("获取socket初始化数据 ioScope ${Thread.currentThread().name}")
                 val heartbeatIntervalMillis = loginModel.config.heartBeatInterval?.toLongOrNull()
                     ?: 30L
@@ -3116,44 +3117,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val ids = cameraManagerNew.getExternalCameraIds()
             if (ids.size < 2) return@launch
             val getTransId = modelOpenBean?.transId ?: "transId"
-            postTransId = getTransId
             //0231
             val setTransId = removeRetryPrefix(getTransId)
-            val a = if (switchType == 1) 0 else 3
-            val b = if (switchType == 1) 2 else 1
-            val e = if (a == 0) 1 else 3
-            val f = if (b == 2) 2 else 4
-            val nameIn = "${e}i${a}${setTransId}---${AppUtils.getDateYMD()}.jpg"
-            val nameOut = "${f}o${b}${setTransId}---${AppUtils.getDateYMD()}.jpg"
-//            val dir = File(AppUtils.getContext().cacheDir, "action")
+            val ocIn = if (switchType == 1) "10i" else "41i"
+            val ocOut = if (switchType == 1) "22o" else "33o"
+            val nameIn = "${ocIn}${setTransId}---${AppUtils.getDateYMD()}.jpg"
+            val nameOut = "${ocOut}${setTransId}---${AppUtils.getDateYMD()}.jpg"
             val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
             if (!dir.exists()) dir.mkdirs()
             val fileIn = File(dir, nameIn)
             val fileOut = File(dir, nameOut)
-            var requests = if (remoteOpenType == 1) {
-                if (switchType == 1) {
-                    //格口顺序 内外外内
-                    listOf(
-                        NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType), NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType)
-                    )
-                } else {
-                    listOf(
-                        NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType), NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType)
-                    )
-                }
-            } else {
-                //清运顺序 内外内外
-                if (switchType == 1) {
-                    listOf(
-                        NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType), NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType)
-                    )
-                } else {
-                    listOf(
-                        NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType), NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType)
-                    )
-                }
-            }
-
+            val requests = listOf(
+                NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType),
+                NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType)
+            )
 
             // 同时开始拍照并等待全部完成
             val results = cameraManagerNew.takePicturesParallel(requests)
@@ -3175,7 +3152,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         val regex = Regex("^(.{3})(.*?)---")
                         val matchResult = regex.find(file.name)
                         if (matchResult != null) {
-                            val type = extractThirdChar(file.name, 1).toString()
                             val prefix = matchResult.groupValues[1] // 获取动态前缀，如 "2i3"
                             val data = matchResult.groupValues[2]   // 获取目标数据，如 "172604281724534926874686"
                             Loge.e("上传图片 存 动态前缀: $prefix 提取数据: $data")
@@ -3184,47 +3160,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 transId = data
                                 time = AppUtils.getDateYMDHMS()
                             }
-                            if (type == "i") {
-                                fileEntity.photoIn = file.absolutePath
-                            } else {
-                                fileEntity.photoOut = file.absolutePath
-                            }
+                            fileEntity.photoIn = file.absolutePath
                             val row = DatabaseManager.insertFile(AppUtils.getContext(), fileEntity)
                             Loge.e("上传图片 存 插入db $row")
                         } else {
                             Loge.e("上传图片 存 未找到匹配格式")
                         }
-
-
-//                        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-//                        if (!dir.exists()) dir.mkdirs()
-//                        val photoType = extractThirdChar(file.name).toString()
-//                        // 2. 复制文件（添加时间戳避免并发重名）
-//                        val tempFile = File(dir, "${file.name}")
-//
-//                        try {
-//                            // 执行物理拷贝
-//                            file.copyTo(tempFile, overwrite = true)
-//
-//                            delay(1000)
-//                            // 3. 提取参数
-////                            val photoType = extractFourthValue(tempFile.name).toString()
-//
-//                            BoxToolLogUtils.saveCamera("中转检查: 原始大小 ${file.length()} | 中转大小 ${tempFile.length()}")
-//
-//                            // 4. 从中转文件上传
-//                            uploadPhoto(curSn, setTransId, photoType, tempFile, switchType.toString())
-//
-//                            // 5. 【关键】上传完或延迟后记得清理中转文件，防止撑爆空间
-////                            viewModelScope.launch(Dispatchers.IO) {
-////                                delay(30000) // 延迟30秒确保 OkHttp 彻底读完
-//////                                if (tempFile.exists()) tempFile.delete()
-////                            }
-//
-//                        } catch (e: Exception) {
-//                            BoxToolLogUtils.saveCamera("中转拷贝失败: ${e.message}")
-//                        }
-
                         delay(2000) // 双摄间隔 1s，减轻网络带宽压力
                     }
                 }
@@ -3264,7 +3205,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             results.forEach { file ->
                                 if (file != null) {
                                     //结算页只显示图片打开的拍照
-                                    val photoType = extractThirdChar(file.name).toString()
+                                    val photoType = extractThirdChar(file.name,2).toString()
                                     uploadPhoto(curSn, setTransId, photoType, file, "45")
 
                                 }
@@ -3286,7 +3227,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             // results 里的文件顺序与 requests 一致
                             results.forEach { file ->
                                 if (file != null) {
-                                    val photoType = extractThirdChar(file.name).toString()
+                                    val photoType = extractThirdChar(file.name,2).toString()
                                     uploadPhoto(curSn, setTransId, photoType, file, "45")
                                     delay(2000) // 双摄间隔 1s，减轻网络带宽压力
                                 }
@@ -3309,7 +3250,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             // results 里的文件顺序与 requests 一致
                             results.forEach { file ->
                                 if (file != null) {
-                                    val photoType = extractThirdChar(file.name).toString()
+                                    val photoType = extractThirdChar(file.name,2).toString()
                                     uploadPhoto(curSn, setTransId, photoType, file, "45")
                                     delay(2000) // 双摄间隔 1s，减轻网络带宽压力
                                 }
@@ -3326,57 +3267,86 @@ class CabinetVM @Inject constructor() : ViewModel() {
     }
 
 
-    var postTransId: String = ""
+    private fun removeRetryPrefix(input: String): String {
+        return if (input.startsWith("retry-")) {
+            input.removePrefix("retry-")
+        } else {
+            input
+        }
+    }
 
-    /***
-     * @param switchType 0.关 1.开`
-     */
-    fun executePhotoWorkflow2(switchType: Int = -1) {
-        viewModelScope.async {
-            val transId = modelOpenBean?.transId ?: "transId"
-            postTransId = transId
-            val setTransId = removeRetryPrefix(transId)
-            val a = if (switchType == 1) 0 else 3
-            val b = if (switchType == 1) 2 else 1
-            val e = if (a == 0) 1 else 3
-            val f = if (b == 2) 2 else 4
-            val nameIn = "$e-i-$switchType-$a-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-            val nameOut = "$f-o-$switchType-$b-${setTransId}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
-            val dir = File(AppUtils.getContext().cacheDir, "action")
-//        val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-            if (!dir.exists()) dir.mkdirs()
-            val fileIn = File(dir, nameIn)
-            val fileOut = File(dir, nameOut)
-            when (switchType) {
-                1 -> {
-                    val toFile1 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn, remoteOpenType)
-                    if (toFile1 != null && toFile1.exists()) {
-                        BoxToolLogUtils.saveCamera("拍照成功 开门 内 $toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
-                        uploadPhoto(curSn, setTransId, "0", toFile1, switchType.toString())
-                    }
-                    delay(3000)
-                    val toFile2 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut, remoteOpenType)
-                    if (toFile2 != null && toFile2.exists()) {
-                        BoxToolLogUtils.saveCamera("拍照成功 开门 外 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
-                        uploadPhoto(curSn, setTransId, "2", toFile2, switchType.toString())
-                    }
+    fun extractThirdChar(fileName: String, index: Int): Char? {
+        return fileName.getOrNull(index)
+    }
+
+    fun endCameraUploadPhoto() {
+        viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                delay(1000)
+                val filesAll = DatabaseManager.queryAllFileEntity(AppUtils.getContext())
+                Loge.e("上传图片 图片上传检测 isRunning：$isRunning 是否为空：${filesAll.isEmpty()} ${filesAll.size}")
+                if (filesAll.isEmpty()) {
+                    Loge.e("上传图片 图片上传检测 没有需要上传的图片")
+                    break
                 }
+                if (!isRunning && !upPhotoRunning && filesAll.isNotEmpty() && filesAll.size == 4) {
+                    upPhotoRunning = true
+                    //排序好顺序再进行上唇
+                    val sorted = filesAll.sortedBy { it.cmd?.first()?.digitToInt() }
+                    Loge.e("上传图片: 排序后的cmd序列 = ${sorted.map { it.cmd }}")
+                    sorted.map { data ->
+                        val postCmd = data.cmd
+                        Loge.e("上传图片 拍照上传 postCmd $postCmd  ")
+                        //上传顺序
+                        val indexI = postCmd?.let { extractThirdChar(it, 0).toString() }
+                        //类型0231
+                        val photoType = postCmd?.let { extractThirdChar(it, 1).toString() }
+                        //内外
+                        val inOut = postCmd?.let { extractThirdChar(it, 2).toString() }
+                        //当前事务
+                        val setTransId = data.transId
+                        val file = File(data.photoIn)
+                        if (file != null && setTransId != null && photoType != null) {
+                            Loge.e("上传图片 拍照上传 $indexI $photoType 文件大小：${file.length()} ")
+                            val post = mutableMapOf<String, Any>()
+                            post["sn"] = curSn
+                            post["transId"] = setTransId
+                            post["photoType"] = photoType.toInt()
+                            post["file"] = file
+                            Loge.e("上传图片 拍照上传 post $post")
+                            httpRepo.uploadPhoto(post).onSuccess { user ->
+                                Loge.e("上传图片 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
+                                withContext(Dispatchers.IO) {
+                                    val delId = data.id
+                                    val row = DatabaseManager.deletedFileEntity(AppUtils.getContext(), delId)
+                                    Loge.e("上传图片 更新本地数据成功 row $row ")
+                                    DatabaseManager.insertLog(AppUtils.getContext(), LogEntity().apply {
+                                        cmd = "$indexI$photoType$inOut"
+                                        msg = "$setTransId,onFileSuccess"
+                                        time = AppUtils.getDateYMDHMS()
+                                    })
+                                }
+                            }.onFailure { code, message ->
+                                Loge.e("上传图片 拍照上传 onFailure $code $message")
+                                insertInfoLog(LogEntity().apply {
+                                    cmd = "$indexI$photoType$inOut"
+                                    msg = "$setTransId,$code,$message"
+                                    time = AppUtils.getDateYMDHMS()
+                                })
 
-                0 -> {
-                    val toFile1 = cameraManagerNew.takePictureSuspend("1", switchType, "外", fileOut, remoteOpenType)
-                    if (toFile1 != null && toFile1.exists()) {
-                        BoxToolLogUtils.saveCamera("拍照成功 关门 外$toFile1 ${toFile1?.name} (${toFile1?.length()} bytes)")
-                        uploadPhoto(curSn, setTransId, "3", toFile1, switchType.toString())
+                            }.onCatch { e ->
+                                Loge.e("上传图片 拍照上传 onCatch ${e.errorMsg}")
+                                insertInfoLog(LogEntity().apply {
+                                    cmd = "$indexI$photoType$inOut"
+                                    msg = "$setTransId,${e.errorMsg}"
+                                    time = AppUtils.getDateYMDHMS()
+                                })
+                            }
+                            delay(1500)
+                        }
                     }
-                    delay(3000)
-                    val toFile2 = cameraManagerNew.takePictureSuspend("0", switchType, "内", fileIn, remoteOpenType)
-                    if (toFile2 != null && toFile2.exists()) {
-                        BoxToolLogUtils.saveCamera("拍照成功 关门 内 $toFile2 ${toFile2?.name} (${toFile2?.length()} bytes)")
-                        uploadPhoto(curSn, setTransId, "1", toFile2, switchType.toString())
-                    }
+                    upPhotoRunning = false
                 }
-
-                else -> {}
             }
         }
     }
@@ -3485,6 +3455,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     val isRunning: Boolean get() = _isRunning.get()
 
     var weightRunning = false
+    var upPhotoRunning = false
     private val defaultWeight = "0.00"
     private var modelOpenBean: DoorOpenBean? = null
 
@@ -4300,107 +4271,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-    private fun removeRetryPrefix(input: String): String {
-        return if (input.startsWith("retry-")) {
-            input.removePrefix("retry-")
-        } else {
-            input
-        }
-    }
-
-    fun extractThirdChar(fileName: String): Char? {
-        return fileName.getOrNull(2)
-    }
-
-    fun extractThirdChar(fileName: String, index: Int): Char? {
-        return fileName.getOrNull(index)
-    }
-
-    fun endCameraUploadPhoto() {
-        viewModelScope.launch(Dispatchers.IO) {
-            while (isActive) {
-                val filesAll = DatabaseManager.queryAllFileEntity(AppUtils.getContext())
-                println("图片上传检测 isRunning：$isRunning 是否为空：${filesAll.isEmpty()}")
-                if (filesAll.isEmpty()) {
-                    println("图片上传检测 没有需要上传的图片")
-                    break
-                }
-                if (!isRunning && filesAll.isNotEmpty()) {
-                    //排序好顺序再进行上唇
-                    val sortedList = filesAll.sortedBy { entity ->
-                        // 获取cmd去除空格后的第一个字符，若为空则返回最小值
-                        entity.cmd?.trim()?.firstOrNull() ?: Char.MIN_VALUE
-                    }
-
-                    sortedList.forEach { data ->
-                        val postCmd = data.cmd
-                        //上传顺序
-                        val indexI = postCmd?.let { extractThirdChar(it, 0).toString() }
-                        //拿到照片类型
-                        val inOut = postCmd?.let { extractThirdChar(it, 1).toString() }
-                        //拿到上传类型
-                        val photoType = postCmd?.let { extractThirdChar(it, 2).toString() }
-                        //当前事务
-                        val setTransId = data.transId
-                        val file = when (inOut) {
-                            "i" -> {
-                                Loge.e("上传图片 开始上传 $curSn $setTransId $indexI photoType $photoType ${data.photoIn}")
-                                File(data.photoIn)
-                            }
-
-                            "o" -> {
-                                Loge.e("上传图片 开始上传 $curSn $setTransId $indexI photoType $photoType ${data.photoOut}")
-                                File(data.photoOut)
-                            }
-
-                            else -> {
-                                null
-                            }
-                        }
-                        if (file != null && setTransId != null && photoType != null) {
-                            Loge.e("上传图片 拍照上传 $photoType 文件大小：${file.length()} ")
-                            val post = mutableMapOf<String, Any>()
-                            post["sn"] = curSn
-                            post["transId"] = postTransId
-                            post["photoType"] = photoType.toInt()
-                            post["file"] = file
-                            Loge.d("上传图片 拍照上传 post $post")
-                            httpRepo.uploadPhoto(post).onSuccess { user ->
-                                Loge.d("上传图片 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
-                                withContext(Dispatchers.IO) {
-                                    val delId = data.id
-                                    val row = DatabaseManager.deletedFileEntity(AppUtils.getContext(), delId)
-                                    Loge.e("上传图片 更新本地数据成功 row $row ")
-                                    DatabaseManager.insertLog(AppUtils.getContext(), LogEntity().apply {
-                                        cmd = "$photoType$inOut"
-                                        msg = "$postTransId,onFileSuccess"
-                                        time = AppUtils.getDateYMDHMS()
-                                    })
-                                }
-                            }.onFailure { code, message ->
-                                Loge.d("上传图片 拍照上传 onFailure $code $message")
-                                insertInfoLog(LogEntity().apply {
-                                    cmd = "$photoType$inOut"
-                                    msg = "$postTransId,$code,$message"
-                                    time = AppUtils.getDateYMDHMS()
-                                })
-
-                            }.onCatch { e ->
-                                Loge.d("上传图片 拍照上传 onCatch ${e.errorMsg}")
-                                insertInfoLog(LogEntity().apply {
-                                    cmd = "$photoType$inOut"
-                                    msg = "$postTransId,${e.errorMsg}"
-                                    time = AppUtils.getDateYMDHMS()
-                                })
-                            }
-                            delay(1000)
-                        }
-                    }
-                }
-                delay(10000)
-            }
-        }
-    }
 
     // 用于通知 Activity 跳转的事件流
     private val _navigationEvent = MutableSharedFlow<Pair<String, Int>>()
