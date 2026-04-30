@@ -4998,6 +4998,13 @@ class CabinetVM @Inject constructor() : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val calibrationValue = SerialPortSdk.startCalibration(doorGeX, code)
             if (calibrationValue.isFailure) {
+                if(doorGeX==1){
+                    setRefCalibrationStaStateFlow(MonitorCalibration().apply {
+                        curStatus = 10
+                        refreshType = 1
+                        time = AppUtils.getDateYMDHMS()
+                    })
+                }
                 tipMessage("业务流：等待校准状态失败: ${calibrationValue.exceptionOrNull()?.message}")
                 return@launch
             }

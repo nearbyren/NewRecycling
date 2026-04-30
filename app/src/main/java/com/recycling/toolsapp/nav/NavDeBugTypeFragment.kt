@@ -619,8 +619,10 @@ class NavDeBugTypeFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeBindin
                                     }
 
                                     if (status == 10) {
-                                        cabinetVM.tipMessage("校准前处理未完成，请重新点击称重校准")
+                                        cabinetVM.tipMessage("校准前处理未完成，请再次按校准前")
 //                    setRbEnabled(false)
+                                        //校准完成复原点击按钮
+                                        binding.actvWeighing.isEnabled = true
                                         setRbEnabled2(false, false)
                                         weightKg = -1
                                     }
