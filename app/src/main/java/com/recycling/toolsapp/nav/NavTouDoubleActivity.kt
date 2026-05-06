@@ -349,6 +349,8 @@ class NavTouDoubleActivity : AppCompatActivity() {
         cabinetVM.startContainersStatus()
         //启动检查故障
         cabinetVM.startPollingFault()
+        //启动检测上传业务图片
+        cabinetVM.endCameraUploadPhoto()
     }
 
     /***

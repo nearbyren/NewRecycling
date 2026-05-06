@@ -734,7 +734,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             try {
                 devWeiChaMapSend[0] = false
                 devWeiChaMapSend[1] = false
-                DatabaseManager.deleteAllFileEntity(AppUtils.getContext())
+//                DatabaseManager.deleteAllFileEntity(AppUtils.getContext())
                 Loge.e("获取socket初始化数据 ioScope ${Thread.currentThread().name}")
                 val heartbeatIntervalMillis = loginModel.config.heartBeatInterval?.toLongOrNull()
                     ?: 30L
@@ -3114,8 +3114,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     fun executePhotoWorkflow(switchType: Int) {
         viewModelScope.launch {
-            val ids = cameraManagerNew.getExternalCameraIds()
-            if (ids.size < 2) return@launch
+//            val ids = cameraManagerNew.getExternalCameraIds()
+            val ids = cameraManagerNew.getExternalCameraIdss()
             val getTransId = modelOpenBean?.transId ?: "transId"
             //0231
             val setTransId = removeRetryPrefix(getTransId)
@@ -3127,10 +3127,25 @@ class CabinetVM @Inject constructor() : ViewModel() {
             if (!dir.exists()) dir.mkdirs()
             val fileIn = File(dir, nameIn)
             val fileOut = File(dir, nameOut)
-            val requests = listOf(
-                NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType),
-                NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType)
-            )
+            var all = false
+            var requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
+            if (ids[0] == true && ids[1] == true) {
+                all = true
+                requests.add(NewDualUsbCameraManager.PhotoRequest("0", switchType, "内", fileIn, remoteOpenType))
+                requests.add(NewDualUsbCameraManager.PhotoRequest("1", switchType, "外", fileOut, remoteOpenType))
+            }
+            if (!all) {
+                if (ids[0] == true) {
+                    requests.add(NewDualUsbCameraManager.PhotoRequest("0", switchType, "内", fileIn, remoteOpenType))
+                }
+                if (ids[1] == true) {
+                    requests.add(NewDualUsbCameraManager.PhotoRequest("1", switchType, "外", fileOut, remoteOpenType))
+                }
+            }
+//            val requests = listOf(
+//                NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType),
+//                NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType)
+//            )
 
             // 同时开始拍照并等待全部完成
             val results = cameraManagerNew.takePicturesParallel(requests)
@@ -3159,6 +3174,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 cmd = prefix
                                 transId = data
                                 time = AppUtils.getDateYMDHMS()
+                                status = -1
                             }
                             fileEntity.photoIn = file.absolutePath
                             val row = DatabaseManager.insertFile(AppUtils.getContext(), fileEntity)
@@ -3189,15 +3205,26 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 val setTransId = removeRetryPrefix(transId)
                 when (photoModel.photoType) {
                     -1 -> {
-                        val ids = cameraManagerNew.getExternalCameraIds()
-                        if (ids.size < 2) return@launch
+                        val ids = cameraManagerNew.getExternalCameraIdss()
                         val nameIn = "yz4${setTransId}---${AppUtils.getDateYMD()}.jpg"
                         val nameOut = "yz5${setTransId}---${AppUtils.getDateYMD()}.jpg"
                         val fileIn = File(dir, nameIn)
                         val fileOut = File(dir, nameOut)
-                        val requests = listOf(
-                            NewDualUsbCameraManager.PhotoRequest(ids[0], 4, "内", fileIn, 1), NewDualUsbCameraManager.PhotoRequest(ids[1], 5, "外", fileOut, 1)
-                        )
+                        var all = false
+                        var requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
+                        if (ids[0] == true && ids[1] == true) {
+                            all = true
+                            requests.add(NewDualUsbCameraManager.PhotoRequest("0", 4, "内", fileIn, 1))
+                            requests.add(NewDualUsbCameraManager.PhotoRequest("1", 5, "外", fileOut, 1))
+                        }
+                        if (!all) {
+                            if (ids[0] == true) {
+                                requests.add(NewDualUsbCameraManager.PhotoRequest("0", 4, "内", fileIn, 1))
+                            }
+                            if (ids[1] == true) {
+                                requests.add(NewDualUsbCameraManager.PhotoRequest("1", 5, "外", fileOut, 1))
+                            }
+                        }
                         // 同时开始拍照并等待全部完成
                         val results = cameraManagerNew.takePicturesParallel(requests)
                         withContext(Dispatchers.IO) {
@@ -3205,7 +3232,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             results.forEach { file ->
                                 if (file != null) {
                                     //结算页只显示图片打开的拍照
-                                    val photoType = extractThirdChar(file.name,2).toString()
+                                    val photoType = extractThirdChar(file.name, 2).toString()
                                     uploadPhoto(curSn, setTransId, photoType, file, "45")
 
                                 }
@@ -3214,20 +3241,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
 
                     4 -> {
-                        val ids = cameraManagerNew.getExternalCameraIds()
-                        if (ids.size < 2) return@launch
+                        val ids = cameraManagerNew.getExternalCameraIdss()
                         val nameIn = "45${setTransId}---${AppUtils.getDateYMD()}.jpg"
                         val fileIn = File(dir, nameIn)
-                        val requests = listOf(
-                            NewDualUsbCameraManager.PhotoRequest(ids[0], 4, "内", fileIn, 1)
-                        )
+                        var requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
+                        if (ids[0] == true) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest("0", 4, "内", fileIn, 1))
+                        }
                         // 同时开始拍照并等待全部完成
                         val results = cameraManagerNew.takePicturesParallel(requests)
                         withContext(Dispatchers.IO) {
                             // results 里的文件顺序与 requests 一致
                             results.forEach { file ->
                                 if (file != null) {
-                                    val photoType = extractThirdChar(file.name,2).toString()
+                                    val photoType = extractThirdChar(file.name, 2).toString()
                                     uploadPhoto(curSn, setTransId, photoType, file, "45")
                                     delay(2000) // 双摄间隔 1s，减轻网络带宽压力
                                 }
@@ -3237,20 +3264,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
 
                     5 -> {
-                        val ids = cameraManagerNew.getExternalCameraIds()
-                        if (ids.size < 2) return@launch
+                        val ids = cameraManagerNew.getExternalCameraIdss()
                         val nameOut = "45${setTransId}---${AppUtils.getDateYMD()}.jpg"
                         val fileOut = File(dir, nameOut)
-                        val requests = listOf(
-                            NewDualUsbCameraManager.PhotoRequest(ids[1], 5, "外", fileOut, 1)
-                        )
+                        var requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
+                        if (ids[0] == true) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest("1", 5, "外", fileOut, 1))
+                        }
                         // 同时开始拍照并等待全部完成
                         val results = cameraManagerNew.takePicturesParallel(requests)
                         withContext(Dispatchers.IO) {
                             // results 里的文件顺序与 requests 一致
                             results.forEach { file ->
                                 if (file != null) {
-                                    val photoType = extractThirdChar(file.name,2).toString()
+                                    val photoType = extractThirdChar(file.name, 2).toString()
                                     uploadPhoto(curSn, setTransId, photoType, file, "45")
                                     delay(2000) // 双摄间隔 1s，减轻网络带宽压力
                                 }
@@ -3282,14 +3309,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun endCameraUploadPhoto() {
         viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                delay(1000)
+                //3分钟检测一次并且是在非执行业务的时候
+                delay(2 * 60 * 1000L)
                 val filesAll = DatabaseManager.queryAllFileEntity(AppUtils.getContext())
                 Loge.e("上传图片 图片上传检测 isRunning：$isRunning 是否为空：${filesAll.isEmpty()} ${filesAll.size}")
-                if (filesAll.isEmpty()) {
+                if (!isRunning && filesAll.isEmpty()) {
                     Loge.e("上传图片 图片上传检测 没有需要上传的图片")
-                    break
+                    //当已经上传成功的图片条数大于50则删除掉成功的文件记录
+                    val status1 = DatabaseManager.queryAllFileStatus1(AppUtils.getContext())
+                    if (status1.size > 12) {
+                        DatabaseManager.deleteAllFileEntity1(AppUtils.getContext())
+                        DatabaseManager.deleteAllFileEntity0(AppUtils.getContext())
+                    }
                 }
-                if (!isRunning && !upPhotoRunning && filesAll.isNotEmpty() && filesAll.size == 4) {
+                if (!isRunning && filesAll.isNotEmpty()) {
                     upPhotoRunning = true
                     //排序好顺序再进行上唇
                     val sorted = filesAll.sortedBy { it.cmd?.first()?.digitToInt() }
@@ -3317,8 +3350,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             httpRepo.uploadPhoto(post).onSuccess { user ->
                                 Loge.e("上传图片 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
                                 withContext(Dispatchers.IO) {
-                                    val delId = data.id
-                                    val row = DatabaseManager.deletedFileEntity(AppUtils.getContext(), delId)
+//                                    val delId = data.id
+                                    data.status = 1
+                                    data.msg = "上传成功：${AppUtils.getDateYMDHMS()}"
+                                    val row = DatabaseManager.upFileEntity(AppUtils.getContext(), data)
                                     Loge.e("上传图片 更新本地数据成功 row $row ")
                                     DatabaseManager.insertLog(AppUtils.getContext(), LogEntity().apply {
                                         cmd = "$indexI$photoType$inOut"
@@ -3473,6 +3508,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     fun startLockerDoorWorkflow(model: DoorOpenBean, setWeightBeforeOpen: String, doorGex: Int, openType: Int, closeType: Int, forcedCloseType: Int, executeCount: Int = 5) {
         if (!_isRunning.compareAndSet(false, true)) {
+            BoxToolLogUtils.savePrintln2("业务流：compareAndSet 运行：$isRunning")
             return
         }
         // 1. 核心状态初始化
@@ -3502,10 +3538,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 remoteOpenType = model.openType
                 setPhotoTransId = transId
                 _currentStep.value = LockerStep.START
-                delay(1000)
-                enqueuePhotoAction(1)//投口关闭前的拍照
                 // --- 第一阶段：下发开门 ---
                 _currentStep.value = LockerStep.OPENING
+                delay(1000)
+                enqueuePhotoAction(1)//投口关闭前的拍照
                 setCurrentUiStep(LockerUiStep.DELIVERY_START)
                 dbBeforeWeight(weightBeforeOpen, model)
                 // 记录“准备开门前”的初始重量（作为参考）
@@ -3698,7 +3734,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     curG2Weight = toWeightAfterClosing
                     startLockerEndWeight(CmdCode.GE2, curG2Weight ?: "0.00")
                 }
-                endCameraUploadPhoto()//上传图片
                 startContainersStatus() // 恢复全局状态轮询
                 startPollingFault()// 恢复全局异常检测
                 deteServiceClose()//检测服务器是否完整下发关闭指令
@@ -3905,7 +3940,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     curG2Weight = toWeightAfterClosing
                     startLockerEndWeight(CmdCode.GE2, curG2Weight ?: "0.00")
                 }
-                endCameraUploadPhoto()//上传图片
                 startContainersStatus() // 恢复全局状态轮询
                 startPollingFault()// 恢复全局异常检测
                 deteServiceClose()//检测服务器是否完整下发关闭指令
@@ -4998,7 +5032,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val calibrationValue = SerialPortSdk.startCalibration(doorGeX, code)
             if (calibrationValue.isFailure) {
-                if(doorGeX==1){
+                if (doorGeX == 1) {
                     setRefCalibrationStaStateFlow(MonitorCalibration().apply {
                         curStatus = 10
                         refreshType = 1

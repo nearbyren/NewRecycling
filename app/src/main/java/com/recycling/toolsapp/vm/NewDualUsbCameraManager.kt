@@ -58,7 +58,7 @@ class NewDualUsbCameraManager(context: Context) {
                 previewSurface?.release()
                 thread?.quitSafely()
             } catch (e: Exception) {
-                BoxToolLogUtils.saveCamera("释放摄像头 $cameraId 异常: ${e.message}")
+//                BoxToolLogUtils.saveCamera("释放摄像头 $cameraId 异常: ${e.message}")
             } finally {
                 session = null; device = null; reader = null
                 previewSurface = null; thread = null; handler = null
@@ -81,7 +81,10 @@ class NewDualUsbCameraManager(context: Context) {
 
     fun unregisterUsbReceiver() {
         if (isReceiverRegistered) {
-            try { appContext.unregisterReceiver(usbReceiver) } catch (e: Exception) {}
+            try {
+                appContext.unregisterReceiver(usbReceiver)
+            } catch (e: Exception) {
+            }
             isReceiverRegistered = false
         }
     }
@@ -104,7 +107,9 @@ class NewDualUsbCameraManager(context: Context) {
         scope.launch {
             val usbIds = getExternalCameraIds()
             if (usbIds.isEmpty()) {
-                BoxToolLogUtils.saveCamera("未检测到外置 USB 摄像头")
+                withContext(Dispatchers.IO) {
+                    BoxToolLogUtils.savePush2("未检测到外置 USB 摄像头")
+                }
                 return@launch
             }
 
@@ -129,16 +134,33 @@ class NewDualUsbCameraManager(context: Context) {
         if (!scope.isActive) scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
         scope.launch {
-            val usbIds = getExternalCameraIds()
-            if (usbIds.size < 2) {
-                cameraErrorListener?.cameraStatus(false, "all", "摄像头数量不足，无法并行开启")
-                return@launch
+//            val usbIds = getExternalCameraIds()
+            val usbIds = getExternalCameraIdss()
+//            if (usbIds.size < 2) {
+//                cameraErrorListener?.cameraStatus(false, "all", "摄像头数量不足，无法并行开启")
+//                return@launch
+//            }
+            var all = false
+            if (usbIds[0] == true && usbIds[1] == true) {
+                all = true
+                // 使用 async 同时发起开启请求
+                val task1 = async { openSingleCamera("0", view1, startPaused) }
+                val task2 = async { openSingleCamera("1", view2, startPaused) }
+                awaitAll(task1, task2)
             }
-            // 使用 async 同时发起开启请求
-            val task1 = async { openSingleCamera(usbIds[0], view1, startPaused) }
-            val task2 = async { openSingleCamera(usbIds[1], view2, startPaused) }
-            awaitAll(task1, task2)
-            BoxToolLogUtils.saveCamera("双摄像头并行开启请求已完成")
+            if (!all) {
+                if (usbIds[0] == true) {
+                    val task1 = async { openSingleCamera("0", view1, startPaused) }
+                    awaitAll(task1)
+                }
+                if (usbIds[1] == true) {
+                    val task2 = async { openSingleCamera("1", view2, startPaused) }
+                    awaitAll(task2)
+                }
+            }
+            withContext(Dispatchers.IO) {
+                BoxToolLogUtils.savePush2("双摄像头并行开启请求已完成")
+            }
         }
     }
 
@@ -179,9 +201,9 @@ class NewDualUsbCameraManager(context: Context) {
 
                 val characteristics = manager.getCameraCharacteristics(holder.cameraId)
                 val afModes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES)
-                builder?.set(CaptureRequest.CONTROL_AF_MODE,
-                    if (afModes?.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE) == true)
-                        CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE else CaptureRequest.CONTROL_AF_MODE_OFF)
+                builder?.set(
+                    CaptureRequest.CONTROL_AF_MODE, if (afModes?.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE) == true) CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE else CaptureRequest.CONTROL_AF_MODE_OFF
+                )
 
                 holder.session?.setRepeatingRequest(builder!!.build(), null, holder.handler)
                 holder.isPreviewing = true
@@ -241,7 +263,9 @@ class NewDualUsbCameraManager(context: Context) {
                 val imageFile = captureImageInternal(cameraId, inOut, switchType, holder, saveFile, remoteOpenType)
                 withContext(Dispatchers.IO) { onComplete(imageFile) }
             } catch (e: Exception) {
-                BoxToolLogUtils.saveCamera("[$cameraId] 拍照异常: ${e.message}")
+                withContext(Dispatchers.IO) {
+                    BoxToolLogUtils.savePush2("[$cameraId] 拍照异常: ${e.message}")
+                }
                 withContext(Dispatchers.Main) { onComplete(null) }
             } finally {
                 holder.isCapturing = false
@@ -289,7 +313,7 @@ class NewDualUsbCameraManager(context: Context) {
                             if (finalPath != null) {
                                 val resultFile = File(finalPath)
                                 if (resultFile.exists() && resultFile.length() > 0) {
-                                    BoxToolLogUtils.saveCamera("[$cameraId] 物理落盘成功: $finalPath (${resultFile.length()} bytes)")
+//                                    BoxToolLogUtils.saveCamera("[$cameraId] 物理落盘成功: $finalPath (${resultFile.length()} bytes)")
                                     cameraErrorListener?.cameraStatus(true, cameraId, "拍照完成")
                                     cont.resume(resultFile)
                                 } else {
@@ -345,14 +369,14 @@ class NewDualUsbCameraManager(context: Context) {
             bitmap.recycle()
             destFile.absolutePath
         } catch (e: Exception) {
-            BoxToolLogUtils.saveCamera("水印写入失败: ${e.message}")
+            BoxToolLogUtils.savePush2("水印写入失败: ${e.message}")
             null
         }
     }
 
     // ================== 初始化辅助 ==================
 
-     fun getExternalCameraIds(): List<String> {
+    fun getExternalCameraIds(): List<String> {
         val externalIds = mutableListOf<String>()
         try {
             for (id in manager.cameraIdList) {
@@ -360,8 +384,37 @@ class NewDualUsbCameraManager(context: Context) {
                     externalIds.add(id)
                 }
             }
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+            BoxToolLogUtils.savePush2("获取摄像头异常: ${e.message}")
+        }
         return externalIds
+    }
+
+    fun getExternalCameraIdss(): MutableMap<Int, Boolean> {
+        val externalIds2 = mutableMapOf<Int, Boolean>()
+        externalIds2[0] = false
+        externalIds2[1] = false
+        try {
+            for ((index, value) in manager.cameraIdList.withIndex()) {
+//                println("下标: $index, 元素: $value")
+                when (value) {
+                    "0" -> {
+                        externalIds2[0] = true
+                    }
+
+                    "1" -> {
+                        externalIds2[1] = true
+                    }
+
+                    else -> {
+
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return externalIds2
     }
 
     @SuppressLint("MissingPermission")
@@ -386,7 +439,11 @@ class NewDualUsbCameraManager(context: Context) {
                         initPreviewSession(cameraId, holder, textureView, Size(640, 480), startPaused)
                         if (cont.isActive) cont.resume(Unit)
                     }
-                    override fun onDisconnected(camera: CameraDevice) { holder.release(); cameras.remove(cameraId) }
+
+                    override fun onDisconnected(camera: CameraDevice) {
+                        holder.release(); cameras.remove(cameraId)
+                    }
+
                     override fun onError(camera: CameraDevice, error: Int) {
                         holder.release(); cameras.remove(cameraId)
                         if (cont.isActive) cont.resume(Unit)

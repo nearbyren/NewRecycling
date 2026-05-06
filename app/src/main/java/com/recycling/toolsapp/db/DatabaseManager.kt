@@ -908,6 +908,15 @@ object DatabaseManager {
     /**
      * 提供外部 API 方法
      * @param context 上下文
+     * @return
+     */
+    fun queryAllFileStatus1(context: Context): List<FileEntity> {
+        return getFileFlowDao(context).queryAllFileStatus1()
+    }
+
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
      * @param FileEntity
      * @return
      */
@@ -922,6 +931,22 @@ object DatabaseManager {
      */
     fun deleteAllFileEntity(context: Context) {
         getFileFlowDao(context).deleteAll()
+    }
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @return
+     */
+    fun deleteAllFileEntity1(context: Context) {
+        getFileFlowDao(context).deleteAll1()
+    }
+    /**
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @return
+     */
+    fun deleteAllFileEntity0(context: Context) {
+        getFileFlowDao(context).deleteAll0()
     }
     /**
      * 提供外部 API 方法

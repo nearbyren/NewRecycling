@@ -37,9 +37,9 @@ import androidx.room.PrimaryKey
      */
     @ColumnInfo(name = "msg", typeAffinity = TEXT, defaultValue = "") var msg: String? = null,
     /***
-     * 状态 0.未上传 1.已上传
+     * 状态 0.未上传 1.已上传 -1.未上传 0是遗漏数据
      */
-    @ColumnInfo(name = "status", typeAffinity = INTEGER) var status: Int = 0,
+    @ColumnInfo(name = "status", typeAffinity = INTEGER) var status: Int = -1,
     /***
      * 时间
      */
