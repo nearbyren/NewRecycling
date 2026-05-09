@@ -108,7 +108,7 @@ class NewDualUsbCameraManager(context: Context) {
             val usbIds = getExternalCameraIds()
             if (usbIds.isEmpty()) {
                 withContext(Dispatchers.IO) {
-                    BoxToolLogUtils.savePush2("未检测到外置 USB 摄像头")
+                    BoxToolLogUtils.saveCamera("未检测到外置 USB 摄像头")
                 }
                 return@launch
             }
@@ -134,32 +134,25 @@ class NewDualUsbCameraManager(context: Context) {
         if (!scope.isActive) scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
         scope.launch {
-//            val usbIds = getExternalCameraIds()
-            val usbIds = getExternalCameraIdss()
-//            if (usbIds.size < 2) {
-//                cameraErrorListener?.cameraStatus(false, "all", "摄像头数量不足，无法并行开启")
-//                return@launch
-//            }
-            var all = false
-            if (usbIds[0] == true && usbIds[1] == true) {
-                all = true
+            val usbIds = getExternalCameraIds()
+            val tasks = mutableListOf<Deferred<Unit>>() // 假设 openSingleCamera 返回 Unit，如果是其他类型请修改泛型
+            var open1 = false
+            var open2 = false
+            if (usbIds.size > 0) {
+                open1 = true
                 // 使用 async 同时发起开启请求
-                val task1 = async { openSingleCamera("0", view1, startPaused) }
-                val task2 = async { openSingleCamera("1", view2, startPaused) }
-                awaitAll(task1, task2)
+                tasks.add(async { openSingleCamera(usbIds[0], view1, startPaused) })
             }
-            if (!all) {
-                if (usbIds[0] == true) {
-                    val task1 = async { openSingleCamera("0", view1, startPaused) }
-                    awaitAll(task1)
-                }
-                if (usbIds[1] == true) {
-                    val task2 = async { openSingleCamera("1", view2, startPaused) }
-                    awaitAll(task2)
-                }
+            if (usbIds.size > 1) {
+                open2 = true
+                // 使用 async 同时发起开启请求
+                tasks.add(async { openSingleCamera(usbIds[1], view2, startPaused) })
+            }
+            if (tasks.isNotEmpty()) {
+                awaitAll(*tasks.toTypedArray())
             }
             withContext(Dispatchers.IO) {
-                BoxToolLogUtils.savePush2("双摄像头并行开启请求已完成")
+                BoxToolLogUtils.savePrintln2("双摄像头并行开启请求已完成 open1:${open1} | open2:${open2} size:${tasks.size} ")
             }
         }
     }
@@ -264,7 +257,7 @@ class NewDualUsbCameraManager(context: Context) {
                 withContext(Dispatchers.IO) { onComplete(imageFile) }
             } catch (e: Exception) {
                 withContext(Dispatchers.IO) {
-                    BoxToolLogUtils.savePush2("[$cameraId] 拍照异常: ${e.message}")
+                    BoxToolLogUtils.saveCamera("[$cameraId] 拍照异常: ${e.message}")
                 }
                 withContext(Dispatchers.Main) { onComplete(null) }
             } finally {
@@ -369,7 +362,7 @@ class NewDualUsbCameraManager(context: Context) {
             bitmap.recycle()
             destFile.absolutePath
         } catch (e: Exception) {
-            BoxToolLogUtils.savePush2("水印写入失败: ${e.message}")
+//            BoxToolLogUtils.saveCamera("水印写入失败: ${e.message}")
             null
         }
     }
@@ -385,25 +378,23 @@ class NewDualUsbCameraManager(context: Context) {
                 }
             }
         } catch (e: Exception) {
-            BoxToolLogUtils.savePush2("获取摄像头异常: ${e.message}")
+            BoxToolLogUtils.saveCamera("获取摄像头异常: ${e.message}")
         }
         return externalIds
     }
 
-    fun getExternalCameraIdss(): MutableMap<Int, Boolean> {
-        val externalIds2 = mutableMapOf<Int, Boolean>()
-        externalIds2[0] = false
-        externalIds2[1] = false
+    fun getExternalCameraIdss(): MutableMap<Int, String> {
+        val externalIds2 = mutableMapOf<Int, String>()
         try {
             for ((index, value) in manager.cameraIdList.withIndex()) {
 //                println("下标: $index, 元素: $value")
                 when (value) {
                     "0" -> {
-                        externalIds2[0] = true
+                        externalIds2[0] = value
                     }
 
                     "1" -> {
-                        externalIds2[1] = true
+                        externalIds2[1] = value
                     }
 
                     else -> {
@@ -493,15 +484,15 @@ class NewDualUsbCameraManager(context: Context) {
                     }
 
                     override fun onConfigureFailed(s: CameraCaptureSession) {
-                        BoxToolLogUtils.savePush2("摄像头 $cameraId 配置会话失败")
+                        BoxToolLogUtils.saveCamera("摄像头 $cameraId 配置会话失败")
                     }
                 }, holder.handler)
 
             } catch (e: CameraAccessException) {
-                BoxToolLogUtils.savePush2("创建会话异常: ${e.message}")
+                BoxToolLogUtils.saveCamera("创建会话异常: ${e.message}")
                 cameraErrorListener?.cameraStatus(false, "all", "创建会话异常")
             } catch (e: IllegalArgumentException) {
-                BoxToolLogUtils.savePush2("分辨率或 Surface 异常: ${e.message}")
+                BoxToolLogUtils.saveCamera("分辨率或 Surface 异常: ${e.message}")
                 cameraErrorListener?.cameraStatus(false, "all", "分辨率或 Surface 异常")
             }
         }

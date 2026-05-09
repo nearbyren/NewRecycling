@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
+import nearby.lib.signal.livebus.BusType
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -300,9 +301,11 @@ class CrashHandlerManager(private val mContext: Context) : Thread.UncaughtExcept
                 val versionName =
                         if (packageInfo.versionName == null) "null" else packageInfo.versionName
                 val versionCode = packageInfo.versionCode.toString() + ""
+                val initSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""]
                 mDevInfoMap["versionName"] = versionName
                 mDevInfoMap["versionCode"] = versionCode
                 mDevInfoMap["time"] = AppUtils.getDateYMDHMS()
+                mDevInfoMap["initSn"] = "$initSn"
             }
         } catch (e: PackageManager.NameNotFoundException) {
             Loge.d("CrashHandlerManager NameNotFoundException")

@@ -345,6 +345,8 @@ class NavTouSingleActivity : AppCompatActivity() {
         cabinetVM.startPollingFault()
         //启动检测上传业务图片
         cabinetVM.endCameraUploadPhoto()
+//        //启动检测socket断开重启app
+//        cabinetVM.monitoringSocketStatus()
     }
 
     /***
@@ -517,6 +519,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                                 // 5. 正式重启
                                 OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
+//                                OSUtils.fullRestart(this@NavTouSingleActivity)
                             }
                         }
                     }

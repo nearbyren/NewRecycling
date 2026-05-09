@@ -31,6 +31,7 @@ class DailyRestartWorker(
         try {
             FaceApplication.getInstance().baseActivity?.let { act ->
                 OSUtils.restartAppFrontDesk(act)
+//                OSUtils.fullRestart(act)
             }
 
         } catch (e: Exception) {

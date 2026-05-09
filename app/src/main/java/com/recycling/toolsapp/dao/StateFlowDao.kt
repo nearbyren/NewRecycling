@@ -24,6 +24,9 @@ import com.recycling.toolsapp.model.StateEntity
     @Query("UPDATE StateEntity SET doorStatus = :doorStatus WHERE cabinId = :cabinId")
     fun upStateStatus(doorStatus: Int, cabinId: String)
 
+    @Query("UPDATE StateEntity SET lockStatus = :lockStatus WHERE cabinId = :cabinId")
+    fun upStateClearStatus(lockStatus: Int, cabinId: String)
+
     @Update fun upStateEntity(stateEntity: StateEntity): Int
 
     //删除所有数据

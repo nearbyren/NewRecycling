@@ -1901,6 +1901,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
     @Volatile
     private var running = false
 
+    @Volatile
+    private var isSocketRunning = true
+
     /***
      * 启动socket连接
      */
@@ -2085,10 +2088,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
 
                 if (line == null) {
+                    val gex = if (doorGeXType == CmdCode.GE1) CmdCode.GE1 else CmdCode.GE2
+                    setRefBusStaChannel(MonitorWeight().apply {
+                        doorGeX = gex
+                        refreshType = RefBusType.REFRESH_TYPE_2
+                        warningContent = BusType.BUS_FAULT
+                    })
                     BoxToolLogUtils.recordSocket(CmdValue.RECEIVE, "socketClient,readLoop Stream closed")
+                    isSocketRunning = false
                     throw IOException("Stream closed")
                 }
-
+                isSocketRunning = true
                 lastReceivedAtMillis = System.currentTimeMillis()
 
                 // 累积到缓冲区
@@ -2290,6 +2300,19 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 Loge.e("出厂配置 initSocket SocketClient writeLoop catch2 ${e.message}")
                 BoxToolLogUtils.recordSocket(CmdValue.SEND, "socketClient,writeLoopByte catch2 ${e.message}}")
                 break
+            }
+        }
+    }
+
+    //监听如果socket断了直接直接重启
+    fun monitoringSocketStatus() {
+        viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                delay(7_200_000L)
+                if (!isSocketRunning) {
+                    saveRecordSocket(CmdValue.CONNECTING, "socket,restart")
+                    FaceApplication.getInstance().baseActivity?.let { OSUtils.fullRestart(it) }
+                }
             }
         }
     }
@@ -3115,38 +3138,25 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun executePhotoWorkflow(switchType: Int) {
         viewModelScope.launch {
 //            val ids = cameraManagerNew.getExternalCameraIds()
-            val ids = cameraManagerNew.getExternalCameraIdss()
+            val ids = cameraManagerNew.getExternalCameraIds()
             val getTransId = modelOpenBean?.transId ?: "transId"
             //0231
             val setTransId = removeRetryPrefix(getTransId)
-            val ocIn = if (switchType == 1) "10i" else "41i"
-            val ocOut = if (switchType == 1) "22o" else "33o"
+            val ocIn = if (switchType == 1) "10i" else if (remoteOpenType == 2) "33o" else "41i"
+            val ocOut = if (switchType == 1) "22o" else if (remoteOpenType == 2) "41i" else "33o"
             val nameIn = "${ocIn}${setTransId}---${AppUtils.getDateYMD()}.jpg"
             val nameOut = "${ocOut}${setTransId}---${AppUtils.getDateYMD()}.jpg"
             val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
             if (!dir.exists()) dir.mkdirs()
             val fileIn = File(dir, nameIn)
             val fileOut = File(dir, nameOut)
-            var all = false
-            var requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
-            if (ids[0] == true && ids[1] == true) {
-                all = true
-                requests.add(NewDualUsbCameraManager.PhotoRequest("0", switchType, "内", fileIn, remoteOpenType))
-                requests.add(NewDualUsbCameraManager.PhotoRequest("1", switchType, "外", fileOut, remoteOpenType))
+            val requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
+            if (ids.size > 0) {
+                requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType))
             }
-            if (!all) {
-                if (ids[0] == true) {
-                    requests.add(NewDualUsbCameraManager.PhotoRequest("0", switchType, "内", fileIn, remoteOpenType))
-                }
-                if (ids[1] == true) {
-                    requests.add(NewDualUsbCameraManager.PhotoRequest("1", switchType, "外", fileOut, remoteOpenType))
-                }
+            if (ids.size > 1) {
+                requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType))
             }
-//            val requests = listOf(
-//                NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType),
-//                NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType)
-//            )
-
             // 同时开始拍照并等待全部完成
             val results = cameraManagerNew.takePicturesParallel(requests)
 
@@ -3182,7 +3192,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         } else {
                             Loge.e("上传图片 存 未找到匹配格式")
                         }
-                        delay(2000) // 双摄间隔 1s，减轻网络带宽压力
+                        delay(1200) // 双摄间隔 1s，减轻网络带宽压力
                     }
                 }
             }
@@ -3205,25 +3215,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 val setTransId = removeRetryPrefix(transId)
                 when (photoModel.photoType) {
                     -1 -> {
-                        val ids = cameraManagerNew.getExternalCameraIdss()
+                        val ids = cameraManagerNew.getExternalCameraIds()
                         val nameIn = "yz4${setTransId}---${AppUtils.getDateYMD()}.jpg"
                         val nameOut = "yz5${setTransId}---${AppUtils.getDateYMD()}.jpg"
                         val fileIn = File(dir, nameIn)
                         val fileOut = File(dir, nameOut)
-                        var all = false
-                        var requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
-                        if (ids[0] == true && ids[1] == true) {
-                            all = true
-                            requests.add(NewDualUsbCameraManager.PhotoRequest("0", 4, "内", fileIn, 1))
-                            requests.add(NewDualUsbCameraManager.PhotoRequest("1", 5, "外", fileOut, 1))
+                        val requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
+                        if (ids.size > 0) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], 4, "内", fileIn, 1))
                         }
-                        if (!all) {
-                            if (ids[0] == true) {
-                                requests.add(NewDualUsbCameraManager.PhotoRequest("0", 4, "内", fileIn, 1))
-                            }
-                            if (ids[1] == true) {
-                                requests.add(NewDualUsbCameraManager.PhotoRequest("1", 5, "外", fileOut, 1))
-                            }
+                        if (ids.size > 1) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], 5, "外", fileOut, 1))
                         }
                         // 同时开始拍照并等待全部完成
                         val results = cameraManagerNew.takePicturesParallel(requests)
@@ -3241,12 +3243,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
 
                     4 -> {
-                        val ids = cameraManagerNew.getExternalCameraIdss()
+                        val ids = cameraManagerNew.getExternalCameraIds()
                         val nameIn = "45${setTransId}---${AppUtils.getDateYMD()}.jpg"
                         val fileIn = File(dir, nameIn)
                         var requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
-                        if (ids[0] == true) {
-                            requests.add(NewDualUsbCameraManager.PhotoRequest("0", 4, "内", fileIn, 1))
+                        if (ids.size > 0) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], 4, "内", fileIn, 1))
                         }
                         // 同时开始拍照并等待全部完成
                         val results = cameraManagerNew.takePicturesParallel(requests)
@@ -3264,12 +3266,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     }
 
                     5 -> {
-                        val ids = cameraManagerNew.getExternalCameraIdss()
+                        val ids = cameraManagerNew.getExternalCameraIds()
                         val nameOut = "45${setTransId}---${AppUtils.getDateYMD()}.jpg"
                         val fileOut = File(dir, nameOut)
                         var requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
-                        if (ids[0] == true) {
-                            requests.add(NewDualUsbCameraManager.PhotoRequest("1", 5, "外", fileOut, 1))
+                        if (ids.size > 1) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], 5, "外", fileOut, 1))
                         }
                         // 同时开始拍照并等待全部完成
                         val results = cameraManagerNew.takePicturesParallel(requests)
@@ -3309,7 +3311,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun endCameraUploadPhoto() {
         viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                //3分钟检测一次并且是在非执行业务的时候
+                //2分钟检测一次并且是在非执行业务的时候
                 delay(2 * 60 * 1000L)
                 val filesAll = DatabaseManager.queryAllFileEntity(AppUtils.getContext())
                 Loge.e("上传图片 图片上传检测 isRunning：$isRunning 是否为空：${filesAll.isEmpty()} ${filesAll.size}")
@@ -3556,6 +3558,20 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 } else {
                     curG2Weight = weightBeforeOpen
                 }
+                val curCabinld = when (doorGex) {
+                    CmdCode.GE1 -> {
+                        cur1Cabinld
+                    }
+
+                    CmdCode.GE2 -> {
+                        cur2Cabinld
+                    }
+
+                    else -> {
+                        cur1Cabinld
+                    }
+                }
+
                 BoxToolLogUtils.savePrintln("业务流：正在执行开门动作【${SendTurnText.fromStatus(openType)}】 开门前重量:$weightBeforeOpen")
                 delay(2000)
                 val turnDoor = SerialPortSdk.turnDoor(openType)
@@ -3586,6 +3602,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 time = AppUtils.getDateYMDHMS()
                             })
 //                            noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_NORMAL, false)
+                            DatabaseManager.upStateStatus(AppUtils.getContext(), 1, curCabinld)
                             //更新业务门开完成
                             DatabaseManager.upTransOpenStatus(AppUtils.getContext(), CmdCode.GE_OPEN, transId)
                             break// 门已确认开启
@@ -3664,6 +3681,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 //                                noticeExection(CmdCode.GE_OPEN, doorGex, BusType.BUS_NORMAL, false)
                                     _currentStep.value = LockerStep.CLOSE
                                     BoxToolLogUtils.savePrintln("业务流：收到门关闭")
+                                    DatabaseManager.upStateStatus(AppUtils.getContext(), 0, curCabinld)
                                     DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
                                     return@withTimeout
                                 }
@@ -3790,6 +3808,19 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 } else {
                     curG2Weight = weightBeforeOpen
                 }
+                val curCabinld = when (doorGex) {
+                    CmdCode.GE1 -> {
+                        cur1Cabinld
+                    }
+
+                    CmdCode.GE2 -> {
+                        cur2Cabinld
+                    }
+
+                    else -> {
+                        cur1Cabinld
+                    }
+                }
                 BoxToolLogUtils.savePrintln("业务流：正在执行开门动作【${SendTurnText.fromStatus(openType)}】 开门前重量:$weightBeforeOpen")
                 val openClear = SerialPortSdk.openQueryClear(openType)
                 if (openClear.isFailure) {
@@ -3826,6 +3857,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 }
                                 BoxToolLogUtils.savePrintln("业务流：打开后的重量：$weightAfterOpening")
                                 //更新清运出打开成功
+                                DatabaseManager.upStateClearStatus(AppUtils.getContext(), 1, curCabinld)
                                 DatabaseManager.upTransOpenStatus(AppUtils.getContext(), EntityType.WEIGHT_TYPE_1, transId)
                                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, defaultWeight, defaultWeight, openModel = model, flowEnd = false)
                                 break// 门已确认开启
@@ -3864,7 +3896,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, defaultWeight, openModel = model, flowEnd = false)
 
                     // --- 第五阶段：轮询等待门关闭 ---
-                    withTimeout(300000) { // 5分钟超时
+                    withTimeout(600_000L) { // 10分钟超时
                         val queryClear = SerialPortSdk.openQueryClear(queryType)
                         if (queryClear.isFailure) {
                             BoxToolLogUtils.savePrintln("业务流：查询关门指令接收失败：${queryClear.exceptionOrNull()?.message}")
@@ -3877,6 +3909,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 enqueuePhotoAction(0)//清运关闭后的拍照=
                                 _currentStep.value = LockerStep.CLOSE
                                 startLockerClearDoorSwitch(CmdCode.GE_CLOSE, doorGeX, closeCount)
+                                DatabaseManager.upStateClearStatus(AppUtils.getContext(), 0, curCabinld)
                                 DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
                                 return@withTimeout
                             }
@@ -4594,7 +4627,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                         state.smoke = lower.smokeValue
                                         state.irState = irStateValue
                                         state.doorStatus = irDoorStatusValue
-                                        state.weigh = weightNew
+                                        state.weigh = weightNew ?: curG1Weight?.toFloat() ?: 0.0f
                                         state.lockStatus = lockStatus
                                         state.time = AppUtils.getDateYMDHMS()
                                         val curG1Total = curG1TotalWeight.toFloat()
@@ -4655,7 +4688,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                             state.smoke = lower.smokeValue
                                             state.irState = irStateValue
                                             state.doorStatus = irDoorStatusValue
-                                            state.weigh = weightNew
+                                            state.weigh = weightNew ?: curG2Weight?.toFloat()
+                                                    ?: 0.0f
                                             state.lockStatus = lockStatus
                                             state.time = AppUtils.getDateYMDHMS()
                                             val curG2Total = curG2TotalWeight.toFloat()
@@ -5130,7 +5164,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
 
     fun stopAll() {
-        BoxToolLogUtils.savePrintln("业务流：收到指令重启：资源已释放，执行重启 stopAll")
+        BoxToolLogUtils.savePrintln2("业务流：收到指令重启：资源已释放，执行重启 stopAll")
         cancelContainersStatusJob()
         cancelStartQueryStatus()
         cancelServiceClose()

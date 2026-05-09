@@ -641,6 +641,16 @@ object DatabaseManager {
         return getStateFlowDao(context).upStateStatus(doorStatus, cabinId)
     }
 
+    /***
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param doorStatus
+     * @param cabinId
+     */
+    fun upStateClearStatus(context: Context, lockStatus: Int, cabinId: String) {
+        return getStateFlowDao(context).upStateClearStatus(lockStatus, cabinId)
+    }
+
     /**
      * 提供外部 API 方法
      * @param context 上下文

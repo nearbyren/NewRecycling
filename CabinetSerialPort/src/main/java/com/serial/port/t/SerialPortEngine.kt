@@ -107,7 +107,7 @@ object SerialPortEngine {
                 if (len > 0) {
                     // 拷贝当前读取到的实际有效长度
                     val validData = buffer.copyOfRange(0, len)
-                    BoxToolLogUtils.savePush3("flow：Read：${ByteUtils.toHexString(validData)}")
+                    BoxToolLogUtils.saveRead("flow：Read：${ByteUtils.toHexString(validData)}")
                     if (validData[0] == 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
                         //完成帧
                         readBuffer.write(validData)
@@ -116,7 +116,7 @@ object SerialPortEngine {
                     } else if (validData[0] == 0x9b.toByte() && validData[len - 1] != 0x9a.toByte()) {
                         //这里是读取帧数据 帧头为9b 帧尾不为9a的  存起来
                         readBuffer.write(validData)
-                    } else if (validData[0] != 0x9b.toByte() && validData[len - 1] == 0x9a.toByte() ) {
+                    } else if (validData[0] != 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
                         //不是帧头为9b的 不是帧尾9a 第二部分
                         readBuffer.write(validData)
                         extractor.push(readBuffer.toByteArray())
@@ -145,7 +145,7 @@ object SerialPortEngine {
                     if (available > 0) {
                         val skipBuffer = ByteArray(available)
                         fis?.read(skipBuffer) // 彻底排空旧缓冲区
-                        BoxToolLogUtils.savePush2("flow：Serial：[预处理] 已丢弃缓冲区残留数据: $available 字节")
+                        BoxToolLogUtils.saveWrite("flow：write Serial：[预处理] 已丢弃缓冲区残留数据: $available 字节")
                     }
                 }
             }
@@ -155,11 +155,9 @@ object SerialPortEngine {
 //            responseWaiter = waiter
             // 保存到待处理队列
             pendingRequests[msgId] = waiter
-            BoxToolLogUtils.savePush2("flow：Serial：[send] Registration ID=$msgId, The current queue to be processed size=${pendingRequests.size}")
             try {
                 withContext(Dispatchers.IO) {
-                    Loge.i("SerialPort", "发送: ${ByteUtils.toHexString(data)}")
-//                    BoxToolLogUtils.savePush3(ByteUtils.toHexString(data))
+//                        BoxToolLogUtils.saveWrite("flow：write：${ByteUtils.toHexString(data)} Serial[send] ID =$msgId , size=${pendingRequests.size}")
                     fos?.write(data)
                     fos?.flush()
 //                    delay(10)
@@ -168,7 +166,7 @@ object SerialPortEngine {
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)
             } catch (e: Exception) {
-                BoxToolLogUtils.savePush2("flow：Serial：[异常] ID=$msgId 失败: ${e.javaClass.simpleName} - ${e.message}")
+                BoxToolLogUtils.saveWrite("flow：write Serial：[异常] ID=$msgId 失败: ${e.javaClass.simpleName} - ${e.message}")
                 Result.failure(e)
             } finally {
 //                responseWaiter = null

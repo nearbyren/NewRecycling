@@ -1,5 +1,8 @@
 package com.recycling.toolsapp.utils
 
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Handler
@@ -143,5 +146,35 @@ object OSUtils {
             Runtime.getRuntime().exit(0)
         }, 3000)  // 100ms延迟足够，不需要5秒
     }
+
+    fun fullRestart(context: Context) {
+        val packageName = context.packageName
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+
+        launchIntent?.let { intent ->
+            // 使用 FLAG_ACTIVITY_NEW_TASK 确保在新任务中启动
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+
+            // 创建 PendingIntent
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                System.currentTimeMillis().toInt(), // 唯一请求码
+                intent,
+                PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // 设置 AlarmManager 延迟启动
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            alarmManager.set(
+                AlarmManager.RTC,
+                System.currentTimeMillis() + 2000, // 100ms 延迟
+                pendingIntent
+            )
+
+            // 立即杀死当前进程
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }
+    }
+
 }
 
