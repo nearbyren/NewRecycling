@@ -2,7 +2,6 @@ package com.serial.port.t
 
 import android.util.Log
 import com.serial.port.SerialPort
-import com.serial.port.utils.Loge
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream

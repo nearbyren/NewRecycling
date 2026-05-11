@@ -1,30 +1,17 @@
 package com.recycling.toolsapp
 
-import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
-import android.hardware.display.DisplayManager
 import android.os.Bundle
-import android.util.DisplayMetrics
-import android.view.Display
-import android.view.Surface
-import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.google.gson.Gson
-import com.recycling.toolsapp.http.RepoImpl
-import com.recycling.toolsapp.model.LogEntity
 import com.recycling.toolsapp.nav.NavTouDoubleActivity
 import com.recycling.toolsapp.nav.NavTouSingleActivity
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.Loge
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
 

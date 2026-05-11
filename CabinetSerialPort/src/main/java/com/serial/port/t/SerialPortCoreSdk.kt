@@ -1,6 +1,5 @@
 package com.serial.port.t
 
-import com.serial.port.BuildConfig
 import com.serial.port.utils.ByteUtils
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.CmdCode.CLEAR_OPEN_1_1

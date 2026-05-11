@@ -19,8 +19,6 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
-import com.cabinet.toolsapp.tools.bus.FlowBus
-import com.cabinet.toolsapp.tools.bus.ResEvent
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.NavTouDoubleFragmentBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindLazyTimeFragment

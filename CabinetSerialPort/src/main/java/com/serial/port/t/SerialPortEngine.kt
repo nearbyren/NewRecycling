@@ -1,14 +1,12 @@
 package com.serial.port.t
 
-import com.serial.port.utils.BoxToolLogUtils
+import com.serial.port.utils.AsyncBatchLogger
 import com.serial.port.utils.ByteUtils
-import com.serial.port.utils.Loge
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,7 +37,6 @@ object SerialPortEngine {
     private val sendMutex = Mutex()
     private var responseWaiter: CompletableDeferred<ByteArray>? = null
     private val pendingRequests = ConcurrentHashMap<Int, CompletableDeferred<ByteArray>>()
-    private var sequenceId = 0
 
     private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var readJob: Job? = null
@@ -52,11 +49,10 @@ object SerialPortEngine {
         val waiter = pendingRequests[cmdId]
 
         if (waiter != null) {
-            BoxToolLogUtils.savePush2("flow：Serial：[packet ] success ID=$cmdId, Preparing to trigger a callback")
             pendingRequests.remove(cmdId)?.complete(packet)
+            AsyncBatchLogger.log("${ByteUtils.toHexString(packet)}", cmdId)
         } else {
-            // 这行日志最重要：如果出现了这行，说明 ID 没对上或者对应的请求已经超时移除了
-            BoxToolLogUtils.savePush2("flow：Serial：[packet ] failure！ID=$cmdId, Map not find Keys=${pendingRequests.keys()}")
+             AsyncBatchLogger.log("Serial：Serial：[packet ] failure！ID=$cmdId, Map not find Keys=${pendingRequests.keys()}",-1)
         }
     }
 
@@ -80,7 +76,7 @@ object SerialPortEngine {
                     try {
                         readLoop() // 调用提取出来的读取循环
                     } catch (e: Exception) {
-                        BoxToolLogUtils.savePush2("flow：Read interrupt: ${e.message}")
+                         AsyncBatchLogger.log("Serial：Read interrupt: ${e.message}",-1)
                     } finally {
                         _portStatus.value = PortStatus.ERROR
                         closeStreams()
@@ -107,7 +103,6 @@ object SerialPortEngine {
                 if (len > 0) {
                     // 拷贝当前读取到的实际有效长度
                     val validData = buffer.copyOfRange(0, len)
-                    BoxToolLogUtils.saveRead("flow：Read：${ByteUtils.toHexString(validData)}")
                     if (validData[0] == 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
                         //完成帧
                         readBuffer.write(validData)
@@ -125,8 +120,7 @@ object SerialPortEngine {
                 }
             }
         } catch (e: Exception) {
-            Loge.e("串口读取异常: ${e.message}")
-            BoxToolLogUtils.savePush2("flow：串口读取异常: ${e.message}")
+             AsyncBatchLogger.log("Serial：串口读取异常: ${e.message}",-1)
         }
     }
 
@@ -145,7 +139,7 @@ object SerialPortEngine {
                     if (available > 0) {
                         val skipBuffer = ByteArray(available)
                         fis?.read(skipBuffer) // 彻底排空旧缓冲区
-                        BoxToolLogUtils.saveWrite("flow：write Serial：[预处理] 已丢弃缓冲区残留数据: $available 字节")
+                        AsyncBatchLogger.log("write [预处理] 已丢弃缓冲区残留数据: $available 字节",-1)
                     }
                 }
             }
@@ -157,16 +151,14 @@ object SerialPortEngine {
             pendingRequests[msgId] = waiter
             try {
                 withContext(Dispatchers.IO) {
-//                        BoxToolLogUtils.saveWrite("flow：write：${ByteUtils.toHexString(data)} Serial[send] ID =$msgId , size=${pendingRequests.size}")
                     fos?.write(data)
                     fos?.flush()
 //                    delay(10)
-
                 }
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)
             } catch (e: Exception) {
-                BoxToolLogUtils.saveWrite("flow：write Serial：[异常] ID=$msgId 失败: ${e.javaClass.simpleName} - ${e.message}")
+                AsyncBatchLogger.log("write ID=$msgId 失败: ${e.javaClass.simpleName} - ${e.message}",-1)
                 Result.failure(e)
             } finally {
 //                responseWaiter = null
@@ -195,14 +187,14 @@ object SerialPortEngine {
                 lastErr = res.exceptionOrNull() as? Exception
 
                 // 记录一下重试日志，方便排查
-                BoxToolLogUtils.savePush2("flow：ID=${data[2]} no ${attempt + 1} second try...")
+                 AsyncBatchLogger.log("Serial：ID=${data[2]} no ${attempt + 1} second try...",-1)
             }
         } else {
             val res = sendOnce(data, timeout)
             if (res.isSuccess) return res
 
             lastErr = res.exceptionOrNull() as? Exception
-            BoxToolLogUtils.savePush2("flow：ID=${data[2]} ")
+             AsyncBatchLogger.log("Serial：ID=${data[2]} ",-1)
 
         }
 

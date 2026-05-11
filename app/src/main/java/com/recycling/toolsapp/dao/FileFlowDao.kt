@@ -6,7 +6,6 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.recycling.toolsapp.model.FileEntity
-import com.recycling.toolsapp.model.LatticeEntity
 
 
 /***

@@ -6,9 +6,7 @@ package com.serial.port.t
  * @description:
  */
 
-import com.serial.port.utils.BoxToolLogUtils
-import com.serial.port.utils.ByteUtils
-import com.serial.port.utils.Loge
+import com.serial.port.utils.AsyncBatchLogger
 import com.serial.port.utils.SendByteData
 import java.io.ByteArrayOutputStream
 
@@ -44,7 +42,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
 
             // 1. 超时重置逻辑
             if (currentTime - lastProcessTime > PROCESS_TIMEOUT && buffer.size() > 0) {
-                BoxToolLogUtils.savePush2("flow：Parsing timeout, resetting buffer")
+               AsyncBatchLogger.log("Parsing timeout, resetting buffer",-1)
                 buffer.reset()
             }
 
@@ -58,7 +56,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             lastProcessTime = currentTime
 
         } catch (e: Exception) {
-            BoxToolLogUtils.savePush2("flow：Parsing exceptions: ${e.message}")
+           AsyncBatchLogger.log("Parsing exceptions: ${e.message}",-1)
             buffer.reset()
         }
     }
@@ -73,7 +71,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             if (headerIndex == -1) {
                 // 全缓冲区没有帧头，全部标记为已处理
                 lastValidEnd = currentData.size
-                BoxToolLogUtils.savePush2("flow：There's a lot of noise behind it")
+               AsyncBatchLogger.log("There's a lot of noise behind it",-1)
                 break
             }
 
@@ -83,10 +81,10 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             // B. 检查长度位是否已接收
             if (headerIndex + POS_DATA_LEN >= currentData.size) {
                 // 数据不够读长度位，跳出，等待下一次 push 拼接
-                BoxToolLogUtils.savePush2("flow：Not enough data to read the length bit")
+               AsyncBatchLogger.log("Not enough data to read the length bit",-1)
                 // 如果这个半包在缓冲区停留超过了 HALF_FRAME_MAX_STAY，强制跳过
                 if (currentTime - lastProcessTime > HALF_FRAME_MAX_STAY) {
-                    BoxToolLogUtils.savePush2("flow：[ discard ] instruction bit Miss Packet has stayed too long")
+                   AsyncBatchLogger.log("[ discard ] instruction bit Miss Packet has stayed too long",-1)
                     currentIndex = headerIndex + 1
                     lastValidEnd = currentIndex
                     continue
@@ -100,7 +98,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
 
 
             if (totalFrameLen > MAX_FRAME_SIZE || totalFrameLen < MIN_FRAME_SIZE) {
-                BoxToolLogUtils.savePush2("flow：[ skip ] illegal packet length: $totalFrameLen")
+               AsyncBatchLogger.log("[ skip ] illegal packet length: $totalFrameLen",-1)
                 currentIndex = headerIndex + 1
                 lastValidEnd = currentIndex
                 continue
@@ -110,7 +108,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             if (headerIndex + totalFrameLen > currentData.size) {
                 // 如果这个完整长度的包迟迟不来齐，不要一直憋着缓冲区
                 if (currentTime - lastProcessTime > HALF_FRAME_MAX_STAY) {
-                    BoxToolLogUtils.savePush2("flow：[强制弹出] 半包延迟过高(${currentData.size}/$totalFrameLen)，丢弃旧头")
+                   AsyncBatchLogger.log("[强制弹出] 半包延迟过高(${currentData.size}/$totalFrameLen)，丢弃旧头",-1)
                     currentIndex = headerIndex + 1
                     lastValidEnd = currentIndex
                     continue
@@ -121,7 +119,7 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             // F. 检查帧尾 0x9A
             val frameEndIndex = headerIndex + totalFrameLen - 1
             if (currentData[frameEndIndex] != SendByteData.RE_FRAME_END) {
-                BoxToolLogUtils.savePush2("flow：Frame end check failed, skip this frame header")
+               AsyncBatchLogger.log("Frame end check failed, skip this frame header",-1)
                 currentIndex = headerIndex + 1
                 lastValidEnd = currentIndex
                 continue
@@ -131,14 +129,13 @@ class FrameExtractorNew(private val onFrameFound: (ByteArray) -> Unit) {
             val packet = currentData.copyOfRange(headerIndex, headerIndex + totalFrameLen)
             if (validateCheckSum(packet)) {
                 // --- 校验通过，执行回调 ---
-                BoxToolLogUtils.savePush2("flow：[complete] packet: ${ByteUtils.toHexString(packet)}")
                 onFrameFound(packet)
 
                 // 推进指针到包末尾
                 currentIndex = headerIndex + totalFrameLen
                 lastValidEnd = currentIndex
             } else {
-                BoxToolLogUtils.savePush2("flow：[Checksum] failure")
+               AsyncBatchLogger.log("[Checksum] failure",-1)
                 currentIndex = headerIndex + 1
                 lastValidEnd = currentIndex
             }

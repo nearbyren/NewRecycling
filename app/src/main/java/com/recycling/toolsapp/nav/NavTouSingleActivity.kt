@@ -49,7 +49,7 @@ import com.recycling.toolsapp.utils.SnackbarUtils
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.NewDualUsbCameraManager.CameraErrorListener
 import com.serial.port.utils.AppUtils
-import com.serial.port.utils.BoxToolLogUtils
+import com.serial.port.utils.AsyncBatchLogger
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
@@ -120,7 +120,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         // 观察网络状态
         lifecycleScope.launch {
             networkStateManager.networkState.collect { state ->
-                cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,$state")
+                AsyncBatchLogger.logBusiness("net","$state")
                 when (state) {
                     NetworkStateManager.NetworkState.Unknown -> {
                         Loge.e("网络测试 检测网络中...")
@@ -345,8 +345,6 @@ class NavTouSingleActivity : AppCompatActivity() {
         cabinetVM.startPollingFault()
         //启动检测上传业务图片
         cabinetVM.endCameraUploadPhoto()
-//        //启动检测socket断开重启app
-//        cabinetVM.monitoringSocketStatus()
     }
 
     /***
@@ -374,7 +372,7 @@ class NavTouSingleActivity : AppCompatActivity() {
             cabinetVM.initConfigSocket(host!!, port)
             cabinetVM.state.collect {
                 Loge.e("出厂配置 initSocket 连接状态: $it | ${Thread.currentThread().name}")
-                cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "socket,$it")
+                AsyncBatchLogger.logBusiness("socket","状态：$it")
                 when (it) {
                     CabinetVM.ConnectionState.START -> {
                         Loge.e("出厂配置 initSocket NavTouSingleActivity addSocketResultListener2 监 开始：${Thread.currentThread().name} | state $")
@@ -426,7 +424,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                             cabinetVM.saveSocketInitData(loginModel, false)
                         } else {
                             //这里继续延续登录
-                            BoxToolLogUtils.savePrintln("socketClient,登录失败")
+                            AsyncBatchLogger.logBusiness("socket","登录失败")
                             val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
                             val newCount = loginCount + 1
                             SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, newCount)
@@ -515,11 +513,10 @@ class NavTouSingleActivity : AppCompatActivity() {
                                 cabinetVM.stopAll()
 
                                 // 4. 确保日志写入磁盘
-                                BoxToolLogUtils.savePrintln("业务流：收到指令重启：资源已释放，执行重启")
-
+                                AsyncBatchLogger.logBusiness("socket","收到指令重启")
                                 // 5. 正式重启
-                                OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
-//                                OSUtils.fullRestart(this@NavTouSingleActivity)
+//                                OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
+                                OSUtils.fullRestart(this@NavTouSingleActivity)
                             }
                         }
                     }
@@ -662,33 +659,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
 
     fun latestBusinessStatus() {
-        cabinetVM.cameraManagerNew.registerUsbReceiver()/* lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                SerialPortSdk.flowBusinessSetup.collect {
-                    val cmdText = CmdEnumText.fromCmdText(it.cmdByte)
-                    BoxToolLogUtils.savePrintln("业务流：返回的指令 -> $cmdText | ${it.cmdStatus} | $it")
-                    when (it.cmdByte) {
-                        SerialPortSdk.CMD0 -> {}
-                        SerialPortSdk.CMD1 -> {}
-                        SerialPortSdk.CMD2 -> {}
-                        SerialPortSdk.CMD3 -> {}
-                        SerialPortSdk.CMD4 -> {}
-                        SerialPortSdk.CMD5 -> {}
-                        SerialPortSdk.CMD6 -> {}
-                        SerialPortSdk.CMD7 -> {}
-                        SerialPortSdk.CMD8 -> {}
-                        SerialPortSdk.CMD9 -> {}
-                        SerialPortSdk.CMD10 -> {}
-                        SerialPortSdk.CMD11 -> {}
-                        SerialPortSdk.CMD16 -> {}
-                        SerialPortSdk.CMD17 -> {}
-                        SerialPortSdk.CMD18 -> {}
-                        SerialPortSdk.CMD19 -> {}
-                    }
-
-                }
-            }
-        }*/
+        cabinetVM.cameraManagerNew.registerUsbReceiver()
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -777,15 +748,12 @@ class NavTouSingleActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.currentStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：当前步骤 -> $it")
                     when (it) {
                         CabinetVM.LockerStep.IDLE -> {}
                         CabinetVM.LockerStep.START -> {
-                            BoxToolLogUtils.savePrintln("业务流：开启相机拍照")
                         }
 
                         CabinetVM.LockerStep.OPENING -> {
-                            BoxToolLogUtils.savePrintln("业务流：插入数据")
                             val openType = cabinetVM.remoteOpenType
                             if (openType == 1) {
                                 cabinetVM.playVoice(1)
@@ -798,16 +766,13 @@ class NavTouSingleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.WAITING_OPEN_CLEAR -> {
-                            BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
                         }
 
                         CabinetVM.LockerStep.WEIGHT_TRACKING -> {
-                            BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
 
                         }
 
                         CabinetVM.LockerStep.CLICK_CLOSE -> {
-                            BoxToolLogUtils.savePrintln("业务流：点击关闭")
                             val openType = cabinetVM.remoteOpenType
                             if (openType == 1) {
                                 cabinetVM.playVoice(0)
@@ -815,12 +780,10 @@ class NavTouSingleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.CLOSING -> {
-                            BoxToolLogUtils.savePrintln("业务流：检测关闭中")
 
                         }
 
                         CabinetVM.LockerStep.CLOSE -> {
-                            BoxToolLogUtils.savePrintln("业务流：检测已关闭")
                             cabinetVM.startLockerEndWeight(
                                 cabinetVM.doorGeX, cabinetVM.curG1Weight ?: "0.00"
                             )
@@ -828,7 +791,6 @@ class NavTouSingleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.WAITING_CLOSE, CabinetVM.LockerStep.FINISHED -> {
-                            BoxToolLogUtils.savePrintln("业务流：上报关闭")
                         }
 
                         CabinetVM.LockerStep.CAMERA_END -> {
@@ -841,7 +803,6 @@ class NavTouSingleActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.currentUiStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：当前步骤UI -> $it")
                     val navController = Navigation.findNavController(
                         this@NavTouSingleActivity, R.id.nav_host_fragment_single
                     )

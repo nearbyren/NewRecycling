@@ -3,7 +3,6 @@ package com.recycling.toolsapp.nav
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -26,8 +25,6 @@ import androidx.navigation.Navigation
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
-import com.cabinet.toolsapp.tools.bus.FlowBus
-import com.cabinet.toolsapp.tools.bus.ResEvent
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.recycling.toolsapp.BuildConfig
@@ -55,7 +52,7 @@ import com.recycling.toolsapp.utils.SnackbarUtils
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.NewDualUsbCameraManager.CameraErrorListener
 import com.serial.port.utils.AppUtils
-import com.serial.port.utils.BoxToolLogUtils
+import com.serial.port.utils.AsyncBatchLogger
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
@@ -129,7 +126,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
         // 观察网络状态
         lifecycleScope.launch {
             networkStateManager.networkState.collect { state ->
-                cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "net,$state")
+                AsyncBatchLogger.logBusiness("nets","$state")
                 when (state) {
                     NetworkStateManager.NetworkState.Unknown -> {
                         Loge.e("网络测试 检测网络中...")
@@ -351,8 +348,6 @@ class NavTouDoubleActivity : AppCompatActivity() {
         cabinetVM.startPollingFault()
         //启动检测上传业务图片
         cabinetVM.endCameraUploadPhoto()
-//        启动检测socket断开重启app
-//        cabinetVM.monitoringSocketStatus()
     }
 
     /***
@@ -377,16 +372,14 @@ class NavTouDoubleActivity : AppCompatActivity() {
             cabinetVM.initConfigSocket(host!!, port)
             cabinetVM.state.collect {
                 Loge.e("出厂配置 initSocket 连接状态: $it | ${Thread.currentThread().name}")
-                cabinetVM.saveRecordSocket(CmdValue.CONNECTING, "socket,$it")
+                AsyncBatchLogger.logBusiness("socket","状态：$it")
                 when (it) {
                     CabinetVM.ConnectionState.START -> {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 开始：${Thread.currentThread().name} | state $")
-                        BoxToolLogUtils.savePrintln("socketClient,START")
                     }
 
                     CabinetVM.ConnectionState.DISCONNECTED -> {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 已断开连接：${Thread.currentThread().name} | state $")
-                        BoxToolLogUtils.savePrintln("socketClient,DISCONNECTED")
                         cabinetVM.isDistClient = true
                         socketToast(true)
                         initVerSn("d")
@@ -394,13 +387,11 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
                     CabinetVM.ConnectionState.CONNECTING -> {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 正在连接：${Thread.currentThread().name} | state $")
-                        BoxToolLogUtils.savePrintln("socketClient,CONNECTING")
                         initVerSn("i")
                     }
 
                     CabinetVM.ConnectionState.CONNECTED -> {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 已连接：${Thread.currentThread().name} | state $")
-                        BoxToolLogUtils.savePrintln("socketClient,CONNECTED")
                         val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
                         val result = loginCount + 1
                         SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, result)
@@ -431,7 +422,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             cabinetVM.saveSocketInitData(loginModel, false)
                         } else {
                             //这里继续延续登录
-                            BoxToolLogUtils.savePrintln("socketClient,登录失败")
+                            AsyncBatchLogger.logBusiness("socket","登录失败")
                             val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
                             val newCount = loginCount + 1
                             SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, newCount)
@@ -546,11 +537,11 @@ class NavTouDoubleActivity : AppCompatActivity() {
                                 cabinetVM.stopAll()
 
                                 // 4. 确保日志写入磁盘
-                                BoxToolLogUtils.savePrintln("业务流：收到指令重启：资源已释放，执行重启")
+                                AsyncBatchLogger.logBusiness("socket","收到指令重启")
 
                                 // 5. 正式重启
-                                OSUtils.restartAppFrontDesk(this@NavTouDoubleActivity)
-//                                OSUtils.fullRestart(this@NavTouDoubleActivity)
+//                                OSUtils.restartAppFrontDesk(this@NavTouDoubleActivity)
+                                OSUtils.fullRestart(this@NavTouDoubleActivity)
                             }
                         }
                     }
@@ -798,15 +789,12 @@ class NavTouDoubleActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.currentStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：当前步骤 -> $it")
                     when (it) {
                         CabinetVM.LockerStep.IDLE -> {}
                         CabinetVM.LockerStep.START -> {
-                            BoxToolLogUtils.savePrintln("业务流：开启相机拍照")
                         }
 
                         CabinetVM.LockerStep.OPENING -> {
-                            BoxToolLogUtils.savePrintln("业务流：插入数据")
                             val openType = cabinetVM.remoteOpenType
                             if (openType == 1) {
                                 cabinetVM.playVoice(1)
@@ -819,16 +807,13 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.WAITING_OPEN_CLEAR -> {
-                            BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
                         }
 
                         CabinetVM.LockerStep.WEIGHT_TRACKING -> {
-                            BoxToolLogUtils.savePrintln("业务流：持续获取重量中")
 
                         }
 
                         CabinetVM.LockerStep.CLICK_CLOSE -> {
-                            BoxToolLogUtils.savePrintln("业务流：点击关闭")
                             val openType = cabinetVM.remoteOpenType
                             if (openType == 1) {
                                 cabinetVM.playVoice(0)
@@ -836,12 +821,10 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.CLOSING -> {
-                            BoxToolLogUtils.savePrintln("业务流：检测关闭中")
 
                         }
 
                         CabinetVM.LockerStep.CLOSE -> {
-                            BoxToolLogUtils.savePrintln("业务流：检测已关闭")
                             cabinetVM.startLockerEndWeight(
                                 cabinetVM.doorGeX, cabinetVM.curG1Weight ?: "0.00"
                             )
@@ -849,7 +832,6 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         }
 
                         CabinetVM.LockerStep.WAITING_CLOSE, CabinetVM.LockerStep.FINISHED -> {
-                            BoxToolLogUtils.savePrintln("业务流：上报关闭")
                         }
 
                         CabinetVM.LockerStep.CAMERA_END -> {
@@ -862,7 +844,6 @@ class NavTouDoubleActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 cabinetVM.currentUiStep.collect {
-                    BoxToolLogUtils.savePrintln("业务流：当前步骤UI -> $it")
                     val navController = Navigation.findNavController(
                         this@NavTouDoubleActivity, R.id.nav_host_fragment_double
                     )

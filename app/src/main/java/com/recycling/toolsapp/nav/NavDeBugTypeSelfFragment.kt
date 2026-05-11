@@ -29,7 +29,6 @@ import com.recycling.toolsapp.utils.MediaPlayerHelper
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.utils.TestByteData
 import com.recycling.toolsapp.vm.CabinetVM
-import com.recycling.toolsapp.vm.CabinetVM.MonitorCalibration
 import com.serial.port.EnumCabState
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.ByteUtils

@@ -6,8 +6,6 @@ package com.serial.port.t
  * @description:
  */
 
-import com.serial.port.utils.BoxToolLogUtils
-import com.serial.port.utils.ByteUtils
 import com.serial.port.utils.Loge
 import java.io.ByteArrayOutputStream
 
@@ -44,7 +42,6 @@ class FrameExtractor(private val onFrameFound: (ByteArray) -> Unit) {
                         // 同时验证 帧尾 和 校验和
                         if ((packet.last().toInt() and 0xFF) == 0x9A && validate(packet)) {
                             onFrameFound(packet)
-                            BoxToolLogUtils.savePush("完整 head：$head ${ByteUtils.toHexString(packet)}")
                             head += totalLen
                             continue
                         }
@@ -104,7 +101,6 @@ class FrameExtractor(private val onFrameFound: (ByteArray) -> Unit) {
         - 验证结果: ${calculatedCheckCode == actualCheckCode}
     """.trimIndent()
         )
-        BoxToolLogUtils.savePush("验证结果: ${calculatedCheckCode == actualCheckCode}")
         return calculatedCheckCode == actualCheckCode
     }
 

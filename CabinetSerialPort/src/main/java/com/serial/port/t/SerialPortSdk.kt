@@ -1,6 +1,7 @@
 package com.serial.port.t
 
-import com.serial.port.utils.BoxToolLogUtils
+
+import com.serial.port.utils.AsyncBatchLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -113,7 +114,7 @@ object SerialPortSdk {
 
 
     fun release() {
-        BoxToolLogUtils.savePush2("flow：收到指令重启：资源已释放，执行重启 closeAllSerialPort")
+        AsyncBatchLogger.log("收到指令重启：资源已释放，执行重启 closeAllSerialPort",-1)
 //        SerialPortManagerSdk.instance.closeAllSerialPort()
         SerialPortEngine.stop()
         isInit = false

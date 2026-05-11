@@ -10,12 +10,10 @@ import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.NavFragmentClearDoorBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindLazyTimeFragment
 import com.recycling.toolsapp.utils.CalculationUtil
-import com.recycling.toolsapp.utils.MonitorType
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.ClearTimer
 import com.serial.port.utils.AppUtils
-import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch

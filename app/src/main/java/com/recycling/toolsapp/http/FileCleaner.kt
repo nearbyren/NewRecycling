@@ -9,6 +9,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
@@ -83,6 +84,58 @@ object FileCleaner {
      */
     fun cancelCleanup() {
         CoroutineScope(Dispatchers.IO).cancel()
+    }
+    /**
+     * 压缩多个文件夹/文件
+     * @param srcFiles 源文件夹路径列表
+     * @param zipFilePath 输出的压缩包完整路径
+     */
+    fun zipFolders(srcFiles: List<String>, zipFilePath: String): File? {
+        val zipFile = File(zipFilePath)
+        // 如果压缩包父目录不存在则创建
+        zipFile.parentFile?.let { if (!it.exists()) it.mkdirs() }
+
+        var zos: ZipOutputStream? = null
+        try {
+            zos = ZipOutputStream(FileOutputStream(zipFile))
+            for (srcPath in srcFiles) {
+                val srcFile = File(srcPath)
+                if (srcFile.exists()) {
+                    compress(srcFile, zos, srcFile.name)
+                }
+            }
+            return zipFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        } finally {
+            zos?.closeEntry()
+            zos?.close()
+        }
+    }
+    private fun compress(file: File, zos: ZipOutputStream, name: String) {
+        val buffer = ByteArray(8192)
+        if (file.isFile) {
+            zos.putNextEntry(ZipEntry(name))
+            val fis = FileInputStream(file)
+            val bis = BufferedInputStream(fis)
+            var len: Int
+            while (bis.read(buffer).also { len = it } != -1) {
+                zos.write(buffer, 0, len)
+            }
+            bis.close()
+            fis.close()
+        } else {
+            val listFiles = file.listFiles()
+            if (listFiles == null || listFiles.isEmpty()) {
+                // 空文件夹处理
+                zos.putNextEntry(ZipEntry("$name/"))
+            } else {
+                for (f in listFiles) {
+                    compress(f, zos, "$name/${f.name}")
+                }
+            }
+        }
     }
     // 压缩指定文件夹
     fun zipFolder(sourcePath: String, outputPath: String): Boolean {

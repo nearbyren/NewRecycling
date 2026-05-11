@@ -5,22 +5,44 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.*
-import android.hardware.camera2.*
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.ImageFormat
+import android.graphics.Paint
+import android.graphics.SurfaceTexture
+import android.hardware.camera2.CameraAccessException
+import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraDevice
+import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CaptureRequest
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
-import android.util.Range
 import android.util.Size
 import android.view.Surface
 import android.view.TextureView
 import com.blankj.utilcode.util.ToastUtils
 import com.serial.port.utils.AppUtils
-import com.serial.port.utils.BoxToolLogUtils
-import kotlinx.coroutines.*
+import com.serial.port.utils.AsyncBatchLogger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.ConcurrentHashMap
@@ -58,7 +80,7 @@ class NewDualUsbCameraManager(context: Context) {
                 previewSurface?.release()
                 thread?.quitSafely()
             } catch (e: Exception) {
-//                BoxToolLogUtils.saveCamera("释放摄像头 $cameraId 异常: ${e.message}")
+                AsyncBatchLogger.logBusiness("业务流","释放摄像头 $cameraId 异常: ${e.message}")
             } finally {
                 session = null; device = null; reader = null
                 previewSurface = null; thread = null; handler = null
@@ -108,7 +130,7 @@ class NewDualUsbCameraManager(context: Context) {
             val usbIds = getExternalCameraIds()
             if (usbIds.isEmpty()) {
                 withContext(Dispatchers.IO) {
-                    BoxToolLogUtils.saveCamera("未检测到外置 USB 摄像头")
+                    AsyncBatchLogger.logBusiness("业务流","未检测到外置 USB 摄像头")
                 }
                 return@launch
             }
@@ -152,7 +174,7 @@ class NewDualUsbCameraManager(context: Context) {
                 awaitAll(*tasks.toTypedArray())
             }
             withContext(Dispatchers.IO) {
-                BoxToolLogUtils.savePrintln2("双摄像头并行开启请求已完成 open1:${open1} | open2:${open2} size:${tasks.size} ")
+                AsyncBatchLogger.logBusiness("业务流","双摄像头并行开启请求 open1:${open1} | open2:${open2} size:${tasks.size} ")
             }
         }
     }
@@ -257,7 +279,7 @@ class NewDualUsbCameraManager(context: Context) {
                 withContext(Dispatchers.IO) { onComplete(imageFile) }
             } catch (e: Exception) {
                 withContext(Dispatchers.IO) {
-                    BoxToolLogUtils.saveCamera("[$cameraId] 拍照异常: ${e.message}")
+                    AsyncBatchLogger.logBusiness("业务流","[$cameraId] 拍照异常: ${e.message}")
                 }
                 withContext(Dispatchers.Main) { onComplete(null) }
             } finally {
@@ -306,7 +328,7 @@ class NewDualUsbCameraManager(context: Context) {
                             if (finalPath != null) {
                                 val resultFile = File(finalPath)
                                 if (resultFile.exists() && resultFile.length() > 0) {
-//                                    BoxToolLogUtils.saveCamera("[$cameraId] 物理落盘成功: $finalPath (${resultFile.length()} bytes)")
+//                                    AsyncBatchLogger.logBusiness("业务流","[$cameraId] 物理落盘成功: $finalPath (${resultFile.length()} bytes)")
                                     cameraErrorListener?.cameraStatus(true, cameraId, "拍照完成")
                                     cont.resume(resultFile)
                                 } else {
@@ -362,7 +384,7 @@ class NewDualUsbCameraManager(context: Context) {
             bitmap.recycle()
             destFile.absolutePath
         } catch (e: Exception) {
-//            BoxToolLogUtils.saveCamera("水印写入失败: ${e.message}")
+            AsyncBatchLogger.logBusiness("业务流","水印写入失败: ${e.message}")
             null
         }
     }
@@ -378,7 +400,7 @@ class NewDualUsbCameraManager(context: Context) {
                 }
             }
         } catch (e: Exception) {
-            BoxToolLogUtils.saveCamera("获取摄像头异常: ${e.message}")
+            AsyncBatchLogger.logBusiness("业务流","获取摄像头异常: ${e.message}")
         }
         return externalIds
     }
@@ -484,15 +506,15 @@ class NewDualUsbCameraManager(context: Context) {
                     }
 
                     override fun onConfigureFailed(s: CameraCaptureSession) {
-                        BoxToolLogUtils.saveCamera("摄像头 $cameraId 配置会话失败")
+                        AsyncBatchLogger.logBusiness("业务流","摄像头 $cameraId 配置会话失败")
                     }
                 }, holder.handler)
 
             } catch (e: CameraAccessException) {
-                BoxToolLogUtils.saveCamera("创建会话异常: ${e.message}")
+                AsyncBatchLogger.logBusiness("业务流","创建会话异常: ${e.message}")
                 cameraErrorListener?.cameraStatus(false, "all", "创建会话异常")
             } catch (e: IllegalArgumentException) {
-                BoxToolLogUtils.saveCamera("分辨率或 Surface 异常: ${e.message}")
+                AsyncBatchLogger.logBusiness("业务流","分辨率或 Surface 异常: ${e.message}")
                 cameraErrorListener?.cameraStatus(false, "all", "分辨率或 Surface 异常")
             }
         }

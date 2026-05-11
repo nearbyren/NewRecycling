@@ -1,9 +1,6 @@
 package com.serial.port.t
 
 import android.util.Log
-import com.serial.port.utils.ByteUtils
-import com.serial.port.utils.SendByteData.SE_FRAME_END
-import com.serial.port.utils.SendByteData.SE_FRAME_HEADER
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 

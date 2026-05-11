@@ -1,6 +1,6 @@
 package nearby.lib.netwrok
 
-import java.util.*
+import java.util.Locale
 
 /**
 字节处理工具类

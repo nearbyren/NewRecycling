@@ -166,13 +166,14 @@ object OSUtils {
             // 设置 AlarmManager 延迟启动
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             alarmManager.set(
-                AlarmManager.RTC,
+                AlarmManager.RTC_WAKEUP,
                 System.currentTimeMillis() + 2000, // 100ms 延迟
                 pendingIntent
             )
 
             // 立即杀死当前进程
             android.os.Process.killProcess(android.os.Process.myPid())
+            System.exit(0)
         }
     }
 

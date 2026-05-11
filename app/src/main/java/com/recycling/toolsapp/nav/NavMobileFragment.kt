@@ -4,9 +4,6 @@ import android.os.Bundle
 import android.view.View
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.Navigation
 import com.recycling.toolsapp.BuildConfig
 import com.recycling.toolsapp.R
@@ -16,11 +13,9 @@ import com.recycling.toolsapp.utils.CalculationUtil
 import com.recycling.toolsapp.utils.ResultType
 import com.recycling.toolsapp.vm.CabinetVM
 import com.serial.port.utils.AppUtils
-import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
 
 

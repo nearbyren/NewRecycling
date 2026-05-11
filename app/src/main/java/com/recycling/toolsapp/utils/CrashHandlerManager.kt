@@ -10,7 +10,6 @@ import android.content.pm.PackageManager
 import android.os.Environment
 import android.util.ArrayMap
 import android.util.Log
-import com.recycling.toolsapp.BuildConfig
 import com.recycling.toolsapp.FaceApplication
 import com.recycling.toolsapp.http.MailConfig
 import com.recycling.toolsapp.http.MailSender
@@ -20,7 +19,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
-import nearby.lib.signal.livebus.BusType
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
