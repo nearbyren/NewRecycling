@@ -361,12 +361,11 @@ object TaskRestartScheduler {
             now.isBefore(endLocalTime) -> {
                 // 可以选择立即执行或在剩余时间内随机延迟
                 val remainingDuration = Duration.between(now, endLocalTime)
-                if (remainingDuration.toMinutes() > 5) {
-                    // 如果剩余时间超过5分钟，随机延迟0到剩余时间的延迟
+                if (remainingDuration.toMinutes() > 0) { // 修改这里，只要大于0就可以取随机
+                    // 使用 nextLong 更加安全，注意加 1 以包含结束边界
                     val randomMinutes = Random.nextLong(0, remainingDuration.toMinutes() + 1)
                     Duration.ofMinutes(randomMinutes)
                 } else {
-                    // 剩余时间不足5分钟，立即执行
                     Duration.ZERO
                 }
             }
@@ -456,25 +455,46 @@ object TaskRestartScheduler {
     @RequiresApi(Build.VERSION_CODES.O)
     private fun calculateRandomTimeRangeDelay(startTime: String, endTime: String): Duration {
         val startLocalTime = parseTimeString(startTime)
-        val endLocalTime = parseTimeString(endTime)
+        var endLocalTime = parseTimeString(endTime)
 
-        val now = LocalTime.now()
-        val todayStart = LocalDateTime.of(LocalDate.now(), startLocalTime)
-        val todayEnd = LocalDateTime.of(LocalDate.now(), endLocalTime)
-
-        val randomTimeInRange = if (now.isAfter(startLocalTime) && now.isBefore(endLocalTime)) {
-            val randomMinutes = (0 until Duration.between(now, endLocalTime).toMinutes()).random()
-            now.plusMinutes(randomMinutes)
-        } else {
-            val totalMinutes = Duration.between(startLocalTime, endLocalTime).toMinutes()
-            val randomMinutes = (0 until totalMinutes).random()
-            startLocalTime.plusMinutes(randomMinutes)
+        // 防御逻辑：如果结束时间在开始时间之前（跨天），则将结束时间视为第二天
+        if (endLocalTime.isBefore(startLocalTime) || endLocalTime == startLocalTime) {
+            // 如果相等或跨天，我们至少给它 1 分钟的范围，或者视为 24 小时后
+            // 这里为了修复报错，我们处理为：如果相等，则认为是在该时间点精准执行
+            if (endLocalTime == startLocalTime) {
+                val now = LocalTime.now()
+                val delay = Duration.between(now, startLocalTime).toMillis()
+                return Duration.ofMillis(if (delay < 0) delay + 24 * 60 * 60 * 1000 else delay)
+            }
         }
 
-        val targetDateTime = LocalDateTime.of(LocalDate.now(), randomTimeInRange)
-        val delayMillis = Duration.between(LocalDateTime.now(), targetDateTime).toMillis()
+        val now = LocalTime.now()
+        val randomTimeInRange: LocalTime
 
-        return Duration.ofMillis(if (delayMillis < 0) delayMillis + 24 * 60 * 60 * 1000 else delayMillis)
+        if (now.isAfter(startLocalTime) && now.isBefore(endLocalTime)) {
+            // 情况 A: 当前就在时间段内
+            val remainingMinutes = Duration.between(now, endLocalTime).toMinutes()
+            // 修复点：确保 random 的 range 不为空 (until 是左闭右开)
+            val randomMinutes = if (remainingMinutes <= 0) 0 else Random.nextLong(0, remainingMinutes + 1)
+            randomTimeInRange = now.plusMinutes(randomMinutes)
+        } else {
+            // 情况 B: 当前不在时间段内
+            val totalMinutes = Duration.between(startLocalTime, endLocalTime).toMinutes()
+            // 修复点：确保 random 的 range 不为空
+            val randomMinutes = if (totalMinutes <= 0) 0 else Random.nextLong(0, totalMinutes + 1)
+            randomTimeInRange = startLocalTime.plusMinutes(randomMinutes)
+        }
+
+        val nowDateTime = LocalDateTime.now()
+        var targetDateTime = LocalDateTime.of(LocalDate.now(), randomTimeInRange)
+
+        // 如果计算出来的目标时间已经过去了，推迟到明天
+        if (targetDateTime.isBefore(nowDateTime)) {
+            targetDateTime = targetDateTime.plusDays(1)
+        }
+
+        val finalDelay = Duration.between(nowDateTime, targetDateTime).toMillis()
+        return Duration.ofMillis(finalDelay)
     }
 
     // 创建目标日历

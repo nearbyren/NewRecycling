@@ -443,6 +443,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     }
 
+
     /***
      * 上传异常
      * @param toType
@@ -451,35 +452,60 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     private fun toGoCmdUpFault(toType: Int, toCabinIndex: Int, toDesc: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val setToType = matchErrorCode(toType)
-            val cabin = when (doorGeX) {
-                CmdCode.GE1 -> {
-                    cur1Cabinld//根据格口编码上报故障
+            var sendIsOverflow = false
+            if (toType == FaultType.FAULT_CODE_1111 || toType == FaultType.FAULT_CODE_1112 || toType == FaultType.FAULT_CODE_2110 || toType == FaultType.FAULT_CODE_2120) {
+                //取出是否发送过//存在则发送过
+                if (sendDoorOverflow.containsKey(toType)) {
+                    //清运过 或者 重启了就是false
+                    sendIsOverflow = sendDoorOverflow[toType]!!
+                    //清运过了 发送次数还没发完
+                    if (!sendIsOverflow && sendDoorOverflowCount < 0) {
+                        sendDoorOverflow[toType] = true
+                    }
+                    //发送次数够了 不能再发送了
+                    if (sendIsOverflow && sendDoorOverflowCount > 0) {
+                        sendIsOverflow = false
+                    }
+                    sendDoorOverflowCount -= 1
+                } else {
+                    sendDoorOverflow[toType] = true
+                    sendIsOverflow = false
                 }
-
-                CmdCode.GE2 -> {
-                    cur2Cabinld//根据格口编码上报故障
-                }
-
-                else -> {
-                    ""
-                }
+            } else {
+                sendIsOverflow = false
             }
-            val doorOpen = FaultBean().apply {
-                cmd = CmdValue.CMD_FAULT//回应服务器
-                imei = TelephonyUtils.getImei(AppUtils.getContext())
-                sn = curSn
-                data = FaultInfo().apply {
-                    type = setToType
-                    cabinIndex = toCabinIndex
-                    cabinId = cabin
-                    desc = toDesc
+            println("测试满溢上报功能 $sendIsOverflow")
+            if (!sendIsOverflow) {
+                val setToType = matchErrorCode(toType)
+                val cabin = when (doorGeX) {
+                    CmdCode.GE1 -> {
+                        cur1Cabinld//根据格口编码上报故障
+                    }
+
+                    CmdCode.GE2 -> {
+                        cur2Cabinld//根据格口编码上报故障
+                    }
+
+                    else -> {
+                        ""
+                    }
                 }
-                timestamp = System.currentTimeMillis().toString()
+                val doorOpen = FaultBean().apply {
+                    cmd = CmdValue.CMD_FAULT//回应服务器
+                    imei = TelephonyUtils.getImei(AppUtils.getContext())
+                    sn = curSn
+                    data = FaultInfo().apply {
+                        type = setToType
+                        cabinIndex = toCabinIndex
+                        cabinId = cabin
+                        desc = toDesc
+                    }
+                    timestamp = System.currentTimeMillis().toString()
+                }
+                val json = JsonBuilder.convertToJsonString(doorOpen)
+                Loge.e("模拟故障满溢状态 上传 Fault $json")
+                sendText(json)
             }
-            val json = JsonBuilder.convertToJsonString(doorOpen)
-            Loge.e("模拟故障满溢状态 上传 Fault $json")
-            sendText(json)
         }
     }
 
@@ -1393,6 +1419,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     var maptDoorFault = mutableMapOf<Int, Boolean>()
 
+    var sendDoorOverflowCount = 2
+    var sendDoorOverflow = mutableMapOf<Int, Boolean>()
+
     /**
      * 处理设备重量浮动变动超过0.5kg上报
      */
@@ -1687,17 +1716,17 @@ class CabinetVM @Inject constructor() : ViewModel() {
     /***
      * 下载主芯片版本名称
      */
-    var chipName = "f1-20260425.bin"
+    var chipName = "f1-20260320.bin"
 
     /***
      * 下载主芯片版本大小
      */
-    var chipDowV = 20260425
+    var chipDowV = 20260320
 
     /***
      * 当前主芯片版本大小
      */
-    var chipCurV = 20260425
+    var chipCurV = 20260320
 
     //统计能发送次数
     var sendFCount = 0
@@ -2272,7 +2301,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 //                }
 //                lastReceivedAtMillis = System.currentTimeMillis()
 //                val frame = buffer.copyOf(read)
-////                Loge.e("出厂配置 initSocket SocketClient readLoop ${ByteUtils.toHexString(frame)}")
+////                Loge.e("出厂配置 initSocket SocketClient readLoop ${ByteUtils.toHexStringFastTo(frame)}")
 //                _incoming.emit(frame)
 //            } catch (e: IOException) {
 //                e.printStackTrace()
@@ -2304,11 +2333,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
             } catch (e: CancellationException) {
                 Loge.e("出厂配置 initSocket SocketClient writeLoop catch1 ${e.message}")
-                AsyncBatchLogger.logBusiness("socket", "writeLoopByte catch1 ${e.message}}")
+                AsyncBatchLogger.logBusiness("socket", "writeLoopByte catch1 ${e.message}")
                 break
             } catch (e: IOException) {
                 Loge.e("出厂配置 initSocket SocketClient writeLoop catch2 ${e.message}")
-                AsyncBatchLogger.logBusiness("socket", "writeLoopByte catch2 ${e.message}}")
+                AsyncBatchLogger.logBusiness("socket", "writeLoopByte catch2 ${e.message}")
                 break
             }
         }
@@ -2702,14 +2731,14 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 if (filSize != 0) {
                     //软件大小
                     val sizeByte = HexConverter.intToByteArray(filSize)
-                    Loge.d("升级流程：filSize = $filSize | sizeByte = ${ByteUtils.toHexString(sizeByte)}")
+                    Loge.d("升级流程：filSize = $filSize | sizeByte = ${ByteUtils.toHexStringFastTo(sizeByte)}")
                     //软件版本
                     val vByte = HexConverter.intToByteArray(chipDowV)
-                    Loge.d("升级流程：chipMasterV = $chipDowV vByte = ${ByteUtils.toHexString(vByte)}")
+                    Loge.d("升级流程：chipMasterV = $chipDowV vByte = ${ByteUtils.toHexStringFastTo(vByte)}")
                     //CRC效验值
                     val crc = CRC32MPEG2Util.computeFile(file2.absolutePath)
                     val crcByte = HexConverter.intToByteArray(crc.toInt())
-                    Loge.d("升级流程：crcByte = ${ByteUtils.toHexString(crcByte)}")
+                    Loge.d("升级流程：crcByte = ${ByteUtils.toHexStringFastTo(crcByte)}")
                     val sendByte = HexConverter.combineByteArrays(fileType, sizeByte, vByte, crcByte)
                     val sendResult = HexConverter.combineByteArrays(byteArrayOf(0xA1.toByte(), 0xA2.toByte(), 0xA3.toByte()), sendByte)
                     val chipStep8 = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD8, sendResult)
@@ -2755,7 +2784,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
                                     // 3. 单包发送与匹配逻辑
                                     while (retryCount < maxRetriesPerBlock) {
-                                        Loge.d("升级流程：发送块[$currentBlockIndex], 尝试次[${retryCount + 1}], 数据:${ByteUtils.toHexString(blockToSend)}")
+                                        Loge.d("升级流程：发送块[$currentBlockIndex], 尝试次[${retryCount + 1}], 数据:${ByteUtils.toHexStringFastTo(blockToSend)}")
 
                                         // 调用 executeDirect (内部带有 timeout)
                                         val result = SerialPortCoreSdk.instance.executeChipNew(SerialPortSdk.CMD18, blockToSend)
@@ -2769,8 +2798,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                                 Loge.d("升级流程：块[$currentBlockIndex] 匹配成功")
                                                 isBlockSuccess = true
                                             } else {
-                                                Loge.e("升级流程：块[$currentBlockIndex] 数据不匹配! 期待:${ByteUtils.toHexString(blockToSend)}, 收到:${ByteUtils.toHexString(returnedPayload ?: byteArrayOf())}")
-                                                Loge.e("升级流程：进入发送文件 块[$currentBlockIndex] 数据不匹配! 期待:${ByteUtils.toHexString(blockToSend)}, 收到:${ByteUtils.toHexString(returnedPayload ?: byteArrayOf())}")
+                                                Loge.e("升级流程：块[$currentBlockIndex] 数据不匹配! 期待:${ByteUtils.toHexStringFastTo(blockToSend)}, 收到:${ByteUtils.toHexStringFastTo(returnedPayload ?: byteArrayOf())}")
+                                                Loge.e("升级流程：进入发送文件 块[$currentBlockIndex] 数据不匹配! 期待:${ByteUtils.toHexStringFastTo(blockToSend)}, 收到:${ByteUtils.toHexStringFastTo(returnedPayload ?: byteArrayOf())}")
                                             }
                                         }.onFailure { e ->
                                             Loge.e("升级流程：块[$currentBlockIndex] 通信失败: ${e.message}")
@@ -2825,7 +2854,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                 val failBytes = byteArrayOf(0xB4.toByte(), 0xB5.toByte(), 0xB6.toByte())
                                 if (payload.contentEquals(successBytes)) {
                                     SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
-                                    Loge.e("升级流程：进入文件校验指令 onSuccess = ${ByteUtils.toHexString(payload)}")
+                                    Loge.e("升级流程：进入文件校验指令 onSuccess = ${ByteUtils.toHexStringFastTo(payload)}")
                                     Loge.d("升级流程：查询重启指令 - 成功")
                                     _chipStep.value = UpgradeStep.RESTART_APP
                                 } else if (payload.contentEquals(failBytes)) {
@@ -2863,7 +2892,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             val payload = ProtocolCodec.getSafePayload(bytes)
                             if (payload?.size == 3) {
                                 SPreUtil.put(AppUtils.getContext(), SPreUtil.gversion, chipDowV)
-                                Loge.e("升级流程：进入重启指令 onSuccess = ${ByteUtils.toHexString(payload)}")
+                                Loge.e("升级流程：进入重启指令 onSuccess = ${ByteUtils.toHexStringFastTo(payload)}")
                                 _chipStep.value = UpgradeStep.UPGRADE_END
                             }
                         }.onFailure { e ->
@@ -3135,65 +3164,73 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     fun executePhotoWorkflow(switchType: Int) {
         viewModelScope.launch {
-//            val ids = cameraManagerNew.getExternalCameraIds()
-            val ids = cameraManagerNew.getExternalCameraIds()
-            val getTransId = modelOpenBean?.transId ?: "transId"
-            //0231
-            val setTransId = removeRetryPrefix(getTransId)
-            val ocIn = if (switchType == 1) "10i" else if (remoteOpenType == 2) "33o" else "41i"
-            val ocOut = if (switchType == 1) "22o" else if (remoteOpenType == 2) "41i" else "33o"
-            val nameIn = "${ocIn}${setTransId}---${AppUtils.getDateYMD()}.jpg"
-            val nameOut = "${ocOut}${setTransId}---${AppUtils.getDateYMD()}.jpg"
-            val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
-            if (!dir.exists()) dir.mkdirs()
-            val fileIn = File(dir, nameIn)
-            val fileOut = File(dir, nameOut)
-            val requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
-            if (ids.size > 0) {
-                requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType))
-            }
-            if (ids.size > 1) {
-                requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType))
-            }
-            // 同时开始拍照并等待全部完成
-            val results = cameraManagerNew.takePicturesParallel(requests)
+            try {
+                val ids = cameraManagerNew.getExternalCameraIds()
+                val getTransId = modelOpenBean?.transId ?: "transId"
+                //0231
+                val setTransId = removeRetryPrefix(getTransId)
+                val ocIn = if (switchType == 1) "10i" else if (remoteOpenType == 2) "33o" else "41i"
+                val ocOut = if (switchType == 1) "22o" else if (remoteOpenType == 2) "41i" else "33o"
+                val nameIn = "${ocIn}${setTransId}---${AppUtils.getDateYMD()}.jpg"
+                val nameOut = "${ocOut}${setTransId}---${AppUtils.getDateYMD()}.jpg"
+                val dir = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+                if (!dir.exists()) dir.mkdirs()
+                val fileIn = File(dir, nameIn)
+                val fileOut = File(dir, nameOut)
+                val requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
+                if (ids.size > 0) {
+                    requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType))
+                }
+                if (ids.size > 1) {
+                    requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType))
+                }
+                // 同时开始拍照并等待全部完成
+                val results = cameraManagerNew.takePicturesParallel(requests)
 
-            withContext(Dispatchers.IO) {
-                // results 里的文件顺序与 requests 一致
-                results.forEach { file ->
-                    if (file != null) {
-                        //结算页只显示图片打开的拍照
-                        if (switchType == 1) {
-                            setRefBusStaChannel(MonitorWeight().apply {
-                                refreshType = RefBusType.REFRESH_TYPE_4
-                                takePhotoUrl = file.absolutePath
-                            })
-                        }
+                withContext(Dispatchers.IO) {
+                    // results 里的文件顺序与 requests 一致
+                    results.forEach { file ->
+                        if (file != null) {
+                            //结算页只显示图片打开的拍照
+                            if (switchType == 1) {
+                                setRefBusStaChannel(MonitorWeight().apply {
+                                    refreshType = RefBusType.REFRESH_TYPE_4
+                                    takePhotoUrl = file.absolutePath
+                                })
+                            }
 //                        val photoType = extractThirdChar(file.name).toString()
 //                        uploadPhoto(curSn, setTransId, photoType, file, switchType.toString())
-                        //业务执行完毕再上传
-                        val regex = Regex("^(.{3})(.*?)---")
-                        val matchResult = regex.find(file.name)
-                        if (matchResult != null) {
-                            val prefix = matchResult.groupValues[1] // 获取动态前缀，如 "2i3"
-                            val data = matchResult.groupValues[2]   // 获取目标数据，如 "172604281724534926874686"
-                            Loge.e("上传图片 存 动态前缀: $prefix 提取数据: $data")
-                            val fileEntity = FileEntity().apply {
-                                cmd = prefix
-                                transId = data
-                                time = AppUtils.getDateYMDHMS()
-                                status = -1
+                            //业务执行完毕再上传
+                            val regex = Regex("^(.{3})(.*?)---")
+                            val matchResult = regex.find(file.name)
+                            if (matchResult != null) {
+                                val prefix = matchResult.groupValues[1] // 获取动态前缀，如 "2i3"
+                                val data = matchResult.groupValues[2]   // 获取目标数据，如 "172604281724534926874686"
+                                Loge.e("上传图片 存 动态前缀: $prefix 提取数据: $data")
+                                val fileEntity = FileEntity().apply {
+                                    cmd = prefix
+                                    transId = data
+                                    time = AppUtils.getDateYMDHMS()
+                                    status = -1
+                                }
+                                fileEntity.photoIn = file.absolutePath
+                                val row = DatabaseManager.insertFile(AppUtils.getContext(), fileEntity)
+                                Loge.e("上传图片 存 插入db $row")
+                            } else {
+                                Loge.e("上传图片 存 未找到匹配格式")
                             }
-                            fileEntity.photoIn = file.absolutePath
-                            val row = DatabaseManager.insertFile(AppUtils.getContext(), fileEntity)
-                            Loge.e("上传图片 存 插入db $row")
-                        } else {
-                            Loge.e("上传图片 存 未找到匹配格式")
+                            delay(200)
                         }
-                        delay(200)
                     }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                if (switchType == 0) {
+                    _cameraLifecycleEvent.emit(CameraOp.DESTROY)//远程拍照销毁
+                }
             }
+//
         }
     }
 
@@ -3733,7 +3770,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
                 AsyncBatchLogger.logBusiness("业务流", "异常中断: ${e.message} 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing")
             } finally {
-                _cameraLifecycleEvent.emit(CameraOp.DESTROY)
+//                _cameraLifecycleEvent.emit(CameraOp.DESTROY)
                 //保持门要关闭
                 restartAppCloseDoor(doorGex)
                 setCurrentUiStep(LockerUiStep.DELIVERY_END)
@@ -3806,6 +3843,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 } else {
                     curG2Weight = weightBeforeOpen
                 }
+                val curGTotal = if (doorGex == CmdCode.GE1) {
+                    curG1TotalWeight
+                } else {
+                    curG2TotalWeight
+                }
                 val curCabinld = when (doorGex) {
                     CmdCode.GE1 -> {
                         cur1Cabinld
@@ -3831,10 +3873,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 Loge.e("业务流：等待门物理状态变为【开启】")
                 // 使用 withTimeout 防止传感器故障导致协程永久挂起
                 // 3分钟转换为毫秒
-                val timeoutOpenMillis = 3 * 60 * 1000L
+                val timeoutOpenMillis = 180_000L
                 //超时3分钟代表门开启失败
                 val startOpenTime = System.currentTimeMillis()
-                withTimeout(300000) { // 3分钟超时
+                withTimeout(180_000L) { // 3分钟超时
                     while (isActive) {
                         val queryClear = SerialPortSdk.openQueryClear(queryType)
                         if (queryClear.isFailure) {
@@ -3874,8 +3916,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 // --- 第三阶段：监测重量变化 ---
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
                 AsyncBatchLogger.logBusiness("业务流", "门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
-                // 10分钟转换为毫秒
-                val timeoutCloseMillis = 10 * 60 * 1000
+                // 20分钟转换为毫秒
+                val timeoutCloseMillis = 1_200_000L
                 //超时20分钟代表门关闭失败
                 val startCloseTime = System.currentTimeMillis()
                 while (isActive) {
@@ -3894,7 +3936,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, defaultWeight, openModel = model, flowEnd = false)
 
                     // --- 第五阶段：轮询等待门关闭 ---
-                    withTimeout(600_000L) { // 10分钟超时
+                    withTimeout(1_200_000L) { // 20分钟超时
                         delay(2000)
                         val queryClear = SerialPortSdk.openQueryClear(queryType)
                         if (queryClear.isFailure) {
@@ -3943,6 +3985,18 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
                 AsyncBatchLogger.logBusiness("业务流", "业务流完毕！ $transId 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
                 _currentStep.value = LockerStep.FINISHED
+
+                //门关重量如果小于可投总重量则解除满溢
+                val isSendDoorOverflow = CalculationUtil.isGreater(weightAfterClosing, curGTotal)
+                if (!isSendDoorOverflow) {
+                    sendDoorOverflowCount = 2
+                    //控制满溢上报问题
+                    sendDoorOverflow[FaultType.FAULT_CODE_1111] = false
+                    sendDoorOverflow[FaultType.FAULT_CODE_1112] = false
+                    sendDoorOverflow[FaultType.FAULT_CODE_2110] = false
+                    sendDoorOverflow[FaultType.FAULT_CODE_2120] = false
+                }
+
             } catch (e: TimeoutCancellationException) {
                 //开门后重量为零取开门前重量  关门后重量为0 则取 开门后重量 否则取 开门前重量
                 val setWeightAfterClosing = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterClosing == "0") weightDuringOpening else weightBeforeOpen
@@ -3970,7 +4024,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     curG2Weight = toWeightAfterClosing
                     startLockerEndWeight(CmdCode.GE2, curG2Weight ?: "0.00")
                 }
-                _cameraLifecycleEvent.emit(CameraOp.DESTROY)
+//                _cameraLifecycleEvent.emit(CameraOp.DESTROY)
                 setCurrentUiStep(LockerUiStep.CLEAR_END)
                 startContainersStatus() // 恢复全局状态轮询
                 startPollingFault()// 恢复全局异常检测
@@ -4586,9 +4640,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
         containersJob = ioScope.launch {
             while (isActive) {
                 try {
-                    if (isRunning) {
-                        Loge.e("业务流：查询 有正在业务执行中")
-                    }
                     if (!isRunning) {
                         Loge.e("业务流：startStatus onstart ")
                         SerialPortSdk.queryStatus().onSuccess { result ->
@@ -4730,10 +4781,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         }.onFailure { e ->
                             Loge.e("业务流：轮询onFailure: ${e.message}")
                         }
-                        Loge.e("查询版本开始 $isQueryVersion")
-//                    if (!isQueryVersion) {
-//                        startChipVersion()
-//                    }
                     }
                 } catch (e: TimeoutCancellationException) {
                     Loge.e("业务流：轮询超时: ${e.message}")

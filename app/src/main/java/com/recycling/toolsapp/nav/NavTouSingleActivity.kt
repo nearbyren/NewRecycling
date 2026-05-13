@@ -365,7 +365,7 @@ class NavTouSingleActivity : AppCompatActivity() {
             }
         }
         binding.tvNetwork.setOnClickListener {
-//            cabinetVM.startDowChipFlow()
+            cabinetVM.startDowChipFlow()
         }
         //socket 监听是否连接成功 接收服务器下发
         lifecycleScope.launch {
@@ -424,7 +424,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                             cabinetVM.saveSocketInitData(loginModel, false)
                         } else {
                             //这里继续延续登录
-                            AsyncBatchLogger.logBusiness("socket","登录失败")
+                            AsyncBatchLogger.logBusiness("socket","登录失败${loginModel.retCode}")
                             val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
                             val newCount = loginCount + 1
                             SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, newCount)
@@ -526,6 +526,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                     }
 
                     CmdValue.CMD_DEBUG -> {
+                        cabinetVM.cancelContainersStatusJob()
                         if (BuildConfig.DEBUG) {
                             val navController = Navigation.findNavController(
                                 this@NavTouSingleActivity, R.id.nav_host_fragment_single

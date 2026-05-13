@@ -1,63 +1,10 @@
 package nearby.lib.netwrok
 
-import com.serial.port.t.FrameExtractor
 import com.serial.port.t.FrameExtractorNew
 import com.serial.port.utils.HexConverter
 import org.junit.Test
 
 class FrameExtractorTest {
-
-    @Test
-    fun testFrameExtraction() {
-        val foundFrames = mutableListOf<String>()
-
-        // 初始化提取器
-        val extractor = FrameExtractor { packet ->
-            foundFrames.add(toHexString(packet))
-        }
-
-        // --- 模拟场景 1：标准粘包 (两个完整的包连在一起) ---
-        // 包1: 9B 00 05 02 AA BB CS 9A (假设长度位是 index 3, 02表示payload长2)
-        // 完整包长 = 2 + 6 = 8 字节
-        val stickyData = byteArrayOf(
-            0x9B.toByte(), 0x00, 0x05, 0x02, 0xAA.toByte(), 0xBB.toByte(), 0xCC.toByte(), 0x9A.toByte(), 0x9B.toByte(), 0x00, 0x05, 0x02, 0x11, 0x22, 0x33, 0x9A.toByte()
-        )
-        println("--- 执行场景 1: 粘包测试 ---")
-        extractor.push(stickyData)
-        assert(foundFrames.size == 2) { "应该找到2个包，实际找到: ${foundFrames.size}" }
-
-        // --- 模拟场景 2：断包 (一个包分三次推入) ---
-        println("--- 执行场景 2: 断包测试 ---")
-        foundFrames.clear()
-        extractor.push(byteArrayOf(0x9B.toByte(), 0x00, 0x05)) // 只有头和部分长度
-        extractor.push(byteArrayOf(0x02, 0xEE.toByte(), 0xFF.toByte())) // payload
-        extractor.push(byteArrayOf(0x77, 0x9A.toByte())) // 校验和与尾
-        assert(foundFrames.size == 1) { "断包重组失败" }
-
-        // --- 模拟场景 3：杂质干扰 (包前包后有乱码) ---
-        println("--- 执行场景 3: 杂质干扰测试 ---")
-        foundFrames.clear()
-        val noiseData = byteArrayOf(
-            0xFF.toByte(), 0xEE.toByte(), // 乱码
-            0x9B.toByte(), 0x00, 0x05, 0x01, 0x0A, 0x0B, 0x9A.toByte(), // 正确包 (长度1)
-            0x00, 0x11 // 乱码
-        )
-        extractor.push(noiseData)
-        assert(foundFrames.size == 1)
-
-        // --- 模拟场景 4：伪帧头干扰 ---
-        // 9B 后面跟的长度不对，或者没 9A
-        println("--- 执行场景 4: 伪帧头干扰测试 ---")
-        foundFrames.clear()
-        val fakeHeader = byteArrayOf(
-            0x9B.toByte(), 0x9B.toByte(), 0x00, 0x05, 0x01, 0xCC.toByte(), 0xDD.toByte(), 0x9A.toByte()
-        )
-        extractor.push(fakeHeader)
-//        assert(foundFrames.size == 1)
-
-        println("所有测试通过！已捕获的帧：")
-        foundFrames.forEach { println(it) }
-    }
 
     @Test
     fun testStickyPackets() {
@@ -185,13 +132,21 @@ class FrameExtractorTest {
         val weight = byteArrayOf(
             0x00.toByte(),
             0x00.toByte(),
-            0x34.toByte(),
-            0xE4.toByte(),
+            0x03.toByte(),
+            0xE8.toByte(),
 
             0x00.toByte(),
-            0x50.toByte(),
-            0xB6.toByte(),
-            0xF8.toByte())
+            0x00.toByte(),
+            0x04.toByte(),
+            0x1A.toByte(),
+
+            0x00.toByte(),
+            0x00.toByte(),
+            0x04.toByte(),
+            0x4C.toByte(),
+
+
+            )
 
         val results = convertBytesToKgWithSpacedHex(weight)
         println("转换重量结果详情:")
@@ -205,7 +160,7 @@ class FrameExtractorTest {
             data = byteArrayOf(0x01, 0x01),
             frameTail = 0x9b.toByte()
         )
-        println("采取的编码值得：${com.serial.port.utils.ByteUtils.toHexString(encode)}")
+        println("采取的编码值得：${com.serial.port.utils.ByteUtils.toHexStringFastTo(encode)}")
     }
     data class WeightResult(val hexFormatted: String, val kg: Double)
 

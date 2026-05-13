@@ -9,7 +9,7 @@ object BoxResourceManager {
     fun releaseAllResources() {
 
         // 1. 停止日志（使用我们之前写的异步工具）
-        AsyncBatchLogger.log("业务流：系统定时重启，正在释放资源...",-1)
+        AsyncBatchLogger.log("timed restart Releasing Resources...",-1)
         AsyncBatchLogger.destroy()
 
         // 3. 关闭串口

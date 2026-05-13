@@ -130,7 +130,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD1) DoorResult(cmd = 1, cmdByte = SerialPortSdk.CMD1, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             if (payload.size < 2) throw Exception("返回数据长度不足")
             DoorResult(
                 locker = payload[0].toInt(), status = payload[1].toInt(), cmd = 1, cmdByte = SerialPortSdk.CMD1, cmdStatus = true
@@ -145,7 +145,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD1) DoorResult(cmd = 1, cmdByte = SerialPortSdk.CMD1, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             if (payload.size < 2) throw Exception("返回数据长度不足")
             DoorResult(
                 locker = payload[0].toInt(), status = payload[1].toInt(), cmd = 1, cmdByte = SerialPortSdk.CMD1, cmdStatus = true
@@ -171,7 +171,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD2) DoorResult(cmd = 2, cmdByte = SerialPortSdk.CMD2, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             if (payload.size < 2) throw Exception("返回数据长度不足")
             DoorResult(
                 locker = payload[0].toInt(), status = payload[1].toInt(), cmd = 2, cmdByte = SerialPortSdk.CMD2, cmdStatus = true
@@ -211,7 +211,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD3) DoorResult(status = 3, clearType = cType, cmd = 3, cmdByte = SerialPortSdk.CMD3, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             if (payload.size < 3) throw Exception("返回数据长度不足")
             DoorResult(
                 locker = payload[0].toInt(), status = payload[1].toInt(), clearType = payload[2].toInt(), cmd = 3, cmdByte = SerialPortSdk.CMD3, cmdStatus = true
@@ -237,7 +237,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD4) DoorResult(cmd = 4, cmdByte = SerialPortSdk.CMD4, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             DoorResult(
                 weight = HexConverter.getWeight(ProtocolCodec.bytesToInt(payload)), cmd = 4, cmdByte = SerialPortSdk.CMD4, cmdStatus = true
             )
@@ -251,7 +251,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD5) DoorResult(containers = mutableListOf(), cmd = 5, cmdByte = SerialPortSdk.CMD5, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.i("我的数据 len ${payload.size} ${ByteUtils.toHexString(payload)}")
+            Loge.i("我的数据 len ${payload.size} ${ByteUtils.toHexStringFastTo(payload)}")
             if (payload.size < 26) throw Exception("返回数据长度不足")
             val list = mutableListOf<ContainersResult>()
             val STEP = 13 // 每组格口数据占据 14 字节
@@ -296,7 +296,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD6) DoorResult(cmd = 6, cmdByte = SerialPortSdk.CMD6, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             DoorResult(
                 locker = payload[0].toInt(), status = payload[1].toInt(), cmd = 6, cmdByte = SerialPortSdk.CMD6, cmdStatus = true
             )
@@ -341,7 +341,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.i("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD16) DoorResult(cmd = 16, cmdByte = SerialPortSdk.CMD16, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.i("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             DoorResult(
                 locker = payload[0].toInt(), caliStatus = if (payload[1].toInt() == 1) 1 else 0, cmd = 16, cmdByte = SerialPortSdk.CMD16, cmdStatus = true
             )
@@ -371,7 +371,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.e("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD17) DoorResult(cmd = 17, cmdByte = SerialPortSdk.CMD17, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             DoorResult(
                 locker = payload[0].toInt(), caliStatus = if (payload[1].toInt() == 1) 1 else 0, cmd = 17, cmdByte = SerialPortSdk.CMD17, cmdStatus = true
             )
@@ -398,7 +398,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.e("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD19) DoorResult(cmd = 19, cmdByte = SerialPortSdk.CMD19, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             if (payload.size < 5) throw Exception("返回数据长度不足")
             val value = payload.takeLast(4).toByteArray()
             val rodHinderValueByte = ProtocolCodec.bytesToInt(value)
@@ -415,7 +415,7 @@ class SerialPortCoreSdk private constructor() {
             Loge.e("我的数据 cmd $cmd")
             if (cmd != SerialPortSdk.CMD11) DoorResult(cmd = 11, cmdByte = SerialPortSdk.CMD11, cmdStatus = false)
             val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexString(payload)}")
+            Loge.e("我的数据 $cmd payload ${ByteUtils.toHexStringFastTo(payload)}")
             if (payload.size < 0) throw Exception("返回数据长度不足")
             val chipVersionValue = ProtocolCodec.bytesToInt(payload)
             DoorResult(

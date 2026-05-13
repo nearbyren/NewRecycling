@@ -168,6 +168,36 @@ public class ByteUtils {
         }
         return sb.toString().toUpperCase();
     }
+    private static final char[] HEX_UPPER_CHARS = "0123456789ABCDEF".toCharArray();
+
+    public static String toHexStringFastTo(byte[] input) {
+        return toHexStringFast(input, " ");
+    }
+
+    public static String toHexStringFast(byte[] input, String separator) {
+        if (input == null) return null;
+        if (input.length == 0) return "";
+
+        int sepLen = (separator == null) ? 0 : separator.length();
+        int totalLen = input.length * 2 + (input.length - 1) * sepLen;
+        char[] result = new char[totalLen];
+
+        int pos = 0;
+        for (int i = 0; i < input.length; i++) {
+            if (i > 0 && separator != null) {
+                // 手动复制分隔符到结果数组
+                for (int j = 0; j < sepLen; j++) {
+                    result[pos++] = separator.charAt(j);
+                }
+            }
+
+            int b = input[i] & 0xff;
+            result[pos++] = HEX_UPPER_CHARS[b >> 4];
+            result[pos++] = HEX_UPPER_CHARS[b & 0x0F];
+        }
+
+        return new String(result);
+    }
 
     public static String toHexString(byte[] input) {
         return toHexString(input, " ");

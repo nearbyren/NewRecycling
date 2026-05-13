@@ -114,8 +114,7 @@ object SerialPortSdk {
 
 
     fun release() {
-        AsyncBatchLogger.log("收到指令重启：资源已释放，执行重启 closeAllSerialPort",-1)
-//        SerialPortManagerSdk.instance.closeAllSerialPort()
+        AsyncBatchLogger.log("restart after SerialPortSdk",-1)
         SerialPortEngine.stop()
         isInit = false
     }

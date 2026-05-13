@@ -251,7 +251,7 @@ object BoxToolLogUtils {
     fun receiveOriginalLower(typePort: Int, packet: ByteArray) {
         val builder = StringBuilder()
         val time = AppUtils.getDateYMDHMS()
-        builder.append(time).append(" | ").append(typePort).append(" | ").append(ByteUtils.toHexString(packet)).append('\n').append("----------------------------------------------------------------------------------------------------------------").append('\n')
+        builder.append(time).append(" | ").append(typePort).append(" | ").append(ByteUtils.toHexStringFastTo(packet)).append('\n').append("----------------------------------------------------------------------------------------------------------------").append('\n')
 
         try {
             val fileName = "lower-receive-${typePort}---${AppUtils.getDateYMD()}.txt"

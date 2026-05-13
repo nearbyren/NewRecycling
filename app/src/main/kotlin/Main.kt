@@ -90,28 +90,28 @@ fun main() {
     )
 
 
-    println("测试 发送的字节 结果1：${ByteUtils.toHexString(ProtocolCodec.encode(0x08.toByte(),0x00.toByte(),r1))}")
-    println("测试 发送的字节 结果2：${ByteUtils.toHexString(ProtocolCodec.encode(0x08.toByte(),0x00.toByte(),r1))}")
+    println("测试 发送的字节 结果1：${ByteUtils.toHexStringFastTo(ProtocolCodec.encode(0x08.toByte(),0x00.toByte(),r1))}")
+    println("测试 发送的字节 结果2：${ByteUtils.toHexStringFastTo(ProtocolCodec.encode(0x08.toByte(),0x00.toByte(),r1))}")
 
     println("测试 发送的字节 weight：${HexConverter.byteArrayToInt(HexConverter.intToByteArray(19750)) / 1000}")
-//    println("测试 发送的字节 byte:${ByteUtils.toHexString(byteArray)}")
+//    println("测试 发送的字节 byte:${ByteUtils.toHexStringFastTo(byteArray)}")
 //    val weight = HexConverter.byteArrayToInt(byteArray)
 //    println("测试 发送的字节 weight：${weight}")
     val result = subtractFloatsBoolean("0.00", "0.96")
     println("测试 发送的字节 result：${result}")
 //
     val weight2 = HexConverter.byteArrayToInt(byteArrayOf(0x01.toByte(), 35.toByte(), 26.toByte(), 34.toByte()))
-    println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260401))}")
-    println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260402))}")
-    println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260403))}")
-    println("测试 发送的字节 weight2：${ByteUtils.toHexString(HexConverter.intToByteArray(20260404))}")
+    println("测试 发送的字节 weight2：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(20260401))}")
+    println("测试 发送的字节 weight2：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(20260402))}")
+    println("测试 发送的字节 weight2：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(20260403))}")
+    println("测试 发送的字节 weight2：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(20260404))}")
     val weight3 = HexConverter.byteArrayToInt(byteArrayOf(0x00, 0x00, 0x5B.toByte(), 0x68.toByte()))
 
     println("测试 发送的字节 weight3：${weight3}")
 
-    val a = ByteUtils.toHexString(HexConverter.intToByteArray(-2))
-    val b = ByteUtils.toHexString(HexConverter.intToByteArray(-122))
-    val c = ByteUtils.toHexString(HexConverter.intToByteArray(-22))
+    val a = ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(-2))
+    val b = ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(-122))
+    val c = ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(-22))
     println("测试 发送的字节 weight：${a}-- 22")
     println("测试 发送的字节 weight：${b}-- 122")
     println("测试 发送的字节 weight：${c}-- 22")
@@ -123,45 +123,45 @@ fun main() {
 
 
 
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2))}-2")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(4))}-4")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(6))}-6")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(8))}-8")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(10))}-10")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(12))}-12")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(14))}-14")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(16))}-16)")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(18))}-18")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(20))}-20")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(22))}-22")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(24))}-24")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(26))}-26")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(28))}-28")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(30))}-30")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(32))}-32")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(34))}-34")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(36))}-36")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(38))}-38")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(40))}-40")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(42))}-42")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(44))}-44")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(46))}-46")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(48))}-48")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(50))}-50")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(52))}-50")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(2))}-2")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(4))}-4")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(6))}-6")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(8))}-8")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(10))}-10")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(12))}-12")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(14))}-14")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(16))}-16)")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(18))}-18")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(20))}-20")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(22))}-22")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(24))}-24")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(26))}-26")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(28))}-28")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(30))}-30")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(32))}-32")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(34))}-34")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(36))}-36")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(38))}-38")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(40))}-40")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(42))}-42")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(44))}-44")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(46))}-46")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(48))}-48")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(50))}-50")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(52))}-50")
     println("测试 发送的字节 weight：--------------------------------------------------------------")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(800))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1000))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1200))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1400))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1600))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(1800))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2000))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2200))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2400))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2600))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(2800))}")
-    println("测试 发送的字节 weight：${ByteUtils.toHexString(HexConverter.intToByteArray(3000))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(800))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(1000))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(1200))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(1400))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(1600))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(1800))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(2000))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(2200))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(2400))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(2600))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(2800))}")
+    println("测试 发送的字节 weight：${ByteUtils.toHexStringFastTo(HexConverter.intToByteArray(3000))}")
 
     //发送
     send485(frameHeader = 0x9A.toByte(), command = 0x05.toByte(), add = 0x00.toByte(), data = byteArrayOf(0x01, 0x01), frameTail = 0x9b.toByte())
@@ -318,7 +318,7 @@ fun testCmd() {
 
         // 4. 校验数据包（可选，根据协议实现）
         // if (!validateChecksum(packet)) {
-        //     Loge.d("校验失败，丢弃包: ${packet.toHexString()}")
+        //     Loge.d("校验失败，丢弃包: ${packet.toHexStringFastTo()}")
         //     currentPosition = frameEndIndex + 1
         //     continue
         // }
@@ -347,7 +347,7 @@ private fun ByteArray.indexOf(byte: Byte, fromIndex: Int = 0): Int {
 }
 
 private fun handlePacket232(packet: ByteArray) {
-    println("接232 测试新的方式 处理数据 size ${packet.size} | ${ByteUtils.toHexString(packet)}")
+    println("接232 测试新的方式 处理数据 size ${packet.size} | ${ByteUtils.toHexStringFastTo(packet)}")
 }
 
 val EPSILON = 1e-6f
@@ -598,7 +598,7 @@ fun handlePacket2(packet: ByteArray) {
                 val end = (i + 22).coerceAtMost(data.size)
                 val group = data.copyOfRange(i, end)
                 val size = group.size
-                println("接 2.toByte i = $i end $end | size ${group.size} | group ${ByteUtils.toHexString(group)}")
+                println("接 2.toByte i = $i end $end | size ${group.size} | group ${ByteUtils.toHexStringFastTo(group)}")
                 when (locker) {
                     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 -> {
                         if (size > 0) {
@@ -678,7 +678,7 @@ fun send(command: Byte, data: ByteArray) {
     val frameTail: Byte = 0x9a.toByte()
     //完整数据包
     val result = constructFrame(frameHeader, address, command, data, frameTail)
-    println("完整数据包 ${ByteUtils.toHexString(result)}")
+    println("完整数据包 ${ByteUtils.toHexStringFastTo(result)}")
 }
 
 /**
@@ -693,7 +693,7 @@ fun send485(frameHeader: Byte = 0x8A.toByte(), command: Byte, add: Byte, data: B
 //    val frameTail: Byte = 0x8B.toByte()
     //完整数据包
     val result = constructFrame485(frameHeader, address, command, data, frameTail)
-    println("完整数据包485  ${ByteUtils.toHexString(result)}")
+    println("完整数据包485  ${ByteUtils.toHexStringFastTo(result)}")
 }
 
 /**
@@ -708,7 +708,7 @@ fun send485S(command: Byte, add: Byte?, data: ByteArray) {
     val frameTail: Byte = add ?: 0x8B.toByte()
     //完整数据包
     val result = constructFrame485(frameHeader, address, command, data, frameTail)
-    println("send485S  ${ByteUtils.toHexString(result)}")
+    println("send485S  ${ByteUtils.toHexStringFastTo(result)}")
 }
 
 

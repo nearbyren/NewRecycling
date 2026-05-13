@@ -422,7 +422,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                             cabinetVM.saveSocketInitData(loginModel, false)
                         } else {
                             //这里继续延续登录
-                            AsyncBatchLogger.logBusiness("socket","登录失败")
+                            AsyncBatchLogger.logBusiness("socket","登录失败${loginModel.retCode}")
                             val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
                             val newCount = loginCount + 1
                             SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, newCount)
@@ -551,6 +551,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                     }
 
                     CmdValue.CMD_DEBUG -> {
+                        cabinetVM.cancelContainersStatusJob()
                         if (BuildConfig.DEBUG) {
 
                             val args: Bundle = Bundle().apply {

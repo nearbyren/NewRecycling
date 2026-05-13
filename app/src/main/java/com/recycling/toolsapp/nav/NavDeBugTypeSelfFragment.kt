@@ -790,7 +790,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
 //             Loge.i("粘包测试", " 十进制表示: ${byteArray.joinToString(" ") { it.toString() }}")
 //            // 验证转换结果
 //            Loge.i("粘包测试", " \n验证转换:")
-//            val backToHex = TestByteData.byteArrayToHexString(byteArray)
+//            val backToHex = TestByteData.byteArraytoHexStringFastTo(byteArray)
 //            Loge.i("粘包测试", " 还原为十六进制: $backToHex")
 //            Loge.i("粘包测试", " 转换是否成功: ${data == backToHex}")
 
@@ -844,7 +844,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
      */
     private fun processReceivedData(newData: ByteArray) {
         Loge.i(
-            "粘包测试", "接232 测试新的方式 大小：${newData.size} 原始：${ByteUtils.toHexString(newData)}"
+            "粘包测试", "接232 测试新的方式 大小：${newData.size} 原始：${ByteUtils.toHexStringFastTo(newData)}"
         )
         try {
 
@@ -913,7 +913,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
 
                 // 9. 提取完整数据包
                 val packet = currentBuffer.copyOfRange(headerIndex, headerIndex + totalLength)
-                Loge.i("粘包测试", "接232 测试新的方式 packet ${ByteUtils.toHexString(packet)}")
+                Loge.i("粘包测试", "接232 测试新的方式 packet ${ByteUtils.toHexStringFastTo(packet)}")
                 // 10. 校验和验证
                 if (!validateCheckCode(packet)) {
                     // 校验失败，跳过这个包继续查找下一个
@@ -940,7 +940,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
                 val remainingData = currentBuffer.copyOfRange(processedBytes, currentBuffer.size)
                 bufferNew232.write(remainingData)
                 Loge.i(
-                    "粘包测试", "接232 测试新的方式 while 外 拷贝数据 ${ByteUtils.toHexString(remainingData)}"
+                    "粘包测试", "接232 测试新的方式 while 外 拷贝数据 ${ByteUtils.toHexStringFastTo(remainingData)}"
                 )
                 // 调试信息：显示保留的未处理数据长度
                 if (remainingData.isNotEmpty()) {
@@ -987,7 +987,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
      * 验证校验码 即是末尾前一位
      */
     private fun validateCheckCode(packet: ByteArray): Boolean {
-//        Loge.i("串口", "接232 测试新的方式 validateCheckCode:${ByteUtils.toHexString(packet)}")
+//        Loge.i("串口", "接232 测试新的方式 validateCheckCode:${ByteUtils.toHexStringFastTo(packet)}")
 //        if (packet.size < 6) {
 //            Loge.w("数据包长度不足: ${packet.size}")
 //            return false
@@ -996,7 +996,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
 //        val checksumCalculated = data.sumOf { it.toInt() and 0xFF } % 256  // 确保字节按无符号处理
 //        val checksumExpected = packet[packet.size - CHECK_POS_DATA].toInt() and 0xFF
 //        val result = checksumCalculated == checksumExpected
-//        Loge.i("串口", "接232 测试新的方式 算|取|果:$checksumCalculated:$checksumExpected:$result | data:${ByteUtils.toHexString(data)}")
+//        Loge.i("串口", "接232 测试新的方式 算|取|果:$checksumCalculated:$checksumExpected:$result | data:${ByteUtils.toHexStringFastTo(data)}")
 //        return result
         if (packet.size < 6) {
             Loge.i("粘包测试", "接232 测试新的方式 数据包长度不足: ${packet.size}")
@@ -1051,7 +1051,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         //此处进来的数据是没有帧尾 9B 00 0B 04 FF FF FF FF A6
         Loge.i(
             "粘包测试", "接232 测试新的方式 handlePacket232 处理数据 size ${packet.size} | ${
-                ByteUtils.toHexString(packet)
+                ByteUtils.toHexStringFastTo(packet)
             }"
         )
     }
@@ -1079,7 +1079,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             // 4. 校验数据包（可选，根据协议实现）
             if (!validateCheckCode(packet)) {
                 Loge.i(
-                    "粘包测试", "接232 测试新的方式 校验失败，丢弃包: ${ByteUtils.toHexString(packet)}"
+                    "粘包测试", "接232 测试新的方式 校验失败，丢弃包: ${ByteUtils.toHexStringFastTo(packet)}"
                 )
                 currentPosition = frameEndIndex + 1
                 continue
@@ -1098,7 +1098,7 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         } else {
             buffer2322
         }
-        Loge.i("粘包测试", "接232 测试新的方式 end ${ByteUtils.toHexString(buffer2322)}")
+        Loge.i("粘包测试", "接232 测试新的方式 end ${ByteUtils.toHexStringFastTo(buffer2322)}")
     }
 
     // 自定义带起始位置的 indexOf 方法
