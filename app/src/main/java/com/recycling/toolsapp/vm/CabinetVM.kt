@@ -474,7 +474,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
             } else {
                 sendIsOverflow = false
             }
-            println("测试满溢上报功能 $sendIsOverflow")
             if (!sendIsOverflow) {
                 val setToType = matchErrorCode(toType)
                 val cabin = when (doorGeX) {
