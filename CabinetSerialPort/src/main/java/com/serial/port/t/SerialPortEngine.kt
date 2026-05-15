@@ -52,7 +52,7 @@ object SerialPortEngine {
             pendingRequests.remove(cmdId)?.complete(packet)
             AsyncBatchLogger.log(ByteUtils.toHexStringFastTo(packet), cmdId)
         } else {
-             AsyncBatchLogger.log("port read [packet] failure！ID=$cmdId, Map not find Keys=${pendingRequests.keys()}",-1)
+            AsyncBatchLogger.log("port read [packet] failure！ID=$cmdId, Map not find Keys=${pendingRequests.keys()}", -1)
         }
     }
 
@@ -76,7 +76,7 @@ object SerialPortEngine {
                     try {
                         readLoop() // 调用提取出来的读取循环
                     } catch (e: Exception) {
-                         AsyncBatchLogger.log("port read interrupt: ${e.message}",-1)
+                        AsyncBatchLogger.log("port read interrupt: ${e.message}", -1)
                     } finally {
                         _portStatus.value = PortStatus.ERROR
                         closeStreams()
@@ -103,6 +103,7 @@ object SerialPortEngine {
                 if (len > 0) {
                     // 拷贝当前读取到的实际有效长度
                     val validData = buffer.copyOfRange(0, len)
+                    AsyncBatchLogger.log(ByteUtils.toHexStringFastTo(validData), 0)
                     if (validData[0] == 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
                         //完成帧
                         readBuffer.write(validData)
@@ -120,7 +121,7 @@ object SerialPortEngine {
                 }
             }
         } catch (e: Exception) {
-             AsyncBatchLogger.log("port read reading abnormality: ${e.message}",-1)
+            AsyncBatchLogger.log("port read reading abnormality: ${e.message}", -1)
 
         }
     }
@@ -140,7 +141,7 @@ object SerialPortEngine {
                     if (available > 0) {
                         val skipBuffer = ByteArray(available)
                         fis?.read(skipBuffer) // 彻底排空旧缓冲区
-                        AsyncBatchLogger.log("read [Preprocessing] buffer residual data has been discarded: $available byte",-1)
+                        AsyncBatchLogger.log("read [Preprocessing] buffer residual data has been discarded: $available byte", -1)
                     }
                 }
             }
@@ -159,7 +160,7 @@ object SerialPortEngine {
                 val response = withTimeout(timeout) { waiter.await() }
                 Result.success(response)
             } catch (e: Exception) {
-                AsyncBatchLogger.log("send [$msgId] with... ",msgId)
+                AsyncBatchLogger.log("send [$msgId] with... ", msgId)
                 Result.failure(e)
             } finally {
                 pendingRequests.remove(msgId)
@@ -187,7 +188,7 @@ object SerialPortEngine {
                 lastErr = res.exceptionOrNull() as? Exception
 
                 // 记录一下重试日志，方便排查
-                 AsyncBatchLogger.log("send ${data[2]} no ${attempt + 1} second try...",-1)
+                AsyncBatchLogger.log("send ${data[2]} no ${attempt + 1} second try...", -1)
             }
         } else {
             val res = sendOnce(data, timeout)
