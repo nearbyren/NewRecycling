@@ -47,25 +47,47 @@ class DailyDelDateWorker(
                     Loge.d("清理非三天内数据开始 目录 ${file.name}")
                     if (shouldDeleteDir(file.name)) {
                         file.listFiles()?.forEach { log ->
-                            if (log.isFile && log.name.contains("---")) {
+                            if (log.isFile) {
                                 try {
-                                    Loge.d("清理非三天内数据开始 文件 ${log.name}")
-                                    // 提取文件名中的日期部分
-                                    val fileName = log.name
-                                    val datePart =
+                                    if(log.name.contains("---")){
+                                        Loge.d("清理非三天内数据开始 文件 ${log.name}")
+                                        // 提取文件名中的日期部分
+                                        val fileName = log.name
+                                        val datePart =
                                             fileName.substringAfterLast("---").substringBefore(".txt")
-                                    // 解析日期
-                                    val fileDate = dateFormat.parse(datePart) ?: return@forEach
-                                    // 检查是否超过一周
-                                    if (fileDate.before(oneWeekAgo)||fileName.contains("-db-")) {
-                                        Loge.d("清理非三天内数据开始 删除过期文件: ${log.name} (日期: $datePart)")
-                                        if (log.delete()) {
-                                            Loge.d("清理非三天内数据开始 文件删除成功")
+                                        // 解析日期
+                                        val fileDate = dateFormat.parse(datePart) ?: return@forEach
+                                        // 检查是否超过一周
+                                        if (fileDate.before(oneWeekAgo)||fileName.contains("-db-")) {
+                                            Loge.d("清理非三天内数据开始 删除过期文件: ${log.name} (日期: $datePart)")
+                                            if (log.delete()) {
+                                                Loge.d("清理非三天内数据开始 文件删除成功")
+                                            } else {
+                                                Loge.d("清理非三天内数据开始 文件删除失败")
+                                            }
                                         } else {
-                                            Loge.d("清理非三天内数据开始 文件删除失败")
+                                            Loge.d("清理非三天内数据开始 保留文件: ${log.name} (日期: $datePart)")
                                         }
-                                    } else {
-                                        Loge.d("清理非三天内数据开始 保留文件: ${log.name} (日期: $datePart)")
+                                    }
+                                    if(log.name.contains("--")){
+                                        Loge.d("清理非三天内数据开始 文件 ${log.name}")
+                                        // 提取文件名中的日期部分
+                                        val fileName = log.name
+                                        val datePart =
+                                            fileName.substringAfterLast("--").substringBefore(".txt")
+                                        // 解析日期
+                                        val fileDate = dateFormat.parse(datePart) ?: return@forEach
+                                        // 检查是否超过一周
+                                        if (fileDate.before(oneWeekAgo)||fileName.contains("-db-")) {
+                                            Loge.d("清理非三天内数据开始 删除过期文件: ${log.name} (日期: $datePart)")
+                                            if (log.delete()) {
+                                                Loge.d("清理非三天内数据开始 文件删除成功")
+                                            } else {
+                                                Loge.d("清理非三天内数据开始 文件删除失败")
+                                            }
+                                        } else {
+                                            Loge.d("清理非三天内数据开始 保留文件: ${log.name} (日期: $datePart)")
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     Loge.d("清理非三天内数据开始 处理文件 ${log.name} 出错: ${e.message}")

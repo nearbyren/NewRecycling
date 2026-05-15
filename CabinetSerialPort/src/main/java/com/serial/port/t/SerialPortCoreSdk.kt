@@ -33,7 +33,7 @@ class SerialPortCoreSdk private constructor() {
         // 如果是 ID=5 (通常是 0x05)
         return if (cmd == 0x05.toByte()) {
             // ID=5：只试 1 次，超时给短一点。失败了立刻放锁，让给 1/2/4
-            SerialPortEngine.sendWithRetry(frame, maxRetries = 0, timeout = 1500)
+            SerialPortEngine.sendWithRetry(frame, maxRetries = 0, timeout = 800)
         } else if (cmd == 0x11.toByte()) {
             // 重量校准需要很长时间
             SerialPortEngine.sendWithRetry(frame, maxRetries = 3, timeout = 20000)

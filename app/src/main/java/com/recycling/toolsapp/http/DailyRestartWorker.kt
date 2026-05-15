@@ -24,12 +24,14 @@ class DailyRestartWorker(
         Loge.d("指定时间重启动app...doWork ${Thread.currentThread().name}")
         try {
             FaceApplication.getInstance().baseActivity?.let { act ->
-                // 1. 释放业务资源（关键：这里执行你原先 ViewModel 里的释放逻辑）
-                // 建议将 ViewModel 的释放逻辑抽成全局可访问的方法
-                BoxResourceManager.releaseAllResources()
+                if(!FaceApplication.getInstance().isDoorRuing){
+                    // 1. 释放业务资源（关键：这里执行你原先 ViewModel 里的释放逻辑）
+                    // 建议将 ViewModel 的释放逻辑抽成全局可访问的方法
+                    BoxResourceManager.releaseAllResources()
 
-                // 2. 调用上面的物理冷重启
-                OSUtils.fullRestart(applicationContext)
+                    // 2. 调用上面的物理冷重启
+                    OSUtils.fullRestart(applicationContext)
+                }
             }
 
         } catch (e: Exception) {

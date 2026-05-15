@@ -60,13 +60,11 @@ import com.recycling.toolsapp.view.AwesomeQRCode
 import com.recycling.toolsapp.vm.CabinetVM.ConnectionState.*
 import com.serial.port.t.ContainersResult
 import com.serial.port.t.ProtocolCodec
-import com.serial.port.t.SendClearText
 import com.serial.port.t.SendTurnText
 import com.serial.port.t.SerialPortCoreSdk
 import com.serial.port.t.SerialPortSdk
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.AsyncBatchLogger
-import com.serial.port.utils.BoxToolLogUtils
 import com.serial.port.utils.ByteUtils
 import com.serial.port.utils.CRC32MPEG2Util
 import com.serial.port.utils.CmdCode
@@ -134,113 +132,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     val mainScope = MainScope()
 
-    /***
-     * 插入数据库
-     */
-    private fun toGoInsertPhoto(setTransId: String, switchType: String, inOut: Int, filePath: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val fileEntity = FileEntity().apply {
-                cmd = switchType
-                transId = setTransId
-                time = AppUtils.getDateYMDHMS()
-            }
-            var cmdValue = ""
-            fileEntity.msg = when (switchType) {
-                "1" -> {
-                    when (inOut) {
-                        0 -> {
-                            fileEntity.photoIn = filePath
-                        }
-
-                        1 -> {
-                            fileEntity.photoOut = filePath
-                        }
-                    }
-                    cmdValue = CmdValue.CMD_OPEN_DOOR
-                    "开仓前照片"
-
-                }
-
-                "0" -> {
-                    cmdValue = CmdValue.CMD_CLOSE_DOOR
-                    when (inOut) {
-                        0 -> {
-                            fileEntity.photoIn = filePath
-                        }
-
-                        1 -> {
-                            fileEntity.photoOut = filePath
-                        }
-                    }
-                    "开仓后照片"
-                }
-
-                "45" -> {
-                    cmdValue = CmdValue.CMD_CLOSE_DOOR
-                    when (inOut) {
-                        0 -> {
-                            fileEntity.photoIn = filePath
-                        }
-
-                        1 -> {
-                            fileEntity.photoOut = filePath
-                        }
-                    }
-                    "远程拍照"
-                }
-
-                else -> {
-                    "匹配拍照类型失败"
-                }
-            }
-            val fileDb = DatabaseManager.queryFileEntity(AppUtils.getContext(), cmdValue, setTransId)
-            if (fileDb == null) {
-                val row = DatabaseManager.insertFile(AppUtils.getContext(), fileEntity)
-                Loge.e("调试socket toGoInsertPhoto 插入 row $row")
-            } else {
-                when (switchType) {
-                    "1" -> {
-                        when (inOut) {
-                            0 -> {
-                                fileDb.photoIn = filePath
-                            }
-
-                            1 -> {
-                                fileDb.photoOut = filePath
-                            }
-                        }
-
-                    }
-
-                    "0" -> {
-                        when (inOut) {
-                            0 -> {
-                                fileDb.photoIn = filePath
-                            }
-
-                            1 -> {
-                                fileDb.photoOut = filePath
-                            }
-                        }
-                    }
-
-                    "45" -> {
-                        when (inOut) {
-                            0 -> {
-                                fileDb.photoIn = filePath
-                            }
-
-                            1 -> {
-                                fileDb.photoOut = filePath
-                            }
-                        }
-                    }
-                }
-                val row = DatabaseManager.upFileEntity(AppUtils.getContext(), fileDb)
-                Loge.e("调试socket toGoInsertPhoto 更新 row $row")
-            }
-        }
-    }
 
     data class MonitorCalibration(
         /** 1.校准前  2.进行校准 */
@@ -1830,10 +1721,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 Loge.d("网络请求 拍照上传 延迟")
                 toGoTPSucces(transId)
                 delay(3000)
-
             }
-            delay(3000) // 强制等待文件索引在 OS 层完成沉降
-
+            delay(1000)
             val post = mutableMapOf<String, Any>()
             post["sn"] = sn
             post["transId"] = transId
@@ -2181,7 +2070,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             } catch (e: IOException) {
                 e.printStackTrace()
                 Loge.e("出厂配置 initSocket SocketClient readLoop catch ${e.message}")
-                AsyncBatchLogger.logBusiness("socket", "readLoop catch ${e.message}}")
+                AsyncBatchLogger.logBusiness("socket", "readLoop catch ${e.message}")
                 break
             }
         }
@@ -2516,6 +2405,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
         mQrCode = null
         mMaintaining?.recycle()
         mMaintaining = null
+        upPhotoMaps.clear()
     }
 
 
@@ -3177,11 +3067,30 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 val fileIn = File(dir, nameIn)
                 val fileOut = File(dir, nameOut)
                 val requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
-                if (ids.size > 0) {
-                    requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType))
-                }
-                if (ids.size > 1) {
-                    requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType))
+                if (switchType == 1) {     //开门添加拍照内外
+                    if (ids.isNotEmpty()) {
+                        requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType))
+                    }
+                    if (ids.size > 1) {
+                        requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType))
+                    }
+                } else if (switchType == 0) {
+                    if (remoteOpenType == 1) {//关门投口 添加拍照外内
+                        if (ids.size > 1) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType))
+                        }
+                        if (ids.isNotEmpty()) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType))
+                        }
+                    } else { //关门投口 添加拍照内外
+                        if (ids.isNotEmpty()) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], switchType, "内", fileIn, remoteOpenType))
+                        }
+                        if (ids.size > 1) {
+                            requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], switchType, "外", fileOut, remoteOpenType))
+                        }
+                    }
+
                 }
                 // 同时开始拍照并等待全部完成
                 val results = cameraManagerNew.takePicturesParallel(requests)
@@ -3213,12 +3122,16 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     status = -1
                                 }
                                 fileEntity.photoIn = file.absolutePath
+                                //上传顺序
+                                val indexI = prefix?.let { extractThirdChar(it, 0).toString() }
+                                val keyF = "$indexI${data}"
                                 val row = DatabaseManager.insertFile(AppUtils.getContext(), fileEntity)
                                 Loge.e("上传图片 存 插入db $row")
+                                upPhotoMaps[keyF] = fileEntity
                             } else {
                                 Loge.e("上传图片 存 未找到匹配格式")
                             }
-                            delay(200)
+                            delay(1000)
                         }
                     }
                 }
@@ -3255,7 +3168,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         val fileIn = File(dir, nameIn)
                         val fileOut = File(dir, nameOut)
                         val requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
-                        if (ids.size > 0) {
+                        if (ids.isNotEmpty()) {
                             requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], 4, "内", fileIn, 1))
                         }
                         if (ids.size > 1) {
@@ -3281,7 +3194,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         val nameIn = "45${setTransId}---${AppUtils.getDateYMD()}.jpg"
                         val fileIn = File(dir, nameIn)
                         var requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
-                        if (ids.size > 0) {
+                        if (ids.isNotEmpty()) {
                             requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], 4, "内", fileIn, 1))
                         }
                         // 同时开始拍照并等待全部完成
@@ -3329,7 +3242,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
         }
     }
 
-
     private fun removeRetryPrefix(input: String): String {
         return if (input.startsWith("retry-")) {
             input.removePrefix("retry-")
@@ -3345,78 +3257,89 @@ class CabinetVM @Inject constructor() : ViewModel() {
     fun endCameraUploadPhoto() {
         viewModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                //2分钟检测一次并且是在非执行业务的时候
-                delay(2 * 60 * 1000L)
-                val filesAll = DatabaseManager.queryAllFileEntity(AppUtils.getContext())
-                Loge.e("上传图片 图片上传检测 isRunning：$isRunning 是否为空：${filesAll.isEmpty()} ${filesAll.size}")
-                if (!isRunning && filesAll.isEmpty()) {
-                    Loge.e("上传图片 图片上传检测 没有需要上传的图片")
-                    //当已经上传成功的图片条数大于50则删除掉成功的文件记录
-                    val status1 = DatabaseManager.queryAllFileStatus1(AppUtils.getContext())
-                    if (status1.size > 12) {
-                        DatabaseManager.deleteAllFileEntity1(AppUtils.getContext())
-                        DatabaseManager.deleteAllFileEntity0(AppUtils.getContext())
+                //有业务在执行正则休息2分钟
+                Loge.e("上传图片: 有业务在执行正则休息2分钟 ")
+                delay(1 * 60 * 1000L)
+                if (!isRunning) {
+                    var toUploadList = upPhotoMaps.values.filter { it.status == -1 }
+                    if (upPhotoMaps.isEmpty()) {
+                        //取数据库的是否存在落网
+                        val filesAll = DatabaseManager.queryAllFileEntity(AppUtils.getContext())
+                        Loge.e("上传图片: 不存在 取数据库资源 ${filesAll.size}")
+                        if (filesAll.isEmpty()) {
+                            //清空数据
+                            val status1 = DatabaseManager.queryAllFileStatus1(AppUtils.getContext())
+                            if (status1.size > 100) {
+                                DatabaseManager.deleteAllFileEntity1(AppUtils.getContext())
+                                DatabaseManager.deleteAllFileEntity0(AppUtils.getContext())
+                            }
+                        } else {
+                            toUploadList = filesAll
+                        }
                     }
-                }
-                if (!isRunning && filesAll.isNotEmpty()) {
-                    upPhotoRunning = true
-                    //排序好顺序再进行上唇
-                    val sorted = filesAll.sortedBy { it.cmd?.first()?.digitToInt() }
-                    Loge.e("上传图片: 排序后的cmd序列 = ${sorted.map { it.cmd }}")
-                    sorted.map { data ->
-                        val postCmd = data.cmd
-                        Loge.e("上传图片 拍照上传 postCmd $postCmd  ")
-                        //上传顺序
-                        val indexI = postCmd?.let { extractThirdChar(it, 0).toString() }
-                        //类型0231
-                        val photoType = postCmd?.let { extractThirdChar(it, 1).toString() }
-                        //内外
-                        val inOut = postCmd?.let { extractThirdChar(it, 2).toString() }
-                        //当前事务
-                        val setTransId = data.transId
-                        val file = File(data.photoIn)
-                        if (file != null && setTransId != null && photoType != null) {
-                            Loge.e("上传图片 拍照上传 $indexI $photoType 文件大小：${file.length()} ")
-                            val post = mutableMapOf<String, Any>()
-                            post["sn"] = curSn
-                            post["transId"] = setTransId
-                            post["photoType"] = photoType.toInt()
-                            post["file"] = file
-                            Loge.e("上传图片 拍照上传 post $post")
-                            httpRepo.uploadPhoto(post).onSuccess { user ->
-                                Loge.e("上传图片 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
-                                withContext(Dispatchers.IO) {
+                    val photolist = toUploadList.toList()
+                    if (photolist.isNotEmpty()) {
+                        //排序好顺序再进行上唇
+                        val sorted = photolist.sortedBy { it.cmd?.first()?.digitToInt() }
+                        Loge.e("上传图片: 排序后的cmd序列 = ${sorted.map { it.cmd }}")
+                        sorted.map { data ->
+                            val postCmd = data.cmd
+                            Loge.e("上传图片 拍照上传 postCmd $postCmd  ")
+                            //上传顺序
+                            val indexI = postCmd?.let { extractThirdChar(it, 0).toString() }
+                            //类型0231
+                            val photoType = postCmd?.let { extractThirdChar(it, 1).toString() }
+                            //内外
+                            val inOut = postCmd?.let { extractThirdChar(it, 2).toString() }
+                            //当前事务
+                            val setTransId = data.transId
+                            val file = File(data.photoIn)
+                            if (file != null && setTransId != null && photoType != null) {
+                                Loge.e("上传图片 拍照上传 $indexI $photoType 文件大小：${file.length()} ")
+                                val post = mutableMapOf<String, Any>()
+                                post["sn"] = curSn
+                                post["transId"] = setTransId
+                                post["photoType"] = photoType.toInt()
+                                post["file"] = file
+                                Loge.e("上传图片 拍照上传 post $post")
+                                httpRepo.uploadPhoto(post).onSuccess { user ->
+                                    Loge.e("上传图片 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
+                                    withContext(Dispatchers.IO) {
 //                                    val delId = data.id
-                                    data.status = 1
-                                    data.msg = "上传成功：${AppUtils.getDateYMDHMS()}"
-                                    val row = DatabaseManager.upFileEntity(AppUtils.getContext(), data)
-                                    Loge.e("上传图片 更新本地数据成功 row $row ")
-                                    DatabaseManager.insertLog(AppUtils.getContext(), LogEntity().apply {
+                                        data.status = 1
+                                        data.msg = "上传成功：${AppUtils.getDateYMDHMS()}"
+                                        if (data.cmd != null && data.transId != null) {
+                                            val row = DatabaseManager.upFileStatus(AppUtils.getContext(), data.cmd!!, data.transId!!)
+                                            Loge.e("上传图片 更新本地数据成功 row $row ")
+                                        }
+                                        DatabaseManager.insertLog(AppUtils.getContext(), LogEntity().apply {
+                                            cmd = "$indexI$photoType$inOut"
+                                            msg = "$setTransId,onFileSuccess"
+                                            time = AppUtils.getDateYMDHMS()
+                                        })
+                                    }
+                                }.onFailure { code, message ->
+                                    Loge.e("上传图片 拍照上传 onFailure $code $message")
+                                    insertInfoLog(LogEntity().apply {
                                         cmd = "$indexI$photoType$inOut"
-                                        msg = "$setTransId,onFileSuccess"
+                                        msg = "$setTransId,$code,$message"
+                                        time = AppUtils.getDateYMDHMS()
+                                    })
+
+                                }.onCatch { e ->
+                                    Loge.e("上传图片 拍照上传 onCatch ${e.errorMsg}")
+                                    insertInfoLog(LogEntity().apply {
+                                        cmd = "$indexI$photoType$inOut"
+                                        msg = "$setTransId,${e.errorMsg}"
                                         time = AppUtils.getDateYMDHMS()
                                     })
                                 }
-                            }.onFailure { code, message ->
-                                Loge.e("上传图片 拍照上传 onFailure $code $message")
-                                insertInfoLog(LogEntity().apply {
-                                    cmd = "$indexI$photoType$inOut"
-                                    msg = "$setTransId,$code,$message"
-                                    time = AppUtils.getDateYMDHMS()
-                                })
-
-                            }.onCatch { e ->
-                                Loge.e("上传图片 拍照上传 onCatch ${e.errorMsg}")
-                                insertInfoLog(LogEntity().apply {
-                                    cmd = "$indexI$photoType$inOut"
-                                    msg = "$setTransId,${e.errorMsg}"
-                                    time = AppUtils.getDateYMDHMS()
-                                })
                             }
-                            delay(1500)
                         }
                     }
-                    upPhotoRunning = false
+//                    upPhotoMaps.forEach { success ->
+//                        Loge.e("上传图片: 执行完毕 = ${success.value.cmd} -${success.value.transId} - ${success.value.status}")
+//                    }
                 }
             }
         }
@@ -3526,7 +3449,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
     val isRunning: Boolean get() = _isRunning.get()
 
     var weightRunning = false
-    var upPhotoRunning = false
+    var upPhotoMaps = mutableMapOf<String, FileEntity>()
     private val defaultWeight = "0.00"
     private var modelOpenBean: DoorOpenBean? = null
 
@@ -3565,6 +3488,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 if (execution == false) {
                     return@launch
                 }
+                //处理夜间定时有人投递不重启动
+                FaceApplication.getInstance().isDoorRuing = isRunning
                 weightRunning = true
                 startWorkflow()
                 setCurrentUiStep(LockerUiStep.MOBILE_END)
@@ -3778,6 +3703,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 doorGeX = CmdCode.GE
                 _isRunning.set(false)
                 weightRunning = false
+                //处理夜间定时有人投递不重启动
+                FaceApplication.getInstance().isDoorRuing = isRunning
                 _currentStep.value = LockerStep.IDLE
                 if (doorGex == CmdCode.GE1) {
                     curG1Weight = toWeightAfterClosing
@@ -4522,7 +4449,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val type = openModel.openType
             if (type == 1) {
                 //当前重量
-                weight.curWeight = if (weightAfterClosing == "0.00") weightDuringOpening else weightAfterClosing
+                weight.curWeight = if (weightAfterClosing == "0") weightDuringOpening else weightAfterClosing
 
                 weight.changeWeight = CalculationUtil.subtractFloats(
                     weightAfterClosing, weightBeforeOpen
@@ -4548,7 +4475,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 val result = CalculationUtil.subtractFloats(weightBeforeOpen, weightAfterClosing)
 
                 //当前重量
-                weight.curWeight = if (weightAfterClosing == "0.00") weightDuringOpening else weightAfterClosing
+                weight.curWeight = if (weightAfterClosing == "0") weightDuringOpening else weightAfterClosing
 
                 weight.changeWeight = result //开门前重量-关门后重量
                 weight.refWeight = result//开门前重量-关门后重量
@@ -4566,20 +4493,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
             }
             val row = DatabaseManager.upWeightEntity(AppUtils.getContext(), weight)
-            val text = when (openModel.openType) {
-                1 -> {
-                    SendTurnText.fromStatus(100)
-                }
-
-                2 -> {
-                    SendClearText.fromStatus(200)
-                }
-
-                else -> {
-                    "其他"
-                }
-            }
-            Loge.e("业务流：业务类型【${text}】刷新重量 $row ${openModel.transId} $weight")
             setRefBusStaChannel(MonitorWeight().apply {
                 refreshType = RefBusType.REFRESH_TYPE_1
                 weightBeforeOpenValue = weightBeforeOpen
@@ -4645,7 +4558,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             if (containersDB.isEmpty()) {
                                 containersDB = DatabaseManager.queryStateList(AppUtils.getContext()).toMutableList()
                             }
-                            Loge.e("进来查询投递柜结果")
+                            Loge.e("进来查询投递柜结果 ")
                             val size = containersDB.size
                             Loge.e("业务流：startStatus onSuccess $result")
                             result.containers.withIndex().forEach { (index, lower) ->

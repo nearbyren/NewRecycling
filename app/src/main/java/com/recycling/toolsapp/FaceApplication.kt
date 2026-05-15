@@ -59,6 +59,7 @@ dp: 55.555573
      */
     val isAppForeground = MutableLiveData<Boolean>()
     var baseActivity: AppCompatActivity? = null
+    var isDoorRuing = false
 
     companion object {
         var BASE_URL = BuildConfig.httpIP

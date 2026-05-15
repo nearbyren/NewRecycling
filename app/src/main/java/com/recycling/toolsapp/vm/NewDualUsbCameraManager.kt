@@ -57,6 +57,16 @@ class NewDualUsbCameraManager(context: Context) {
     private val cameras = ConcurrentHashMap<String, CameraHolder>()
     private var scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var isReceiverRegistered = false
+    companion object {
+        const val TAG = "DualUsbCamera"
+        const val PREVIEW_WIDTH = 640
+        const val PREVIEW_HEIGHT = 480
+        const val PREVIEW_MAX_IMAGES = 2
+        const val CAPTURE_JPEG_QUALITY = 90
+        const val PREVIEW_RESUME_DELAY_MS = 800L
+        const val WATERMARK_TEXT_SIZE_RATIO = 40f  // 1/40 of bitmap width
+        const val WATERMARK_MARGIN_RATIO = 0.02f
+    }
 
     private inner class CameraHolder(val cameraId: String) {
         var device: CameraDevice? = null
@@ -237,9 +247,7 @@ class NewDualUsbCameraManager(context: Context) {
     suspend fun takePicturesParallel(requests: List<PhotoRequest>): List<File?> = coroutineScope {
         requests.map { req ->
             async(Dispatchers.IO) {
-                delay(1000)
                 takePictureSuspend(req.cameraId, req.switchType, req.inOut, req.saveFile, req.remoteOpenType)
-
             }
         }.awaitAll()
     }
@@ -262,6 +270,7 @@ class NewDualUsbCameraManager(context: Context) {
     fun takePicture(cameraId: String, switchType: Int = -1, inOut: String, saveFile: File, remoteOpenType: Int, onComplete: (File?) -> Unit) {
         val holder = cameras[cameraId]
         if (holder == null || holder.isCapturing) {
+            AsyncBatchLogger.logBusiness("业务流","[$cameraId] 补抓拍照异常")
             onComplete(null)
             return
         }
@@ -272,7 +281,7 @@ class NewDualUsbCameraManager(context: Context) {
             try {
                 if (!holder.isPreviewing) {
                     resumeSingleCamera(cameraId, holder)
-                    delay(800)
+                    delay(PREVIEW_RESUME_DELAY_MS)
                 }
 
                 val imageFile = captureImageInternal(cameraId, inOut, switchType, holder, saveFile, remoteOpenType)
@@ -362,11 +371,11 @@ class NewDualUsbCameraManager(context: Context) {
             val canvas = Canvas(bitmap)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.RED
-                textSize = bitmap.width / 40f
+                textSize = bitmap.width / WATERMARK_TEXT_SIZE_RATIO
                 setShadowLayer(3f, 2f, 2f, Color.BLACK)
             }
-            val margin = bitmap.width * 0.02f
-            canvas.drawText(watermarkText, margin, margin + 40f, paint)
+            val margin = bitmap.width * WATERMARK_MARGIN_RATIO
+            canvas.drawText(watermarkText, margin, margin + paint.textSize, paint)
 
             // 3. 写入并物理同步
             // 注意：destFile 应该在 cacheDir 下，避免权限问题
@@ -374,7 +383,7 @@ class NewDualUsbCameraManager(context: Context) {
 
             FileOutputStream(destFile).use { out ->
                 // 建议质量设为 90，100 会导致文件体积剧增且无明显画质提升
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, CAPTURE_JPEG_QUALITY, out)
                 out.flush()
                 // 【核心】强制将内核缓冲区数据同步到存储介质，确保文件流彻底关闭且释放占用
                 out.fd.sync()
@@ -405,31 +414,6 @@ class NewDualUsbCameraManager(context: Context) {
         return externalIds
     }
 
-    fun getExternalCameraIdss(): MutableMap<Int, String> {
-        val externalIds2 = mutableMapOf<Int, String>()
-        try {
-            for ((index, value) in manager.cameraIdList.withIndex()) {
-//                println("下标: $index, 元素: $value")
-                when (value) {
-                    "0" -> {
-                        externalIds2[0] = value
-                    }
-
-                    "1" -> {
-                        externalIds2[1] = value
-                    }
-
-                    else -> {
-
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return externalIds2
-    }
-
     @SuppressLint("MissingPermission")
     private suspend fun openSingleCamera(cameraId: String, textureView: TextureView, startPaused: Boolean) =
         suspendCancellableCoroutine<Unit> { cont ->
@@ -445,11 +429,11 @@ class NewDualUsbCameraManager(context: Context) {
             holder.handler = Handler(thread.looper)
 
             try {
-                holder.reader = ImageReader.newInstance(640, 480, ImageFormat.JPEG, 2)
+                holder.reader = ImageReader.newInstance(PREVIEW_WIDTH, PREVIEW_HEIGHT, ImageFormat.JPEG, PREVIEW_MAX_IMAGES)
                 manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                     override fun onOpened(camera: CameraDevice) {
                         holder.device = camera
-                        initPreviewSession(cameraId, holder, textureView, Size(640, 480), startPaused)
+                        initPreviewSession(cameraId, holder, textureView, Size(PREVIEW_WIDTH, PREVIEW_HEIGHT), startPaused)
                         if (cont.isActive) cont.resume(Unit)
                     }
 
@@ -506,16 +490,16 @@ class NewDualUsbCameraManager(context: Context) {
                     }
 
                     override fun onConfigureFailed(s: CameraCaptureSession) {
-                        AsyncBatchLogger.logBusiness("业务流","摄像头 $cameraId 配置会话失败")
+                        AsyncBatchLogger.logBusiness("业务流","摄像头 [$cameraId] 配置会话失败")
                     }
                 }, holder.handler)
 
             } catch (e: CameraAccessException) {
-                AsyncBatchLogger.logBusiness("业务流","创建会话异常: ${e.message}")
-                cameraErrorListener?.cameraStatus(false, "all", "创建会话异常")
+                AsyncBatchLogger.logBusiness("业务流","创建会话[$cameraId]异常: ${e.message}")
+                cameraErrorListener?.cameraStatus(false, cameraId, "创建会话异常")
             } catch (e: IllegalArgumentException) {
-                AsyncBatchLogger.logBusiness("业务流","分辨率或 Surface 异常: ${e.message}")
-                cameraErrorListener?.cameraStatus(false, "all", "分辨率或 Surface 异常")
+                AsyncBatchLogger.logBusiness("业务流","[$cameraId]分辨率或 Surface 异常: ${e.message}")
+                cameraErrorListener?.cameraStatus(false, cameraId, "分辨率或 Surface 异常")
             }
         }
 

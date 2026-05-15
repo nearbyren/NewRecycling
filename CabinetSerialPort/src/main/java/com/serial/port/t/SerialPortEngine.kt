@@ -50,7 +50,7 @@ object SerialPortEngine {
 
         if (waiter != null) {
             pendingRequests.remove(cmdId)?.complete(packet)
-            AsyncBatchLogger.log("${ByteUtils.toHexStringFastTo(packet)}", cmdId)
+            AsyncBatchLogger.log(ByteUtils.toHexStringFastTo(packet), cmdId)
         } else {
              AsyncBatchLogger.log("port read [packet] failure！ID=$cmdId, Map not find Keys=${pendingRequests.keys()}",-1)
         }

@@ -39,4 +39,7 @@ import com.recycling.toolsapp.model.FileEntity
 
     @Update fun upFileEntity(fileEntity: FileEntity): Int
 
+    @Query("UPDATE FileEntity SET status = 1 WHERE  cmd = :cmd and transId = :transId ")
+    fun upFileStatus(cmd: String, transId: String)
+
 }

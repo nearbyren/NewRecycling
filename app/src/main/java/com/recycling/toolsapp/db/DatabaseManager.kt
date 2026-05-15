@@ -934,6 +934,17 @@ object DatabaseManager {
         return getFileFlowDao(context).upFileEntity(fileEntity)
     }
 
+    /**e
+     * 提供外部 API 方法
+     * @param context 上下文
+     * @param cmd
+     * @param transId
+     * @return
+     */
+    fun upFileStatus(context: Context, cmd: String, transId :String){
+        getFileFlowDao(context).upFileStatus(cmd,transId)
+    }
+
     /**
      * 提供外部 API 方法
      * @param context 上下文

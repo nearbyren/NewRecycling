@@ -123,7 +123,7 @@ object SerialPortSdk {
     suspend fun startRodHinder(code: Int, number: Int): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.startRodHinder(code, number)
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 
@@ -131,7 +131,7 @@ object SerialPortSdk {
     suspend fun turnDoor(code: Int): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.turnDoor(code)
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 
@@ -139,7 +139,7 @@ object SerialPortSdk {
     suspend fun turnDoorRetries(code: Int): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.turnDoorRetries(code)
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 
@@ -147,7 +147,7 @@ object SerialPortSdk {
     suspend fun turnDoorStatus(code: Int): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.turnDoorStatus(code)
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 
@@ -155,7 +155,7 @@ object SerialPortSdk {
     suspend fun openQueryClear(code: Int): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.openQueryClear(code)
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 
@@ -163,7 +163,7 @@ object SerialPortSdk {
     suspend fun queryWeight(boxId: Int): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.queryWeight(boxId)
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 
@@ -171,7 +171,7 @@ object SerialPortSdk {
     suspend fun queryStatus(): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.queryStatus()
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 
@@ -179,7 +179,7 @@ object SerialPortSdk {
     suspend fun startLights(code: Int): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.startLights(code)
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 
@@ -187,7 +187,7 @@ object SerialPortSdk {
     suspend fun startCalibrationQP(doorGeX: Int, code: Int): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.startCalibrationQP(doorGeX, code)
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 
@@ -195,14 +195,14 @@ object SerialPortSdk {
     suspend fun startCalibration(doorGeX: Int, code: Int): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.startCalibration(doorGeX, code)
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
     /** 查询版本 */
     suspend fun startQueryVersion(): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
         val result = SerialPortCoreSdk.instance.startQueryVersion()
-        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
+//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
         return result
     }
 }

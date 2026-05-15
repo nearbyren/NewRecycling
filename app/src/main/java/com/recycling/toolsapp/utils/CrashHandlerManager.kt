@@ -213,7 +213,7 @@ class CrashHandlerManager(private val mContext: Context) : Thread.UncaughtExcept
         val result = writer.toString()
         builder.append(result)
         try {
-            val fileName = "crash-${AppUtils.getDateHMS2()}--${AppUtils.getDateYMD()}.txt"
+            val fileName = "crash-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.txt"
             // /sdcard/android/data/packmage/file/download/crash-time-timestamp.log
             val path =
                     AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/socket_box_crash/"
