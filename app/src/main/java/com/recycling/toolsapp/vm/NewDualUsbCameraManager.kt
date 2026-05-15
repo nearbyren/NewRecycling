@@ -31,32 +31,31 @@ import com.blankj.utilcode.util.ToastUtils
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.AsyncBatchLogger
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.resume
 
-
 class NewDualUsbCameraManager(context: Context) {
 
-    val TAG = "DualUsbCamera"
     private val appContext = context.applicationContext
     private val manager = appContext.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     private val cameras = ConcurrentHashMap<String, CameraHolder>()
     private var scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var isReceiverRegistered = false
+
     companion object {
         const val TAG = "DualUsbCamera"
         const val PREVIEW_WIDTH = 640
@@ -64,9 +63,25 @@ class NewDualUsbCameraManager(context: Context) {
         const val PREVIEW_MAX_IMAGES = 2
         const val CAPTURE_JPEG_QUALITY = 90
         const val PREVIEW_RESUME_DELAY_MS = 800L
-        const val WATERMARK_TEXT_SIZE_RATIO = 40f  // 1/40 of bitmap width
+        const val CAPTURE_TIMEOUT_MS = 8000L
+        const val SEQUENTIAL_CAPTURE_DELAY_MS = 300L
+        const val WATERMARK_TEXT_SIZE_RATIO = 40f
         const val WATERMARK_MARGIN_RATIO = 0.02f
     }
+
+    fun interface CameraErrorListener {
+        fun cameraStatus(status: Boolean, index: String, text: String)
+    }
+
+    var cameraErrorListener: CameraErrorListener? = null
+
+    data class PhotoRequest(
+        val cameraId: String,
+        val switchType: Int,
+        val inOut: String,
+        val saveFile: File,
+        val remoteOpenType: Int
+    )
 
     private inner class CameraHolder(val cameraId: String) {
         var device: CameraDevice? = null
@@ -77,11 +92,13 @@ class NewDualUsbCameraManager(context: Context) {
         var previewSurface: Surface? = null
         var isPreviewing = false
         var isCapturing = false
+        val captureMutex = Mutex()
 
         fun release() {
             try {
                 isPreviewing = false
                 isCapturing = false
+                reader?.setOnImageAvailableListener(null, null)
                 session?.stopRepeating()
                 session?.abortCaptures()
                 session?.close()
@@ -90,15 +107,17 @@ class NewDualUsbCameraManager(context: Context) {
                 previewSurface?.release()
                 thread?.quitSafely()
             } catch (e: Exception) {
-                AsyncBatchLogger.logBusiness("业务流","释放摄像头 $cameraId 异常: ${e.message}")
+                AsyncBatchLogger.logBusiness("业务流", "释放摄像头 $cameraId 异常: ${e.message}")
             } finally {
-                session = null; device = null; reader = null
-                previewSurface = null; thread = null; handler = null
+                session = null
+                device = null
+                reader = null
+                previewSurface = null
+                thread = null
+                handler = null
             }
         }
     }
-
-    // ================== 生命周期管理 ==================
 
     fun registerUsbReceiver() {
         if (!isReceiverRegistered) {
@@ -115,24 +134,20 @@ class NewDualUsbCameraManager(context: Context) {
         if (isReceiverRegistered) {
             try {
                 appContext.unregisterReceiver(usbReceiver)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
             }
             isReceiverRegistered = false
         }
     }
 
-    fun interface CameraErrorListener {
-        fun cameraStatus(status: Boolean, index: String, text: String)
-    }
-
-    var cameraErrorListener: CameraErrorListener? = null
-
-    // ================== 启动逻辑 ==================
-
-    /**
-     * 原逻辑保留：顺序启动或根据 openAll 启动
-     */
-    fun autoStartUsbCameras(openAll: Boolean = true, view1: TextureView? = null, view2: TextureView? = null, delayMs: Long = 3000, startPaused: Boolean = false, listener: CameraErrorListener) {
+    fun autoStartUsbCameras(
+        openAll: Boolean = true,
+        view1: TextureView? = null,
+        view2: TextureView? = null,
+        delayMs: Long = 3000,
+        startPaused: Boolean = false,
+        listener: CameraErrorListener
+    ) {
         cameraErrorListener = listener
         if (!scope.isActive) scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -140,7 +155,7 @@ class NewDualUsbCameraManager(context: Context) {
             val usbIds = getExternalCameraIds()
             if (usbIds.isEmpty()) {
                 withContext(Dispatchers.IO) {
-                    AsyncBatchLogger.logBusiness("业务流","未检测到外置 USB 摄像头")
+                    AsyncBatchLogger.logBusiness("业务流", "未检测到外置 USB 摄像头")
                 }
                 return@launch
             }
@@ -158,33 +173,31 @@ class NewDualUsbCameraManager(context: Context) {
         }
     }
 
-    /**
-     * 新增：并行启动双摄像头 (提高启动速度)
-     */
-    fun startDualCamerasParallel(view1: TextureView, view2: TextureView, startPaused: Boolean = false, listener: CameraErrorListener) {
+    fun startDualCamerasSequentialOpen(
+        view1: TextureView,
+        view2: TextureView,
+        startPaused: Boolean = false,
+        listener: CameraErrorListener
+    ) {
         cameraErrorListener = listener
         if (!scope.isActive) scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
         scope.launch {
             val usbIds = getExternalCameraIds()
-            val tasks = mutableListOf<Deferred<Unit>>() // 假设 openSingleCamera 返回 Unit，如果是其他类型请修改泛型
             var open1 = false
             var open2 = false
-            if (usbIds.size > 0) {
-                open1 = true
-                // 使用 async 同时发起开启请求
-                tasks.add(async { openSingleCamera(usbIds[0], view1, startPaused) })
+
+            if (usbIds.isNotEmpty()) {
+                open1 = openSingleCamera(usbIds[0], view1, startPaused)
+                delay(1000)
             }
+
             if (usbIds.size > 1) {
-                open2 = true
-                // 使用 async 同时发起开启请求
-                tasks.add(async { openSingleCamera(usbIds[1], view2, startPaused) })
+                open2 = openSingleCamera(usbIds[1], view2, startPaused)
             }
-            if (tasks.isNotEmpty()) {
-                awaitAll(*tasks.toTypedArray())
-            }
+
             withContext(Dispatchers.IO) {
-                AsyncBatchLogger.logBusiness("业务流","双摄像头并行开启请求 open1:${open1} | open2:${open2} size:${tasks.size} ")
+                AsyncBatchLogger.logBusiness("业务流", "双摄像头顺序开启 open1:$open1 | open2:$open2")
             }
         }
     }
@@ -196,8 +209,6 @@ class NewDualUsbCameraManager(context: Context) {
         cameras.clear()
         scope.cancel()
     }
-
-    // ================== 预览控制 ==================
 
     fun pausePreview(cameraId: String? = null) {
         val targets = if (cameraId != null) listOfNotNull(cameras[cameraId]) else cameras.values
@@ -227,7 +238,12 @@ class NewDualUsbCameraManager(context: Context) {
                 val characteristics = manager.getCameraCharacteristics(holder.cameraId)
                 val afModes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES)
                 builder?.set(
-                    CaptureRequest.CONTROL_AF_MODE, if (afModes?.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE) == true) CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE else CaptureRequest.CONTROL_AF_MODE_OFF
+                    CaptureRequest.CONTROL_AF_MODE,
+                    if (afModes?.contains(CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE) == true) {
+                        CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
+                    } else {
+                        CaptureRequest.CONTROL_AF_MODE_OFF
+                    }
                 )
 
                 holder.session?.setRepeatingRequest(builder!!.build(), null, holder.handler)
@@ -238,39 +254,82 @@ class NewDualUsbCameraManager(context: Context) {
         }
     }
 
-    // ================== 拍照控制 (并行增强) ==================
+    suspend fun takePicturesSequential(requests: List<PhotoRequest>): List<File?> {
+        val results = mutableListOf<File?>()
 
-    /**
-     * 新增：支持同时拍摄多个摄像头
-     * @param requests 包含 (cameraId, switchType, inOut, saveFile) 的列表
-     */
-    suspend fun takePicturesParallel(requests: List<PhotoRequest>): List<File?> = coroutineScope {
-        requests.map { req ->
-            async(Dispatchers.IO) {
-                takePictureSuspend(req.cameraId, req.switchType, req.inOut, req.saveFile, req.remoteOpenType)
+        for (req in requests) {
+            val file = try {
+                takePictureSuspend(
+                    cameraId = req.cameraId,
+                    switchType = req.switchType,
+                    inOut = req.inOut,
+                    saveFile = req.saveFile,
+                    remoteOpenType = req.remoteOpenType
+                )
+            } catch (e: Exception) {
+                AsyncBatchLogger.logBusiness("业务流", "[${req.cameraId}] 顺序拍照失败: ${e.message}")
+                null
             }
-        }.awaitAll()
-    }
 
-    data class PhotoRequest(val cameraId: String, val switchType: Int, val inOut: String, val saveFile: File, val remoteOpenType: Int)
-
-    /**
-     * 挂起函数版拍照
-     */
-    suspend fun takePictureSuspend(cameraId: String, switchType: Int, inOut: String, saveFile: File, remoteOpenType: Int): File? =
-        suspendCancellableCoroutine { cont ->
-            this.takePicture(cameraId, switchType, inOut, saveFile, remoteOpenType) { file ->
-                if (cont.isActive) cont.resume(file)
-            }
+            results.add(file)
+            delay(SEQUENTIAL_CAPTURE_DELAY_MS)
         }
 
-    /**
-     * 基础拍照逻辑
-     */
-    fun takePicture(cameraId: String, switchType: Int = -1, inOut: String, saveFile: File, remoteOpenType: Int, onComplete: (File?) -> Unit) {
+        return results
+    }
+
+    suspend fun takePicturesParallel(requests: List<PhotoRequest>): List<File?> {
+        return takePicturesSequential(requests)
+    }
+
+    suspend fun takePictureSuspend(
+        cameraId: String,
+        switchType: Int,
+        inOut: String,
+        saveFile: File,
+        remoteOpenType: Int
+    ): File? {
+        val holder = cameras[cameraId] ?: run {
+            AsyncBatchLogger.logBusiness("业务流", "[$cameraId] 拍照失败：摄像头未打开")
+            return null
+        }
+
+        return holder.captureMutex.withLock {
+            val result = withTimeoutOrNull(CAPTURE_TIMEOUT_MS) {
+                suspendCancellableCoroutine<File?> { cont ->
+                    takePicture(cameraId, switchType, inOut, saveFile, remoteOpenType) { file ->
+                        if (cont.isActive) cont.resume(file)
+                    }
+
+                    cont.invokeOnCancellation {
+                        holder.reader?.setOnImageAvailableListener(null, null)
+                        holder.isCapturing = false
+                    }
+                }
+            }
+
+            if (result == null) {
+                holder.reader?.setOnImageAvailableListener(null, null)
+                holder.isCapturing = false
+                AsyncBatchLogger.logBusiness("业务流", "[$cameraId] 拍照失败或超时")
+                cameraErrorListener?.cameraStatus(false, cameraId, "拍照失败或超时")
+            }
+
+            result
+        }
+    }
+
+    fun takePicture(
+        cameraId: String,
+        switchType: Int = -1,
+        inOut: String,
+        saveFile: File,
+        remoteOpenType: Int,
+        onComplete: (File?) -> Unit
+    ) {
         val holder = cameras[cameraId]
         if (holder == null || holder.isCapturing) {
-            AsyncBatchLogger.logBusiness("业务流","[$cameraId] 补抓拍照异常")
+            AsyncBatchLogger.logBusiness("业务流", "[$cameraId] 拍照异常：摄像头忙或未打开")
             onComplete(null)
             return
         }
@@ -285,221 +344,298 @@ class NewDualUsbCameraManager(context: Context) {
                 }
 
                 val imageFile = captureImageInternal(cameraId, inOut, switchType, holder, saveFile, remoteOpenType)
-                withContext(Dispatchers.IO) { onComplete(imageFile) }
+
+                withContext(Dispatchers.Main) {
+                    onComplete(imageFile)
+                }
             } catch (e: Exception) {
                 withContext(Dispatchers.IO) {
-                    AsyncBatchLogger.logBusiness("业务流","[$cameraId] 拍照异常: ${e.message}")
+                    AsyncBatchLogger.logBusiness("业务流", "[$cameraId] 拍照异常: ${e.message}")
                 }
-                withContext(Dispatchers.Main) { onComplete(null) }
+                withContext(Dispatchers.Main) {
+                    onComplete(null)
+                }
             } finally {
                 holder.isCapturing = false
             }
         }
     }
 
-    private suspend fun captureImageInternal(cameraId: String, inOut: String, switchType: Int = -1, holder: CameraHolder, saveFile: File, remoteOpenType: Int): File? =
-        suspendCancellableCoroutine { cont ->
-            try {
-                val builder = holder.device?.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
-                builder?.addTarget(holder.reader!!.surface)
+    private suspend fun captureImageInternal(
+        cameraId: String,
+        inOut: String,
+        switchType: Int = -1,
+        holder: CameraHolder,
+        saveFile: File,
+        remoteOpenType: Int
+    ): File? = suspendCancellableCoroutine { cont ->
+        try {
+            val device = holder.device
+            val session = holder.session
+            val reader = holder.reader
 
-                holder.reader?.setOnImageAvailableListener({ reader ->
-                    reader.setOnImageAvailableListener(null, null)
-                    val img = reader.acquireLatestImage() ?: run {
-                        if (cont.isActive) cont.resume(null)
-                        return@setOnImageAvailableListener
+            if (device == null || session == null || reader == null) {
+                if (cont.isActive) cont.resume(null)
+                return@suspendCancellableCoroutine
+            }
+
+            clearPendingImages(reader)
+
+            val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+            builder.addTarget(reader.surface)
+
+            reader.setOnImageAvailableListener({ imageReader ->
+                imageReader.setOnImageAvailableListener(null, null)
+
+                val img = imageReader.acquireLatestImage()
+                if (img == null) {
+                    if (cont.isActive) cont.resume(null)
+                    return@setOnImageAvailableListener
+                }
+
+                val bytes = try {
+                    val buffer = img.planes[0].buffer
+                    ByteArray(buffer.remaining()).also { buffer.get(it) }
+                } finally {
+                    img.close()
+                }
+
+                scope.launch(Dispatchers.IO) {
+                    val text = when (remoteOpenType) {
+                        1 -> when (switchType) {
+                            1 -> "投递前"
+                            0 -> "投递后"
+                            else -> "远程拍照"
+                        }
+                        2 -> when (switchType) {
+                            1 -> "清运前"
+                            0 -> "清运后"
+                            else -> "远程拍照"
+                        }
+                        else -> "远程拍照"
                     }
 
-                    val buffer = img.planes[0].buffer
-                    val bytes = ByteArray(buffer.remaining())
-                    buffer.get(bytes)
-                    img.close()
+                    val watermarkText = "$text-$inOut-${AppUtils.getDateYMDHMS2()}"
+                    val finalPath = saveImageWithWatermarkSync(bytes, saveFile, watermarkText)
 
-                    scope.launch(Dispatchers.IO) {
-                        var text = ""
-                        if (remoteOpenType == 1) {
-                            text = when (switchType) {
-                                1 -> "投递前"
-                                0 -> "投递后"
-                                else -> "远程拍照"
-                            }
-
-                        } else if (remoteOpenType == 2) {
-                            text = when (switchType) {
-                                1 -> "清运前"
-                                0 -> "清运后"
-                                else -> "远程拍照"
-                            }
-                        }
-                        val watermarkText = "$text-$inOut-${AppUtils.getDateYMDHMS2()}"
-                        val finalPath = saveImageWithWatermarkSync(bytes, saveFile, watermarkText)
-                        if (cont.isActive) {
-                            if (finalPath != null) {
-                                val resultFile = File(finalPath)
-                                if (resultFile.exists() && resultFile.length() > 0) {
-//                                    AsyncBatchLogger.logBusiness("业务流","[$cameraId] 物理落盘成功: $finalPath (${resultFile.length()} bytes)")
-                                    cameraErrorListener?.cameraStatus(true, cameraId, "拍照完成")
-                                    cont.resume(resultFile)
-                                } else {
-                                    cont.resume(null)
-                                }
+                    if (cont.isActive) {
+                        if (finalPath != null) {
+                            val resultFile = File(finalPath)
+                            if (resultFile.exists() && resultFile.length() > 0) {
+                                cameraErrorListener?.cameraStatus(true, cameraId, "拍照完成")
+                                cont.resume(resultFile)
                             } else {
                                 cont.resume(null)
                             }
+                        } else {
+                            cont.resume(null)
                         }
                     }
-                }, holder.handler)
+                }
+            }, holder.handler)
 
-                holder.session?.capture(builder!!.build(), null, holder.handler)
-            } catch (e: Exception) {
-                if (cont.isActive) cont.resume(null)
-            }
+            session.capture(builder.build(), null, holder.handler)
+        } catch (e: Exception) {
+            holder.reader?.setOnImageAvailableListener(null, null)
+            AsyncBatchLogger.logBusiness("业务流", "[$cameraId] capture异常: ${e.message}")
+            if (cont.isActive) cont.resume(null)
         }
+    }
+
+    private fun clearPendingImages(reader: ImageReader) {
+        try {
+            while (true) {
+                val image = reader.acquireLatestImage() ?: break
+                image.close()
+            }
+        } catch (_: Exception) {
+        }
+    }
 
     private fun saveImageWithWatermarkSync(imageBytes: ByteArray, destFile: File, watermarkText: String): String? {
         return try {
-            // 1. 解码
             val options = BitmapFactory.Options().apply {
                 inMutable = true
                 inScaled = false
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             }
-            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
-                ?: return null
 
-            // 2. 绘图
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options) ?: return null
+
             val canvas = Canvas(bitmap)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.RED
                 textSize = bitmap.width / WATERMARK_TEXT_SIZE_RATIO
                 setShadowLayer(3f, 2f, 2f, Color.BLACK)
             }
+
             val margin = bitmap.width * WATERMARK_MARGIN_RATIO
             canvas.drawText(watermarkText, margin, margin + paint.textSize, paint)
 
-            // 3. 写入并物理同步
-            // 注意：destFile 应该在 cacheDir 下，避免权限问题
             if (destFile.exists()) destFile.delete()
 
             FileOutputStream(destFile).use { out ->
-                // 建议质量设为 90，100 会导致文件体积剧增且无明显画质提升
                 bitmap.compress(Bitmap.CompressFormat.JPEG, CAPTURE_JPEG_QUALITY, out)
                 out.flush()
-                // 【核心】强制将内核缓冲区数据同步到存储介质，确保文件流彻底关闭且释放占用
                 out.fd.sync()
             }
 
-            // 4. 回收内存
             bitmap.recycle()
             destFile.absolutePath
         } catch (e: Exception) {
-            AsyncBatchLogger.logBusiness("业务流","水印写入失败: ${e.message}")
+            AsyncBatchLogger.logBusiness("业务流", "水印写入失败: ${e.message}")
             null
         }
     }
-
-    // ================== 初始化辅助 ==================
 
     fun getExternalCameraIds(): List<String> {
         val externalIds = mutableListOf<String>()
         try {
             for (id in manager.cameraIdList) {
-                if (manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) != null) {
+                val characteristics = manager.getCameraCharacteristics(id)
+                val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
+
+                if (facing != CameraCharacteristics.LENS_FACING_FRONT &&
+                    facing != CameraCharacteristics.LENS_FACING_BACK
+                ) {
+                    externalIds.add(id)
+                }
+            }
+
+            if (externalIds.isEmpty()) {
+                for (id in manager.cameraIdList) {
                     externalIds.add(id)
                 }
             }
         } catch (e: Exception) {
-            AsyncBatchLogger.logBusiness("业务流","获取摄像头异常: ${e.message}")
+            AsyncBatchLogger.logBusiness("业务流", "获取摄像头异常: ${e.message}")
         }
         return externalIds
     }
 
     @SuppressLint("MissingPermission")
-    private suspend fun openSingleCamera(cameraId: String, textureView: TextureView, startPaused: Boolean) =
-        suspendCancellableCoroutine<Unit> { cont ->
-            if (cameras.containsKey(cameraId)) {
-                if (cont.isActive) cont.resume(Unit)
-                return@suspendCancellableCoroutine
-            }
-
-            val holder = CameraHolder(cameraId)
-            cameras[cameraId] = holder
-            val thread = HandlerThread("Cam-$cameraId").apply { start() }
-            holder.thread = thread
-            holder.handler = Handler(thread.looper)
-
-            try {
-                holder.reader = ImageReader.newInstance(PREVIEW_WIDTH, PREVIEW_HEIGHT, ImageFormat.JPEG, PREVIEW_MAX_IMAGES)
-                manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
-                    override fun onOpened(camera: CameraDevice) {
-                        holder.device = camera
-                        initPreviewSession(cameraId, holder, textureView, Size(PREVIEW_WIDTH, PREVIEW_HEIGHT), startPaused)
-                        if (cont.isActive) cont.resume(Unit)
-                    }
-
-                    override fun onDisconnected(camera: CameraDevice) {
-                        holder.release(); cameras.remove(cameraId)
-                    }
-
-                    override fun onError(camera: CameraDevice, error: Int) {
-                        holder.release(); cameras.remove(cameraId)
-                        if (cont.isActive) cont.resume(Unit)
-                    }
-                }, holder.handler)
-            } catch (e: Exception) {
-                if (cont.isActive) cont.resume(Unit)
-            }
+    private suspend fun openSingleCamera(
+        cameraId: String,
+        textureView: TextureView,
+        startPaused: Boolean
+    ): Boolean = suspendCancellableCoroutine { cont ->
+        if (cameras.containsKey(cameraId)) {
+            if (cont.isActive) cont.resume(true)
+            return@suspendCancellableCoroutine
         }
 
-    private fun initPreviewSession(cameraId: String, holder: CameraHolder, textureView: TextureView, previewSize: Size, startPaused: Boolean) {
-        // 1. 安全检查：确保设备没有断开
-        val device = holder.device ?: return
+        val holder = CameraHolder(cameraId)
+        cameras[cameraId] = holder
+
+        val thread = HandlerThread("Cam-$cameraId").apply { start() }
+        holder.thread = thread
+        holder.handler = Handler(thread.looper)
+
+        try {
+            holder.reader = ImageReader.newInstance(
+                PREVIEW_WIDTH,
+                PREVIEW_HEIGHT,
+                ImageFormat.JPEG,
+                PREVIEW_MAX_IMAGES
+            )
+
+            manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
+                override fun onOpened(camera: CameraDevice) {
+                    holder.device = camera
+                    initPreviewSession(
+                        cameraId = cameraId,
+                        holder = holder,
+                        textureView = textureView,
+                        previewSize = Size(PREVIEW_WIDTH, PREVIEW_HEIGHT),
+                        startPaused = startPaused,
+                        onResult = { success ->
+                            if (cont.isActive) cont.resume(success)
+                        }
+                    )
+                }
+
+                override fun onDisconnected(camera: CameraDevice) {
+                    holder.release()
+                    cameras.remove(cameraId)
+                    if (cont.isActive) cont.resume(false)
+                }
+
+                override fun onError(camera: CameraDevice, error: Int) {
+                    holder.release()
+                    cameras.remove(cameraId)
+                    if (cont.isActive) cont.resume(false)
+                }
+            }, holder.handler)
+        } catch (e: Exception) {
+            holder.release()
+            cameras.remove(cameraId)
+            AsyncBatchLogger.logBusiness("业务流", "打开摄像头[$cameraId]异常: ${e.message}")
+            if (cont.isActive) cont.resume(false)
+        }
+    }
+
+    private fun initPreviewSession(
+        cameraId: String,
+        holder: CameraHolder,
+        textureView: TextureView,
+        previewSize: Size,
+        startPaused: Boolean,
+        onResult: (Boolean) -> Unit
+    ) {
+        val device = holder.device ?: run {
+            onResult(false)
+            return
+        }
 
         val startSession = { surfaceTexture: SurfaceTexture ->
             try {
                 surfaceTexture.setDefaultBufferSize(previewSize.width, previewSize.height)
                 holder.previewSurface = Surface(surfaceTexture)
 
-                // 2. 构造请求：明确指定预览模板
                 val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                     addTarget(holder.previewSurface!!)
-                    // 降低 USB 带宽压力：如果可以，稍微降低预览的帧率
-//                    set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(10, 20))
                 }
 
-                // 3. 准备输出配置（适配 API 级别）
                 val outputSurfaces = mutableListOf<Surface>().apply {
                     add(holder.previewSurface!!)
                     holder.reader?.surface?.let { add(it) }
                 }
 
-                // 4. 创建会话（加入异常捕获）
-                device.createCaptureSession(outputSurfaces, object :
-                    CameraCaptureSession.StateCallback() {
+                device.createCaptureSession(outputSurfaces, object : CameraCaptureSession.StateCallback() {
                     override fun onConfigured(session: CameraCaptureSession) {
-                        if (holder.device == null) return // 过程中设备可能断开了
+                        if (holder.device == null) {
+                            onResult(false)
+                            return
+                        }
+
                         holder.session = session
+
                         try {
                             if (!startPaused) {
                                 session.setRepeatingRequest(builder.build(), null, holder.handler)
                                 holder.isPreviewing = true
                             }
+                            onResult(true)
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            AsyncBatchLogger.logBusiness("业务流", "摄像头[$cameraId]启动预览异常: ${e.message}")
+                            onResult(false)
                         }
                     }
 
-                    override fun onConfigureFailed(s: CameraCaptureSession) {
-                        AsyncBatchLogger.logBusiness("业务流","摄像头 [$cameraId] 配置会话失败")
+                    override fun onConfigureFailed(session: CameraCaptureSession) {
+                        AsyncBatchLogger.logBusiness("业务流", "摄像头[$cameraId]配置会话失败")
+                        cameraErrorListener?.cameraStatus(false, cameraId, "配置会话失败")
+                        onResult(false)
                     }
                 }, holder.handler)
-
             } catch (e: CameraAccessException) {
-                AsyncBatchLogger.logBusiness("业务流","创建会话[$cameraId]异常: ${e.message}")
+                AsyncBatchLogger.logBusiness("业务流", "创建会话[$cameraId]异常: ${e.message}")
                 cameraErrorListener?.cameraStatus(false, cameraId, "创建会话异常")
+                onResult(false)
             } catch (e: IllegalArgumentException) {
-                AsyncBatchLogger.logBusiness("业务流","[$cameraId]分辨率或 Surface 异常: ${e.message}")
+                AsyncBatchLogger.logBusiness("业务流", "[$cameraId]分辨率或 Surface 异常: ${e.message}")
                 cameraErrorListener?.cameraStatus(false, cameraId, "分辨率或 Surface 异常")
+                onResult(false)
             }
         }
 
@@ -507,13 +643,20 @@ class NewDualUsbCameraManager(context: Context) {
             startSession(textureView.surfaceTexture!!)
         } else {
             textureView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                override fun onSurfaceTextureAvailable(p0: SurfaceTexture, p1: Int, p2: Int) {
-                    startSession(p0)
+                override fun onSurfaceTextureAvailable(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+                    startSession(surfaceTexture)
                 }
 
-                override fun onSurfaceTextureSizeChanged(s: SurfaceTexture, w: Int, h: Int) {}
-                override fun onSurfaceTextureDestroyed(s: SurfaceTexture) = true
-                override fun onSurfaceTextureUpdated(s: SurfaceTexture) {}
+                override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+
+                override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                    pausePreview(cameraId)
+                    holder.previewSurface?.release()
+                    holder.previewSurface = null
+                    return true
+                }
+
+                override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
             }
         }
     }
@@ -521,9 +664,13 @@ class NewDualUsbCameraManager(context: Context) {
     private val usbReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val device = intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
+
             if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
-                if (device?.deviceClass == UsbConstants.USB_CLASS_VIDEO || device?.deviceClass == UsbConstants.USB_CLASS_MISC) {
-                    destroy()
+                if (device?.deviceClass == UsbConstants.USB_CLASS_VIDEO ||
+                    device?.deviceClass == UsbConstants.USB_CLASS_MISC
+                ) {
+                    cameras.values.forEach { it.release() }
+                    cameras.clear()
                     ToastUtils.showLong("摄像头已断开")
                 }
             }

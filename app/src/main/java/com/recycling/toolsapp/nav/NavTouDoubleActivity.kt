@@ -890,7 +890,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                     when (op) {
                         CabinetVM.CameraOp.START -> {
                             // 只负责这一件事：把硬件和 UI 绑定起来
-                            cabinetVM.cameraManagerNew.startDualCamerasParallel(binding.textureIn!!, binding.textureOut!!, false, listener = cameraErrorListener)
+                            cabinetVM.cameraManagerNew.startDualCamerasSequentialOpen(binding.textureIn!!, binding.textureOut!!, false, listener = cameraErrorListener)
                         }
 
                         CabinetVM.CameraOp.DESTROY -> {
