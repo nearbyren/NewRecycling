@@ -64,7 +64,7 @@ class NewDualUsbCameraManager(context: Context) {
         const val CAPTURE_JPEG_QUALITY = 90
         const val PREVIEW_RESUME_DELAY_MS = 800L
         const val CAPTURE_TIMEOUT_MS = 8000L
-        const val SEQUENTIAL_CAPTURE_DELAY_MS = 300L
+        const val SEQUENTIAL_CAPTURE_DELAY_MS = 1000L
         const val WATERMARK_TEXT_SIZE_RATIO = 40f
         const val WATERMARK_MARGIN_RATIO = 0.02f
     }
@@ -422,6 +422,7 @@ class NewDualUsbCameraManager(context: Context) {
                         if (finalPath != null) {
                             val resultFile = File(finalPath)
                             if (resultFile.exists() && resultFile.length() > 0) {
+                                AsyncBatchLogger.logBusiness("业务流", "拍照完成[${cameraId}]")
                                 cameraErrorListener?.cameraStatus(true, cameraId, "拍照完成")
                                 cont.resume(resultFile)
                             } else {
@@ -557,12 +558,14 @@ class NewDualUsbCameraManager(context: Context) {
                 override fun onDisconnected(camera: CameraDevice) {
                     holder.release()
                     cameras.remove(cameraId)
+                    AsyncBatchLogger.logBusiness("业务流", "摄像头断开异常 [${cameraId}]")
                     if (cont.isActive) cont.resume(false)
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
                     holder.release()
                     cameras.remove(cameraId)
+                    AsyncBatchLogger.logBusiness("业务流", "摄像头打开异常 [${cameraId}]")
                     if (cont.isActive) cont.resume(false)
                 }
             }, holder.handler)

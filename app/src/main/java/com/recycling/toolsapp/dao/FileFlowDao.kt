@@ -11,16 +11,24 @@ import com.recycling.toolsapp.model.FileEntity
 /***
  *
  */
-@Dao interface FileFlowDao {
+@Dao
+interface FileFlowDao {
 
     //key键重复的替换
-    @Insert(onConflict = OnConflictStrategy.IGNORE) fun insert(fileEntity: FileEntity): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insert(fileEntity: FileEntity): Long
+
     //删除所有数据
-    @Query("delete from FileEntity") fun deleteAll()
+    @Query("delete from FileEntity")
+    fun deleteAll()
+
     //删除所有数据
-    @Query("delete from FileEntity WHERE status = 1 ") fun deleteAll1()
+    @Query("delete from FileEntity WHERE status = 1 ")
+    fun deleteAll1()
+
     //删除所有数据
-    @Query("delete from FileEntity WHERE status = 0 ") fun deleteAll0()
+    @Query("delete from FileEntity WHERE status = 0 ")
+    fun deleteAll0()
 
     @Query("delete from FileEntity WHERE id = :id")
     fun deletedFileEntity(id: Long)
@@ -37,9 +45,10 @@ import com.recycling.toolsapp.model.FileEntity
     @Query("select * from FileEntity WHERE status = 1")
     fun queryAllFileStatus1(): List<FileEntity>
 
-    @Update fun upFileEntity(fileEntity: FileEntity): Int
+    @Update
+    fun upFileEntity(fileEntity: FileEntity): Int
 
-    @Query("UPDATE FileEntity SET status = 1 WHERE  cmd = :cmd and transId = :transId ")
-    fun upFileStatus(cmd: String, transId: String)
+    @Query("UPDATE FileEntity SET status = 1 ,msg = :msg WHERE  cmd = :cmd and transId = :transId ")
+    fun upFileStatus(msg: String, cmd: String, transId: String)
 
 }

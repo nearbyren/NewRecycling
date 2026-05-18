@@ -20,8 +20,8 @@ object ResultType {
     /***
      * 清运页秒
      */
-    const val DELIVERY_CLEAR_SECONDS = 300
-    const val DELIVERY_CLEAR_SECONDS2 = 300000L
+    const val DELIVERY_CLEAR_SECONDS = 1200
+    const val DELIVERY_CLEAR_SECONDS2 = 20 * 60 * 1000L
     /***
      * 计重页秒
      */

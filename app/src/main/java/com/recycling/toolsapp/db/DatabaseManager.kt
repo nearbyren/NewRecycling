@@ -941,8 +941,8 @@ object DatabaseManager {
      * @param transId
      * @return
      */
-    fun upFileStatus(context: Context, cmd: String, transId :String){
-        getFileFlowDao(context).upFileStatus(cmd,transId)
+    fun upFileStatus(context: Context, time: String, cmd: String, transId: String) {
+        getFileFlowDao(context).upFileStatus(time, cmd, transId)
     }
 
     /**
@@ -953,6 +953,7 @@ object DatabaseManager {
     fun deleteAllFileEntity(context: Context) {
         getFileFlowDao(context).deleteAll()
     }
+
     /**
      * 提供外部 API 方法
      * @param context 上下文
@@ -961,6 +962,7 @@ object DatabaseManager {
     fun deleteAllFileEntity1(context: Context) {
         getFileFlowDao(context).deleteAll1()
     }
+
     /**
      * 提供外部 API 方法
      * @param context 上下文
@@ -969,6 +971,7 @@ object DatabaseManager {
     fun deleteAllFileEntity0(context: Context) {
         getFileFlowDao(context).deleteAll0()
     }
+
     /**
      * 提供外部 API 方法
      * @param context 上下文

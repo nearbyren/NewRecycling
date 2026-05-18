@@ -3254,96 +3254,222 @@ class CabinetVM @Inject constructor() : ViewModel() {
         return fileName.getOrNull(index)
     }
 
-    fun endCameraUploadPhoto() {
-        viewModelScope.launch(Dispatchers.IO) {
-            while (isActive) {
-                //有业务在执行正则休息2分钟
-                Loge.e("上传图片: 有业务在执行正则休息2分钟 ")
-                delay(1 * 60 * 1000L)
-                if (!isRunning) {
-                    var toUploadList = upPhotoMaps.values.filter { it.status == -1 }
-                    if (upPhotoMaps.isEmpty()) {
-                        //取数据库的是否存在落网
-                        val filesAll = DatabaseManager.queryAllFileEntity(AppUtils.getContext())
-                        Loge.e("上传图片: 不存在 取数据库资源 ${filesAll.size}")
-                        if (filesAll.isEmpty()) {
-                            //清空数据
-                            val status1 = DatabaseManager.queryAllFileStatus1(AppUtils.getContext())
-                            if (status1.size > 100) {
-                                DatabaseManager.deleteAllFileEntity1(AppUtils.getContext())
-                                DatabaseManager.deleteAllFileEntity0(AppUtils.getContext())
-                            }
-                        } else {
-                            toUploadList = filesAll
-                        }
-                    }
-                    val photolist = toUploadList.toList()
-                    if (photolist.isNotEmpty()) {
-                        //排序好顺序再进行上唇
-                        val sorted = photolist.sortedBy { it.cmd?.first()?.digitToInt() }
-                        Loge.e("上传图片: 排序后的cmd序列 = ${sorted.map { it.cmd }}")
-                        sorted.map { data ->
-                            val postCmd = data.cmd
-                            Loge.e("上传图片 拍照上传 postCmd $postCmd  ")
-                            //上传顺序
-                            val indexI = postCmd?.let { extractThirdChar(it, 0).toString() }
-                            //类型0231
-                            val photoType = postCmd?.let { extractThirdChar(it, 1).toString() }
-                            //内外
-                            val inOut = postCmd?.let { extractThirdChar(it, 2).toString() }
-                            //当前事务
-                            val setTransId = data.transId
-                            val file = File(data.photoIn)
-                            if (file != null && setTransId != null && photoType != null) {
-                                Loge.e("上传图片 拍照上传 $indexI $photoType 文件大小：${file.length()} ")
-                                val post = mutableMapOf<String, Any>()
-                                post["sn"] = curSn
-                                post["transId"] = setTransId
-                                post["photoType"] = photoType.toInt()
-                                post["file"] = file
-                                Loge.e("上传图片 拍照上传 post $post")
-                                httpRepo.uploadPhoto(post).onSuccess { user ->
-                                    Loge.e("上传图片 拍照上传 onSuccess ${Thread.currentThread().name} ${user.toString()}")
-                                    withContext(Dispatchers.IO) {
-//                                    val delId = data.id
-                                        data.status = 1
-                                        data.msg = "上传成功：${AppUtils.getDateYMDHMS()}"
-                                        if (data.cmd != null && data.transId != null) {
-                                            val row = DatabaseManager.upFileStatus(AppUtils.getContext(), data.cmd!!, data.transId!!)
-                                            Loge.e("上传图片 更新本地数据成功 row $row ")
-                                        }
-                                        DatabaseManager.insertLog(AppUtils.getContext(), LogEntity().apply {
-                                            cmd = "$indexI$photoType$inOut"
-                                            msg = "$setTransId,onFileSuccess"
-                                            time = AppUtils.getDateYMDHMS()
-                                        })
-                                    }
-                                }.onFailure { code, message ->
-                                    Loge.e("上传图片 拍照上传 onFailure $code $message")
-                                    insertInfoLog(LogEntity().apply {
-                                        cmd = "$indexI$photoType$inOut"
-                                        msg = "$setTransId,$code,$message"
-                                        time = AppUtils.getDateYMDHMS()
-                                    })
+    private var uploadPhotoJob: Job? = null
 
-                                }.onCatch { e ->
-                                    Loge.e("上传图片 拍照上传 onCatch ${e.errorMsg}")
-                                    insertInfoLog(LogEntity().apply {
-                                        cmd = "$indexI$photoType$inOut"
-                                        msg = "$setTransId,${e.errorMsg}"
-                                        time = AppUtils.getDateYMDHMS()
-                                    })
-                                }
-                            }
-                        }
-                    }
-//                    upPhotoMaps.forEach { success ->
-//                        Loge.e("上传图片: 执行完毕 = ${success.value.cmd} -${success.value.transId} - ${success.value.status}")
-//                    }
-                }
+    fun endCameraUploadPhoto() {
+        if (uploadPhotoJob?.isActive == true) {
+            Loge.e("上传图片: 上传任务正在执行，跳过重复启动")
+            return
+        }
+
+        uploadPhotoJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                //延迟3秒等待图片都保存好
+                delay(3000)
+                uploadPhotoQueueOnce()
+            } finally {
+                Loge.e("上传图片: 队列上传任务结束")
+                uploadPhotoJob = null
             }
         }
     }
+
+    private suspend fun uploadPhotoQueueOnce() {
+        if (isRunning) {
+            Loge.e("上传图片: 有业务在执行，本次不上传")
+            return
+        }
+        //标记当前是否为null
+        var isCurUp = false
+        val toUploadList = upPhotoMaps.values.filter { it.status == -1 }
+
+        val sorted = toUploadList
+            .filter { it.status == -1 }
+            .sortedBy { it.cmd?.getOrNull(0)?.digitToIntOrNull() ?: Int.MAX_VALUE }
+
+        if (sorted.isEmpty()) {
+            Loge.e("上传图片: 没有待上传图片，任务结束")
+            isCurUp = true
+        }
+
+        Loge.e("上传图片: 开始队列上传，总数=${sorted.size} cmd序列=${sorted.map { it.cmd }}")
+
+        if (!isCurUp) {
+            for (data in sorted) {
+                if (!viewModelScope.coroutineContext.isActive) {
+                    Loge.e("上传图片: 协程已取消，停止上传")
+                    break
+                }
+
+                if (isRunning) {
+                    Loge.e("上传图片: 上传过程中检测到业务执行，停止本次上传")
+                    break
+                }
+
+                uploadSinglePhotoWithRetry(data)
+
+                delay(500L)
+            }
+        }
+//        for (data in sorted) {
+//            Loge.e("上传图片: 本轮队列上传完毕当前  ${data.transId}|${data.cmd}|${data.status}")
+//
+//        }
+        //取出上次失败的图片
+        val filesAll = DatabaseManager.queryAllFileEntity(AppUtils.getContext())
+        Loge.e("上传图片: 内存队列为空，读取数据库资源 ${filesAll.size}")
+        if (filesAll.isNotEmpty()) {
+            //数据过多清空数据
+            val status1 = DatabaseManager.queryAllFileStatus1(AppUtils.getContext())
+            if (status1.size > 100) {
+                DatabaseManager.deleteAllFileEntity1(AppUtils.getContext())
+                DatabaseManager.deleteAllFileEntity0(AppUtils.getContext())
+            }
+            for (data in filesAll) {
+                if (!viewModelScope.coroutineContext.isActive) {
+                    Loge.e("上传图片: 协程已取消，停止上传")
+                    break
+                }
+
+                if (isRunning) {
+                    Loge.e("上传图片: 上传过程中检测到业务执行，停止本次上传")
+                    break
+                }
+
+                uploadSinglePhotoWithRetry(data)
+
+                delay(500L)
+            }
+        }
+
+//        for (data in filesAll) {
+//            Loge.e("上传图片: 本轮队列上传完毕数据库 ${data.transId}|${data.cmd}|${data.status}")
+//
+//        }
+        Loge.e("上传图片: 本轮队列上传完毕")
+    }
+
+    private suspend fun uploadSinglePhotoWithRetry(data: FileEntity) {
+        val postCmd = data.cmd
+        val indexI = postCmd?.getOrNull(0)?.toString()
+        val photoType = postCmd?.getOrNull(1)?.toString()
+        val inOut = postCmd?.getOrNull(2)?.toString()
+        val setTransId = data.transId
+        val photoPath = data.photoIn
+
+        if (
+            postCmd.isNullOrEmpty() ||
+            indexI == null ||
+            photoType == null ||
+            inOut == null ||
+            setTransId == null ||
+            photoPath.isNullOrEmpty()
+        ) {
+            Loge.e("上传图片: 数据异常，跳过 postCmd=$postCmd transId=$setTransId photoPath=$photoPath")
+            return
+        }
+
+        val file = File(photoPath)
+        if (!file.exists() || file.length() <= 0) {
+            Loge.e("上传图片: 文件不存在或为空，跳过 ${file.absolutePath}")
+
+            insertInfoLog(LogEntity().apply {
+                cmd = "$postCmd"
+                msg = "$setTransId,文件不存在或为空"
+                time = AppUtils.getDateYMDHMS()
+            })
+            return
+        }
+
+        val photoTypeInt = photoType.toIntOrNull()
+        if (photoTypeInt == null) {
+            Loge.e("上传图片: photoType异常，跳过 photoType=$photoType postCmd=$postCmd")
+            return
+        }
+
+        var uploadSuccess = false
+        var lastErrorMsg = ""
+
+        for (retryIndex in 1..3) {
+            Loge.e("上传图片: 开始上传 第${retryIndex}次 postCmd=$postCmd transId=$setTransId fileSize=${file.length()}")
+
+            val post = mutableMapOf<String, Any>()
+            post["sn"] = curSn
+            post["transId"] = setTransId
+            post["photoType"] = photoTypeInt
+            post["file"] = file
+
+            try {
+                httpRepo.uploadPhoto(post)
+                    .onSuccess { user ->
+                        Loge.e("上传图片: 上传成功 第${retryIndex}次 $postCmd $setTransId $user ${Thread.currentThread().name}")
+                        data.status = 1
+                        data.msg = "上传成功 第${retryIndex}次：${AppUtils.getDateYMDHMS()}"
+                        if (data.cmd != null && data.transId != null && data.msg != null) {
+                            DatabaseManager.upFileStatus(
+                                AppUtils.getContext(),
+                                data.msg!!,
+                                data.cmd!!,
+                                data.transId!!
+                            )
+                        }
+
+                        DatabaseManager.insertLog(AppUtils.getContext(), LogEntity().apply {
+                            cmd = "$postCmd"
+                            msg = "$setTransId,onFileSuccess"
+                            time = AppUtils.getDateYMDHMS()
+                        })
+                        uploadSuccess = true
+                    }
+                    .onFailure { code, message ->
+                        lastErrorMsg = "$code,$message"
+                        Loge.e("上传图片: 上传失败 第${retryIndex}次 $postCmd $setTransId $lastErrorMsg")
+                        insertInfoLog(LogEntity().apply {
+                            cmd = "$postCmd"
+                            msg = "$setTransId,上传失败 第${retryIndex}次"
+                            time = AppUtils.getDateYMDHMS()
+                        })
+
+                    }
+                    .onCatch { e ->
+                        lastErrorMsg = e.errorMsg
+                        Loge.e("上传图片: 上传异常 第${retryIndex}次 $postCmd $setTransId ${e.errorMsg}")
+                        insertInfoLog(LogEntity().apply {
+                            cmd = "$postCmd"
+                            msg = "$setTransId,上传异常 第${retryIndex}次"
+                            time = AppUtils.getDateYMDHMS()
+                        })
+                    }
+            } catch (e: Exception) {
+                lastErrorMsg = e.message ?: "unknown error"
+                Loge.e("上传图片: 上传抛异常 第${retryIndex}次 $postCmd $setTransId $lastErrorMsg")
+                insertInfoLog(LogEntity().apply {
+                    cmd = "$postCmd"
+                    msg = "$setTransId,上传抛异常 第${retryIndex}次"
+                    time = AppUtils.getDateYMDHMS()
+                })
+            }
+
+            if (uploadSuccess) {
+                break
+            }
+
+            if (retryIndex < 3) {
+                delay(2 * 1000L)
+            }
+        }
+
+        if (!uploadSuccess) {
+            Loge.e("上传图片: 连续3次上传失败 postCmd=$postCmd transId=$setTransId error=$lastErrorMsg")
+            insertInfoLog(LogEntity().apply {
+                cmd = "$postCmd"
+                msg = "$setTransId,重试3次失败,$lastErrorMsg"
+                time = AppUtils.getDateYMDHMS()
+            })
+        }
+
+    }
+
 
     var checkStatusResult: Deferred<Boolean>? = null
 
@@ -3716,6 +3842,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startContainersStatus() // 恢复全局状态轮询
                 startPollingFault()// 恢复全局异常检测
                 deteServiceClose()//检测服务器是否完整下发关闭指令
+                endCameraUploadPhoto()
             }
         }
     }
@@ -3955,6 +4082,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 startContainersStatus() // 恢复全局状态轮询
                 startPollingFault()// 恢复全局异常检测
                 deteServiceClose()//检测服务器是否完整下发关闭指令
+                endCameraUploadPhoto()
             }
         }
     }
