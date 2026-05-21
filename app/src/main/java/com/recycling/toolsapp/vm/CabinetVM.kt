@@ -4033,8 +4033,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 if (weightAfterClosingCmd.isFailure) {
                     Loge.e("业务流 彻底关门后重量 获取重量指令失败: ${weightAfterClosingCmd.exceptionOrNull()?.message}")
                 } else {
-                    toWeightAfterClosing = weightAfterClosingCmd.getOrNull()?.weight.toString()
+                    weightAfterClosing = weightAfterClosingCmd.getOrNull()?.weight.toString()
                 }
+                toWeightAfterClosing = weightAfterClosing
                 dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, weightAfterClosing, openModel = model, flowEnd = true)
                 AsyncBatchLogger.logBusiness("业务流", "业务流完毕！ $transId 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
                 _currentStep.value = LockerStep.FINISHED
@@ -4822,8 +4823,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             Loge.e("业务流：轮询onFailure: ${e.message}")
                         }
                     }
-                } catch (e: TimeoutCancellationException) {
-                    Loge.e("业务流：轮询超时: ${e.message}")
                 } catch (e: Exception) {
                     Loge.e("业务流：轮询异常: ${e.message}")
                 }
