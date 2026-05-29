@@ -49,6 +49,7 @@ import com.recycling.toolsapp.utils.CmdValue
 import com.recycling.toolsapp.utils.EntityType
 import com.recycling.toolsapp.utils.EnumFaultState
 import com.recycling.toolsapp.utils.FaultType
+import com.recycling.toolsapp.utils.IccidOper
 import com.recycling.toolsapp.utils.JsonBuilder
 import com.recycling.toolsapp.utils.MediaPlayerHelper
 import com.recycling.toolsapp.utils.OSUtils
@@ -245,9 +246,12 @@ class CabinetVM @Inject constructor() : ViewModel() {
             val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION] as Int
             Loge.e("流程 toGoCmdOtaBin handleVersionQuery login $gversion")
             val getSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""]
-            val getImsi = SPreUtil[AppUtils.getContext(), SPreUtil.setImsi, ""]
-            val getImei = SPreUtil[AppUtils.getContext(), SPreUtil.setImei, ""]
-            val getIccid = SPreUtil[AppUtils.getContext(), SPreUtil.setIccid, ""]
+//            val getImsi = SPreUtil[AppUtils.getContext(), SPreUtil.setImsi, ""]
+//            val getImei = SPreUtil[AppUtils.getContext(), SPreUtil.setImei, ""]
+//            val getIccid = SPreUtil[AppUtils.getContext(), SPreUtil.setIccid, ""]
+            val getIccid = IccidOper.getInstance(AppUtils.getContext()).getIccid()
+            val getImei = IccidOper.getInstance(AppUtils.getContext()).getIMEI()
+            val getImsi = IccidOper.getInstance(AppUtils.getContext()).getIMSI()
             val m = mapOf("cmd" to CmdValue.CMD_LOGIN, "loginCount" to loginCount, "sn" to getSn, "imsi" to getImsi, "imei" to getImei, "iccid" to getIccid, "version" to gversion, "apkVersion" to AppUtils.getVersionName(), "timestamp" to System.currentTimeMillis())
             val json = JsonBuilder.convertToJsonString(m)
             sendText(json)
@@ -2930,6 +2934,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                                     }
                                 }
                             }
+                        } else {
+                            Loge.e("获取socket初始化数据  Ota 无需更新")
                         }
                     }
                 }
@@ -2956,16 +2962,6 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 val fileName = "hsg-${queryResource.version}.apk"
                 val result = FileMdUtil.checkApkFileExists(fileName)
                 installApkUrl = FileMdUtil.matchNewFileName("apk", fileName)
-                upNetResDb("去安装${queryResource.version}", ResEntity().apply {
-                    id = queryResource.id
-                    status = ResType.TYPE_3
-                    sn = queryResource.sn
-                    version = queryResource.version
-                    cmd = queryResource.cmd
-                    url = queryResource.url
-                    md5 = queryResource.md5
-                    time = AppUtils.getDateYMDHMS()
-                })
                 Loge.e("获取socket初始化数据  进来更新APK了 文件是否存在：$result - $text")
                 _chipStep.value = UpgradeStep.INSTALL_APK
             }
@@ -3264,9 +3260,11 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
         uploadPhotoJob = viewModelScope.launch(Dispatchers.IO) {
             try {
+//                while (isActive) {
                 //延迟3秒等待图片都保存好
-                delay(3000)
+                delay(10000)
                 uploadPhotoQueueOnce()
+//                }
             } finally {
                 Loge.e("上传图片: 队列上传任务结束")
                 uploadPhotoJob = null
@@ -3426,7 +3424,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         Loge.e("上传图片: 上传失败 第${retryIndex}次 $postCmd $setTransId $lastErrorMsg")
                         insertInfoLog(LogEntity().apply {
                             cmd = "$postCmd"
-                            msg = "$setTransId,上传失败 第${retryIndex}次"
+                            msg = "$setTransId,onFailure$lastErrorMsg 第${retryIndex}次"
                             time = AppUtils.getDateYMDHMS()
                         })
 
@@ -3436,7 +3434,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                         Loge.e("上传图片: 上传异常 第${retryIndex}次 $postCmd $setTransId ${e.errorMsg}")
                         insertInfoLog(LogEntity().apply {
                             cmd = "$postCmd"
-                            msg = "$setTransId,上传异常 第${retryIndex}次"
+                            msg = "$setTransId,onCatch$lastErrorMsg 第${retryIndex}次"
                             time = AppUtils.getDateYMDHMS()
                         })
                     }
@@ -3445,7 +3443,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 Loge.e("上传图片: 上传抛异常 第${retryIndex}次 $postCmd $setTransId $lastErrorMsg")
                 insertInfoLog(LogEntity().apply {
                     cmd = "$postCmd"
-                    msg = "$setTransId,上传抛异常 第${retryIndex}次"
+                    msg = "$setTransId,catch$lastErrorMsg 第${retryIndex}次"
                     time = AppUtils.getDateYMDHMS()
                 })
             }
@@ -3593,7 +3591,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
      */
     fun startLockerDoorWorkflow(model: DoorOpenBean, setWeightBeforeOpen: String, doorGex: Int, openType: Int, closeType: Int, forcedCloseType: Int, executeCount: Int = 5) {
         if (!_isRunning.compareAndSet(false, true)) {
-            AsyncBatchLogger.logBusiness("业务流", "compareAndSet 运行：$isRunning")
+            AsyncBatchLogger.logBusiness("业务流", "投递 运行：$isRunning")
             return
         }
         // 1. 核心状态初始化
@@ -3808,15 +3806,19 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 AsyncBatchLogger.logBusiness("业务流", "业务流完毕！ $transId 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing 启动业务数据上报 curWeight = $weightDuringOpening changeWeight = " + "${CalculationUtil.subtractFloats(weightAfterClosing, weightBeforeOpen)} " + "refWeight = " + "${CalculationUtil.subtractFloats(weightDuringOpening, weightAfterOpening)} " + "beforeUpWeight = $weightBeforeOpen " + "afterUpWeight = $weightAfterOpening " + "beforeDownWeight = $weightDuringOpening " + "afterDownWeight = $weightAfterClosing ")
                 _currentStep.value = LockerStep.FINISHED
             } catch (e: TimeoutCancellationException) {
-                //开门后重量为零取开门前重量  关门后重量为0 则取 开门后重量 否则取 开门前重量
-                val setWeightAfterClosing = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterClosing == "0") weightDuringOpening else weightBeforeOpen
-                dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, setWeightAfterClosing, openModel = model, flowEnd = true)
+                //处理程序异常出现在 门已开瞬间 和 门已开持续 和 门已关瞬间
+                val setWeightAfterOpening = if (weightAfterOpening == "0") weightBeforeOpen else weightAfterOpening
+                val setWeightDuringOpening = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterOpening == "0") weightBeforeOpen else weightAfterOpening
+                val setWeightAfterClosing = if (weightAfterClosing == "0") weightDuringOpening else if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterOpening == "0") weightBeforeOpen else weightAfterClosing
+                dbBeforeWeightRefresh(weightBeforeOpen, setWeightAfterOpening, setWeightDuringOpening, setWeightAfterClosing, openModel = model, flowEnd = true)
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", true)
                 AsyncBatchLogger.logBusiness("业务流", "操作超时，请检查柜门是否卡住 ${e.message} 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing")
             } catch (e: Exception) {
-                //开门后重量为零取开门前重量  关门后重量为0 则取 开门后重量 否则取 开门前重量
-                val setWeightAfterClosing = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterClosing == "0") weightDuringOpening else weightBeforeOpen
-                dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, setWeightAfterClosing, openModel = model, flowEnd = true)
+                //处理程序异常出现在 门已开瞬间 和 门已开持续 和 门已关瞬间
+                val setWeightAfterOpening = if (weightAfterOpening == "0") weightBeforeOpen else weightAfterOpening
+                val setWeightDuringOpening = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterOpening == "0") weightBeforeOpen else weightAfterOpening
+                val setWeightAfterClosing = if (weightAfterClosing == "0") weightDuringOpening else if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterOpening == "0") weightBeforeOpen else weightAfterClosing
+                dbBeforeWeightRefresh(weightBeforeOpen, setWeightAfterOpening, setWeightDuringOpening, setWeightAfterClosing, openModel = model, flowEnd = true)
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
                 AsyncBatchLogger.logBusiness("业务流", "异常中断: ${e.message} 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing")
             } finally {
@@ -3853,6 +3855,10 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * @param setWeightBeforeOpen 开门前重量
      */
     fun startLockerClearWorkflow(model: DoorOpenBean, setWeightBeforeOpen: String, doorGex: Int, openType: Int, queryType: Int, executeCount: Int = 5) {
+        if (!_isRunning.compareAndSet(false, true)) {
+            AsyncBatchLogger.logBusiness("业务流", "清运 运行：$isRunning")
+            return
+        }
         // 1. 核心状态初始化
         cancelPollingFaultJob()
         cancelContainersStatusJob()
@@ -3865,9 +3871,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
             try {
                 val transId = model.transId ?: ""
                 AsyncBatchLogger.logBusiness("业务流", "业务正在执行中.... 清运：$doorGex 当前重量：$setWeightBeforeOpen 运行：${isRunning} |${transId}")
-                if (_isRunning.getAndSet(true)) {
-                    return@launch
-                }
+//                if (_isRunning.getAndSet(true)) {
+//                    return@launch
+//                }
 
                 //指令下发防夹手回弹次数
                 var closeCount = executeCount
@@ -3969,9 +3975,9 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 // --- 第三阶段：监测重量变化 ---
                 _currentStep.value = LockerStep.WEIGHT_TRACKING
                 AsyncBatchLogger.logBusiness("业务流", "门已开启，开始监测实时重量。初始重量: $weightBeforeOpen ,门开重量：$weightAfterOpening")
-                // 20分钟转换为毫秒
-                val timeoutCloseMillis = 1_200_000L
-                //超时20分钟代表门关闭失败
+                // 30分钟转换为毫秒
+                val timeoutCloseMillis = 1_800_000L
+                //超时30分钟代表门关闭失败
                 val startCloseTime = System.currentTimeMillis()
                 while (isActive) {
                     val weightDuringOpeningCmd = SerialPortSdk.queryWeight(doorGex)
@@ -3989,7 +3995,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, defaultWeight, openModel = model, flowEnd = false)
 
                     // --- 第五阶段：轮询等待门关闭 ---
-                    withTimeout(1_200_000L) { // 20分钟超时
+                    withTimeout(1_800_000L) { // 30分钟超时
                         delay(2000)
                         val queryClear = SerialPortSdk.openQueryClear(queryType)
                         if (queryClear.isFailure) {
@@ -4001,19 +4007,21 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             Loge.e("业务流：门开后等待门物理状态变为 0 0 【${clearType}】|【${doorStatus}】")
                             if (clearType == CmdCode.GE_CLOSE && doorStatus == CmdCode.GE_CLOSE) {
                                 _currentStep.value = LockerStep.CLOSE
-                                startLockerClearDoorSwitch(CmdCode.GE_CLOSE, doorGeX, closeCount)
                                 DatabaseManager.upStateClearStatus(AppUtils.getContext(), 0, curCabinld)
                                 DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
                                 return@withTimeout
                             }
                         }
                     }
-                    // 检查是否超过10分钟
+                    // 检查是否超过30分钟
                     if (System.currentTimeMillis() - startCloseTime > timeoutCloseMillis) {
                         AsyncBatchLogger.logBusiness("业务流", "门开后清运-门关故障 20分钟内未收到关闭状态 强制退出循环 门故障 打开后的重量：$weightAfterOpening")
-                        startLockerClearDoorSwitch(CmdCode.GE_CLOSE, doorGeX, closeCount)
                         enqueuePhotoAction(0)//清运关闭后的拍照=
                         DatabaseManager.upTransCloseStatus(AppUtils.getContext(), CmdCode.GE_CLOSE, transId)
+                        val setWeightAfterOpening = if (weightAfterOpening == "0") weightBeforeOpen else weightAfterOpening
+                        val setWeightDuringOpening = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterOpening == "0") weightBeforeOpen else weightAfterOpening
+                        val setWeightAfterClosing = if (weightAfterClosing == "0") weightDuringOpening else if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterOpening == "0") weightBeforeOpen else weightAfterClosing
+                        dbBeforeWeightRefresh(weightBeforeOpen, setWeightAfterOpening, setWeightDuringOpening, setWeightAfterClosing, openModel = model, flowEnd = true)
                         break
 //                        throw Exception("业务流：门开后清运-门关故障 20分钟内未收到关闭状态 强制退出循环 门故障 打开后的重量：$weightAfterOpening")
                     }
@@ -4052,19 +4060,24 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 }
 
             } catch (e: TimeoutCancellationException) {
-                //开门后重量为零取开门前重量  关门后重量为0 则取 开门后重量 否则取 开门前重量
-                val setWeightAfterClosing = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterClosing == "0") weightDuringOpening else weightBeforeOpen
-                dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, setWeightAfterClosing, openModel = model, flowEnd = true)
+                //处理程序异常出现在 门已开瞬间 和 门已开持续 和 门已关瞬间
+                val setWeightAfterOpening = if (weightAfterOpening == "0") weightBeforeOpen else weightAfterOpening
+                val setWeightDuringOpening = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterOpening == "0") weightBeforeOpen else weightAfterOpening
+                val setWeightAfterClosing = if (weightAfterClosing == "0") weightDuringOpening else if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterOpening == "0") weightBeforeOpen else weightAfterClosing
+                dbBeforeWeightRefresh(weightBeforeOpen, setWeightAfterOpening, setWeightDuringOpening, setWeightAfterClosing, openModel = model, flowEnd = true)
                 AsyncBatchLogger.logBusiness("业务流", "操作超时，请检查柜门是否卡住 ${e.message} 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing")
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", true)
             } catch (e: Exception) {
-                //开门后重量为零取开门前重量  关门后重量为0 则取 开门后重量 否则取 开门前重量
-                val setWeightAfterClosing = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterClosing == "0") weightDuringOpening else weightBeforeOpen
-                dbBeforeWeightRefresh(weightBeforeOpen, weightAfterOpening, weightDuringOpening, setWeightAfterClosing, openModel = model, flowEnd = true)
+                //处理程序异常出现在 门已开瞬间 和 门已开持续 和 门已关瞬间
+                val setWeightAfterClosing = if (weightDuringOpening == "0") weightAfterOpening else if (weightAfterClosing == "0") weightDuringOpening else weightAfterClosing
+                val setWeightAfterOpening = if (weightAfterOpening == "0") weightBeforeOpen else weightAfterOpening
+                val setWeightDuringOpening = if (weightDuringOpening == "0") setWeightAfterOpening else weightDuringOpening
+                dbBeforeWeightRefresh(weightBeforeOpen, setWeightAfterOpening, setWeightDuringOpening, setWeightAfterClosing, openModel = model, flowEnd = true)
                 AsyncBatchLogger.logBusiness("业务流", "异常中断: ${e.message} 开门前：$weightBeforeOpen, 开门后：$weightAfterOpening, 过程最高/最后：$weightDuringOpening, 关门后：$weightAfterClosing")
                 startLocketErrorCloseUI(doorGex, model.openType, "${e.message}", false)
             } finally {
                 AsyncBatchLogger.logBusiness("业务流", "完毕 finally")
+                startLockerClearDoorSwitch(CmdCode.GE_CLOSE, doorGeX, executeCount)
                 delay(2000)
                 modelOpenBean = null
                 doorGeX = CmdCode.GE
@@ -4572,91 +4585,94 @@ class CabinetVM @Inject constructor() : ViewModel() {
     private suspend fun dbBeforeWeightRefresh(weightBeforeOpen: String, weightAfterOpening: String, weightDuringOpening: String, weightAfterClosing: String, openModel: DoorOpenBean, flowEnd: Boolean = false) =
         withContext(Dispatchers.IO) {
             val oepnTransId = openModel.transId
-            val queryTrans = oepnTransId?.let { DatabaseManager.queryTransEntity(AppUtils.getContext(), it) }
-            val getTransId = queryTrans?.transId ?: ""
-            val weight = DatabaseManager.queryWeightId(AppUtils.getContext(), getTransId)
-            val type = openModel.openType
-            if (type == 1) {
-                //当前重量
-                weight.curWeight = if (weightAfterClosing == "0") weightDuringOpening else weightAfterClosing
+            oepnTransId?.let { getTransId ->
+                val type = openModel.openType
+                val weight = DatabaseManager.queryWeightId(AppUtils.getContext(), getTransId)
 
-                weight.changeWeight = CalculationUtil.subtractFloats(
-                    weightAfterClosing, weightBeforeOpen
-                )//关门后重量-开门前重量
-                weight.refWeight = CalculationUtil.subtractFloats(
-                    weightDuringOpening, weightAfterOpening
-                )//关门前重量-开门后重量
+                if (type == 1 && weight != null) {
+                    //当前重量
+                    weight.curWeight = weightAfterClosing
 
+                    weight.changeWeight = CalculationUtil.subtractFloats(
+                        weightAfterClosing, weightBeforeOpen
+                    )//关门后重量-开门前重量
+                    weight.refWeight = CalculationUtil.subtractFloats(
+                        weightDuringOpening, weightAfterOpening
+                    )//关门前重量-开门后重量
 
-                //未上称物品前重量
-                weight.beforeUpWeight = weightBeforeOpen//开门前重量
-                weight.afterUpWeight = weightAfterOpening//开门后重量
-
-                //已上称物品前重量
-                weight.beforeDownWeight = weightDuringOpening//关门前重量
-                weight.afterDownWeight = weightAfterClosing//关门后重量
-                //时间
-                weight.time = AppUtils.getDateYMDHMS()
-            }
-            if (type == 2) {
-
-                //开门前重量-关门后重量
-                val result = CalculationUtil.subtractFloats(weightBeforeOpen, weightAfterClosing)
-
-                //当前重量
-                weight.curWeight = if (weightAfterClosing == "0") weightDuringOpening else weightAfterClosing
-
-                weight.changeWeight = result //开门前重量-关门后重量
-                weight.refWeight = result//开门前重量-关门后重量
-
-
-                //未上称物品前重量
-                weight.beforeUpWeight = weightBeforeOpen//开门前重量
-                weight.afterUpWeight = weightAfterOpening//开门后重量
-
-                //已上称物品前重量
-                weight.beforeDownWeight = weightDuringOpening//关门前重量
-                weight.afterDownWeight = weightAfterClosing//关门后重量
-                //时间
-                weight.time = AppUtils.getDateYMDHMS()
-
-            }
-            val row = DatabaseManager.upWeightEntity(AppUtils.getContext(), weight)
-            setRefBusStaChannel(MonitorWeight().apply {
-                refreshType = RefBusType.REFRESH_TYPE_1
-                weightBeforeOpenValue = weightBeforeOpen
-                weightAfterOpeningValue = weightAfterOpening
-                weightDuringOpeningValue = weightDuringOpening
-                weightAfterClosingValue = weightAfterClosing
-            })
-            if (flowEnd) {
-                val doorClose = DoorCloseBean().apply {
-                    cmd = CmdValue.CMD_CLOSE_DOOR
-                    transId = openModel.transId
-                    cabinId = openModel.cabinId
-                    phoneNumber = ""
-                    //当前设备称重重量
-                    curWeight = weight.curWeight
-                    curWeightY = weight.curWeight
-
-                    //上称物品的重量
-                    changeWeight = weight.changeWeight
-                    refWeight = weight.refWeight
 
                     //未上称物品前重量
-                    beforeUpWeight = weight.beforeUpWeight
-                    afterUpWeight = weight.afterUpWeight
+                    weight.beforeUpWeight = weightBeforeOpen//开门前重量
+                    weight.afterUpWeight = weightAfterOpening//开门后重量
 
                     //已上称物品前重量
-                    beforeDownWeight = weight.beforeDownWeight
-                    afterDownWeight = weight.afterDownWeight
-
-                    timestamp = System.currentTimeMillis().toString()
+                    weight.beforeDownWeight = weightDuringOpening//关门前重量
+                    weight.afterDownWeight = weightAfterClosing//关门后重量
+                    //时间
+                    weight.time = AppUtils.getDateYMDHMS()
                 }
-                val json = JsonBuilder.convertToJsonString(doorClose)
-                sendText(json)
-                Loge.e("业务流：刷新重量 门已关 发送关门成功 $doorClose")
+                if (type == 2 && weight != null) {
 
+                    //开门前重量-关门后重量
+                    val result = CalculationUtil.subtractFloats(weightBeforeOpen, weightAfterClosing)
+
+                    //当前重量
+                    weight.curWeight = weightAfterClosing
+
+                    weight.changeWeight = result //开门前重量-关门后重量
+                    weight.refWeight = result//开门前重量-关门后重量
+
+
+                    //未上称物品前重量
+                    weight.beforeUpWeight = weightBeforeOpen//开门前重量
+                    weight.afterUpWeight = weightAfterOpening//开门后重量
+
+                    //已上称物品前重量
+                    weight.beforeDownWeight = weightDuringOpening//关门前重量
+                    weight.afterDownWeight = weightAfterClosing//关门后重量
+                    //时间
+                    weight.time = AppUtils.getDateYMDHMS()
+
+                }
+                if (weight != null) {
+                    val row = DatabaseManager.upWeightEntity(AppUtils.getContext(), weight)
+                }
+                setRefBusStaChannel(MonitorWeight().apply {
+                    refreshType = RefBusType.REFRESH_TYPE_1
+                    weightBeforeOpenValue = weightBeforeOpen
+                    weightAfterOpeningValue = weightAfterOpening
+                    weightDuringOpeningValue = weightDuringOpening
+                    weightAfterClosingValue = weightAfterClosing
+                })
+                if (flowEnd && weight!=null) {
+                    val doorClose = DoorCloseBean().apply {
+                        cmd = CmdValue.CMD_CLOSE_DOOR
+                        transId = openModel.transId
+                        cabinId = openModel.cabinId
+                        phoneNumber = ""
+                        //当前设备称重重量
+                        curWeight = weight.curWeight
+                        curWeightY = weight.curWeight
+
+                        //上称物品的重量
+                        changeWeight = weight.changeWeight
+                        refWeight = weight.refWeight
+
+                        //未上称物品前重量
+                        beforeUpWeight = weight.beforeUpWeight
+                        afterUpWeight = weight.afterUpWeight
+
+                        //已上称物品前重量
+                        beforeDownWeight = weight.beforeDownWeight
+                        afterDownWeight = weight.afterDownWeight
+
+                        timestamp = System.currentTimeMillis().toString()
+                    }
+                    val json = JsonBuilder.convertToJsonString(doorClose)
+                    sendText(json)
+                    Loge.e("业务流：刷新重量 门已关 发送关门成功 $doorClose")
+
+                }
             }
         }
 
@@ -4670,6 +4686,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
         containersJob = null
     }
 
+    var consecutiveFailures = 5 // 记录连续失败次数
+
     /**** * 投递柜状态查询*/
     fun startContainersStatus() {
         Loge.e("进来查询投递柜 startContainersStatus")
@@ -4680,6 +4698,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
         Loge.e("业务流：startStatus onstart ")
         containersJob = ioScope.launch {
             while (isActive) {
+//                val loopStartTime = System.currentTimeMillis()
+//                var isThisLoopSuccess = false
                 try {
                     if (!isRunning) {
                         Loge.e("业务流：startStatus onstart ")
@@ -4691,6 +4711,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             val size = containersDB.size
                             Loge.e("业务流：startStatus onSuccess $result")
                             result.containers.withIndex().forEach { (index, lower) ->
+//                                isThisLoopSuccess = true
                                 when (index) {
                                     0 -> {
                                         val state = containersDB[0]
@@ -4821,11 +4842,30 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             }
                         }.onFailure { e ->
                             Loge.e("业务流：轮询onFailure: ${e.message}")
+//                            AsyncBatchLogger.logBusiness("业务流", "轮询捕获到异常onFailure $isThisLoopSuccess")
+//                            consecutiveFailures -= 1
+//                            AsyncBatchLogger.logBusiness("业务流", "轮询捕获到异常/超时次数${consecutiveFailures} -> ${e.message}")
+//                            if (consecutiveFailures < 0) {
+//                                AsyncBatchLogger.logBusiness("业务流", "轮询捕获到异常核心预警：连续多次超时，启动串口底层硬重启保护... 非业务：$isRunning")
+//                                try {
+//                                    if (!isRunning) {
+//                                        stopAll()
+//                                        AsyncBatchLogger.logBusiness("业务流", "轮询捕获到异常指令异常重启动 当前次数${consecutiveFailures}")
+//                                        OSUtils.fullRestart(AppUtils.getContext())
+//                                    }
+//                                } catch (re: Exception) {
+//                                    AsyncBatchLogger.logBusiness("业务流", "轮询捕获到异常重新初始化串口失败: ${re.message}")
+//                                }
+//                            }
                         }
                     }
                 } catch (e: Exception) {
                     Loge.e("业务流：轮询异常: ${e.message}")
                 }
+//                if (!isThisLoopSuccess) {
+//                    val executionTime = System.currentTimeMillis() - loopStartTime
+//                    AsyncBatchLogger.logBusiness("业务流", "delay is success：$isThisLoopSuccess time：${executionTime}")
+//                }
                 delay(5000)
             }
         }
@@ -5092,7 +5132,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
      * @param code
      * 打开清运门
      */
-    fun startClearDoor(code: Int) {
+    fun startClearDoor(code: Int, onGetClearDoor: (status: Int, clearType: Int) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val doorStatusValue = SerialPortSdk.openQueryClear(code)
             if (doorStatusValue.isFailure) {
@@ -5100,7 +5140,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                 return@launch
             }
             val doorStatus = doorStatusValue.getOrNull()?.status ?: 0
-            tipMessage("业务流：等待清运门状态【${SendTurnText.fromStatus(doorStatus)}】")
+            val clearType = doorStatusValue.getOrNull()?.clearType ?: 0
+            onGetClearDoor(doorStatus, clearType)
             Loge.e("业务流：等待清运门状态【${SendTurnText.fromStatus(doorStatus)}】")
         }
     }

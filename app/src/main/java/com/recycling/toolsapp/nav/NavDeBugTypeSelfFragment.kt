@@ -36,6 +36,7 @@ import com.serial.port.utils.CmdCode
 import com.serial.port.utils.Loge
 import com.serial.port.utils.SendByteData
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nearby.lib.netwrok.response.SPreUtil
 import java.io.ByteArrayOutputStream
@@ -579,36 +580,51 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
             }
         }
         //电磁锁
-        binding.rgLock.setOnCheckedChangeListener { _, checkedId ->
-            val selected = when (checkedId) {
-                R.id.mrb_lock_open -> "开"
-                R.id.mrb_lock_close -> "关"
-                else -> null
-            }
-            if (isCheckSwitch) return@setOnCheckedChangeListener
-            when (selected) {
-                "开" -> {
-                    val code = when (currentGe) {
-                        CmdCode.GE1 -> {
-                            CmdCode.CLEAR_OPEN_1_1
-                        }
-
-                        CmdCode.GE2 -> {
-                            CmdCode.CLEAR_OPEN_2_1
-                        }
-
-                        else -> {
-                            CmdCode.CLEAR_OPEN_1_1
-                        }
+        binding.mrbLockOpen.setOnClickListener {
+            if (isCheckSwitch) return@setOnClickListener
+            cabinetVM.ioScope.launch {
+                val code = when (currentGe) {
+                    CmdCode.GE1 -> {
+                        CmdCode.CLEAR_OPEN_1_1
                     }
-                    cabinetVM.startClearDoor(code)
-                    refreshMapValue(3, true)
-                }
 
-                "关" -> {
+                    CmdCode.GE2 -> {
+                        CmdCode.CLEAR_OPEN_2_1
+                    }
 
+                    else -> {
+                        CmdCode.CLEAR_OPEN_1_1
+                    }
                 }
+                cabinetVM.startClearDoor(code, onGetClearDoor = { status, clearType ->
+                })
+                refreshMapValue(4, true)
+
+                delay(2000)
+                val code2 = when (currentGe) {
+                    CmdCode.GE1 -> {
+                        CmdCode.CLEAR_QUERY_1_0
+                    }
+                    CmdCode.GE2 -> {
+                        CmdCode.CLEAR_QUERY_2_0
+                    }
+
+                    else -> {
+                        CmdCode.CLEAR_QUERY_1_0
+                    }
+                }
+                cabinetVM.startClearDoor(code2, onGetClearDoor = { status, clearType ->
+                    binding.mrbLockOpen.isChecked = false
+                    binding.mrbLockClose.isChecked = true
+                    if (status == 0 && clearType == 0) {
+                        cabinetVM.tipMessage("清运门开启失败")
+                    }
+                    if (status == 1 && clearType == 0) {
+                        cabinetVM.tipMessage("清运门开启成功")
+                    }
+                })
             }
+
         }
 
         //去零清皮
@@ -628,65 +644,35 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         }
         setRbEnabled2(true, false)
         //校准
-        binding.rgKg.setOnCheckedChangeListener { _, checkedId ->
-            val selected = when (checkedId) {
-                R.id.mrb_kg1 -> getString(R.string.kg_1)
-                R.id.mrb_kg2 -> getString(R.string.kg_2)
-                R.id.mrb_kg3 -> getString(R.string.kg_3)
-                R.id.mrb_kg4 -> getString(R.string.kg_4)
-                else -> null
+        binding.mrbKg1.setOnClickListener {
+            if (weightKg == 2 || weightKg == 3 || weightKg == 4) {
+                cabinetVM.tipMessage("正在进行${weightText(weightKg)}，请勿操作其他")
+                return@setOnClickListener
             }
-            if (weightKg == -1) {
-                cabinetVM.tipMessage("请先点击称重校准")
-//                setRbEnabled(false)
-                setRbEnabled2(true, false)
-                return@setOnCheckedChangeListener
-            }
-            //校准kg禁止点击称重校准
-            binding.actvWeighing.isEnabled = false
             binding.clWeight.isVisible = true
-            when (selected) {
-                getString(R.string.kg_1) -> {
-                    if (weightKg == 2 || weightKg == 3 || weightKg == 4) {
-                        cabinetVM.tipMessage("正在进行${getString(R.string.kg_1)}，请勿操作其他")
-                        return@setOnCheckedChangeListener
-                    }
-                    binding.actvPrompt.text = "正在进行${getString(R.string.kg_1)}，请勿操作其他"
-                    weightKg = 1
-                    cabinetVM.startCalibration(currentGe, CmdCode.CALIBRATION_2)
-                }
-
-                getString(R.string.kg_2) -> {
-                    if (weightKg == 1 || weightKg == 3 || weightKg == 4) {
-                        cabinetVM.tipMessage("正在进行${getString(R.string.kg_2)}，请勿操作其他")
-                        return@setOnCheckedChangeListener
-                    }
-                    binding.actvPrompt.text = "正在进行${getString(R.string.kg_2)}，请勿操作其他"
-                    weightKg = 2
-                    cabinetVM.startCalibration(currentGe, CmdCode.CALIBRATION_3)
-                }
-
-                getString(R.string.kg_3) -> {
-                    if (weightKg == 1 || weightKg == 2 || weightKg == 4) {
-                        cabinetVM.tipMessage("正在进行${getString(R.string.kg_3)}，请勿操作其他")
-                        return@setOnCheckedChangeListener
-                    }
-                    binding.actvPrompt.text = "正在进行${getString(R.string.kg_3)}，请勿操作其他"
-                    weightKg = 3
-                    cabinetVM.startCalibration(currentGe, CmdCode.CALIBRATION_4)
-                }
-
-                getString(R.string.kg_4) -> {
-                    if (weightKg == 1 || weightKg == 2 || weightKg == 3) {
-                        cabinetVM.tipMessage("正在进行${getString(R.string.kg_4)}，请勿操作其他")
-                        return@setOnCheckedChangeListener
-                    }
-                    binding.actvPrompt.text = "正在进行${getString(R.string.kg_4)}，请勿操作其他"
-                    weightKg = 4
-                    cabinetVM.startCalibration(currentGe, CmdCode.CALIBRATION_5)
-                }
-
+            binding.actvPrompt.text = "正在进行${getString(R.string.kg_1)}，请勿操作其他"
+            weightKg = 1
+            cabinetVM.startCalibration(currentGe, CmdCode.CALIBRATION_2)
+        }
+        binding.mrbKg2.setOnClickListener {
+            if (weightKg == 1 || weightKg == 3 || weightKg == 4) {
+                cabinetVM.tipMessage("正在进行${weightText(weightKg)}，请勿操作其他")
+                return@setOnClickListener
             }
+            binding.clWeight.isVisible = true
+            binding.actvPrompt.text = "正在进行${getString(R.string.kg_2)}，请勿操作其他"
+            weightKg = 2
+            cabinetVM.startCalibration(currentGe, CmdCode.CALIBRATION_3)
+        }
+        binding.mrbKg3.setOnClickListener {
+            if (weightKg == 1 || weightKg == 2 || weightKg == 4) {
+                cabinetVM.tipMessage("正在进行${weightText(weightKg)}，请勿操作其他")
+                return@setOnClickListener
+            }
+            binding.clWeight.isVisible = true
+            binding.actvPrompt.text = "正在进行${getString(R.string.kg_3)}，请勿操作其他"
+            weightKg = 3
+            cabinetVM.startCalibration(currentGe, CmdCode.CALIBRATION_4)
         }
 
         //清运锁状态
@@ -762,7 +748,16 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
         //防止二次进去提示校准成功
         cabinetVM.setRefCalibrationStaStateFlow(null)
     }
-
+    fun weightText(type: Int): String {
+        return when (type) {
+            1 -> getString(R.string.kg_1)
+            2 -> getString(R.string.kg_2)
+            3 -> getString(R.string.kg_3)
+            else -> {
+                "未知"
+            }
+        }
+    }
     /********************************************测试粘包问题***************************************************/
     var click = 1
     fun testStickyBag() {
@@ -1143,43 +1138,6 @@ class NavDeBugTypeSelfFragment : BaseBindLazyTimeFragment<NavFragmentDebugTypeSe
                 4 -> {
                     binding.mrbKg4.isChecked = isEnabled
                 }
-            }
-        }
-    }
-
-    fun setRbEnabled(isEnabled: Boolean, weightKg: Int = -1) {
-        for (i in 0 until binding.rgKg.childCount) {
-            val child = binding.rgKg.getChildAt(i)
-            child.isEnabled = isEnabled
-            if (!isEnabled) {
-                if (child is RadioButton) {
-                    child.isChecked = false
-                }
-            } else {
-                if ((weightKg - 1) == i) {
-                    if (child is RadioButton) {
-                        child.isChecked = true
-                    }
-                }
-            }
-        }
-    }
-
-    // 禁止选择
-    fun setRadioGroupEnabled(rg: RadioGroup, enabled: Boolean) {
-        for (i in 0 until rg.childCount) {
-            val child = rg.getChildAt(i)
-            child.isEnabled = enabled
-            if (!enabled) {
-                // 清除选中态
-                if (child is RadioButton) {
-                    child.isChecked = false
-                }
-                // 拦截点击
-                child.setOnTouchListener { _, _ -> true }
-            } else {
-                // 恢复可点击
-                child.setOnTouchListener(null)
             }
         }
     }

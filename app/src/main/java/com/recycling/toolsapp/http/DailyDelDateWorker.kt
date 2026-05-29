@@ -9,8 +9,14 @@ import android.content.Context
 import android.os.Environment
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.recycling.toolsapp.db.DatabaseManager
+import com.recycling.toolsapp.model.LogEntity
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.Loge
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -29,79 +35,86 @@ class DailyDelDateWorker(
     }
 
     private fun delDB() {
-//        CoroutineScope(Dispatchers.IO).launch {
-        Loge.d("清理非七天内数据开始")
-        try {
-            // 清理下载目录
-            val downloadDir =
-                    AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            downloadDir?.let { dir ->
-                val files = dir.listFiles() ?: return@let
-                // 获取一周前的日期
-                val calendar = Calendar.getInstance()
-                calendar.add(Calendar.DAY_OF_YEAR, -3)
-                val oneWeekAgo = calendar.time
-                // 日期格式解析器
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                files.forEach { file ->
-                    Loge.d("清理非三天内数据开始 目录 ${file.name}")
-                    if (shouldDeleteDir(file.name)) {
-                        file.listFiles()?.forEach { log ->
-                            if (log.isFile) {
-                                try {
-                                    if(log.name.contains("---")){
-                                        Loge.d("清理非三天内数据开始 文件 ${log.name}")
-                                        // 提取文件名中的日期部分
-                                        val fileName = log.name
-                                        val datePart =
-                                            fileName.substringAfterLast("---").substringBefore(".txt")
-                                        // 解析日期
-                                        val fileDate = dateFormat.parse(datePart) ?: return@forEach
-                                        // 检查是否超过一周
-                                        if (fileDate.before(oneWeekAgo)||fileName.contains("-db-")) {
-                                            Loge.d("清理非三天内数据开始 删除过期文件: ${log.name} (日期: $datePart)")
-                                            if (log.delete()) {
-                                                Loge.d("清理非三天内数据开始 文件删除成功")
-                                            } else {
-                                                Loge.d("清理非三天内数据开始 文件删除失败")
-                                            }
-                                        } else {
-                                            Loge.d("清理非三天内数据开始 保留文件: ${log.name} (日期: $datePart)")
-                                        }
-                                    }
-                                    if(log.name.contains("--")){
-                                        Loge.d("清理非三天内数据开始 文件 ${log.name}")
-                                        // 提取文件名中的日期部分
-                                        val fileName = log.name
-                                        val datePart =
-                                            fileName.substringAfterLast("--").substringBefore(".txt")
-                                        // 解析日期
-                                        val fileDate = dateFormat.parse(datePart) ?: return@forEach
-                                        // 检查是否超过一周
-                                        if (fileDate.before(oneWeekAgo)||fileName.contains("-db-")) {
-                                            Loge.d("清理非三天内数据开始 删除过期文件: ${log.name} (日期: $datePart)")
-                                            if (log.delete()) {
-                                                Loge.d("清理非三天内数据开始 文件删除成功")
-                                            } else {
-                                                Loge.d("清理非三天内数据开始 文件删除失败")
-                                            }
-                                        } else {
-                                            Loge.d("清理非三天内数据开始 保留文件: ${log.name} (日期: $datePart)")
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Loge.d("清理非三天内数据开始 处理文件 ${log.name} 出错: ${e.message}")
+        CoroutineScope(Dispatchers.IO).launch {
+            Loge.d("清理过期数据开始")
+            try {
+                val downloadDir = AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                downloadDir?.let { dir ->
+                    val files = dir.listFiles() ?: return@let
+
+                    // 计算3天前的时间戳
+                    val cutoffTime = Calendar.getInstance().apply {
+                        add(Calendar.DAY_OF_YEAR, -3)
+                    }.timeInMillis
+
+                    // 今天零点时间戳（用于跳过当天文件）
+                    val startOfToday = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+
+                    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+                    files.forEach { dirItem ->
+                        if (!dirItem.isDirectory || !shouldDeleteDir(dirItem.name)) return@forEach
+
+                        val logFiles = dirItem.listFiles()?.filter { it.isFile } ?: emptyList()
+
+                        for (logFile in logFiles) {
+                            try {
+                                val fileName = logFile.name
+                                // 提取日期部分（兼容 --- 和 --）
+                                val datePart = when {
+                                    fileName.contains("---") -> fileName.substringAfterLast("---").substringBefore(".txt")
+                                    fileName.contains("--") -> fileName.substringAfterLast("--").substringBefore(".txt")
+                                    else -> null
                                 }
+
+                                if (datePart.isNullOrEmpty()) {
+                                    Loge.w("清理过期数据 无法解析日期，跳过: $fileName")
+                                    continue
+                                }
+
+                                val fileDate = dateFormat.parse(datePart) ?: continue
+                                val fileTime = fileDate.time
+
+                                // 跳过当天文件（正在写入）
+                                if (fileTime >= startOfToday) {
+                                    Loge.d("清理过期数据 当天文件，保留: $fileName")
+                                    continue
+                                }
+
+                                val isExpired = fileTime < cutoffTime
+                                val isDbFile = fileName.contains("-db-", ignoreCase = true)
+
+                                if (isExpired || isDbFile) {
+                                    Loge.d("清理过期数据 删除文件: $fileName (日期=$datePart, 过期=$isExpired, DB=$isDbFile)")
+                                    if (logFile.delete()) {
+                                        Loge.d("清理过期数据 删除成功: $fileName")
+
+                                    } else {
+                                        Loge.w("清理过期数据 删除失败: $fileName")
+                                    }
+                                } else {
+                                    Loge.d("清理过期数据 保留文件: $fileName")
+                                }
+                            } catch (e: Exception) {
+                                Loge.e("清理过期数据 处理文件异常: ${logFile.name}, ${e.message}")
                             }
                         }
                     }
                 }
+            } catch (e: Exception) {
+                Loge.e("清理任务异常: ${e.message}")
+            } finally {
+                DatabaseManager.insertLog(AppUtils.getContext(), LogEntity().apply {
+                    msg = "删除日志文件finally"
+                    time = AppUtils.getDateYMDHMS()
+                })
             }
-        } catch (e: Exception) {
-            // 处理异常（如日志记录）
-            Loge.d("清理非七天内数据开始 catch ${e.message}")
         }
-//        }
     }
 
     // 判断是否该文件目录

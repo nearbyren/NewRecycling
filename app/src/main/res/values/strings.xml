@@ -12,4 +12,11 @@
     <string name="str_lattice3_init">子母格口</string>
     <string name="str_lattice_type_init">请选择出厂回收箱类型</string>
     <string name="str_dealer_id_text">请输入经销商id(输入后请对准经销商id是否准确)</string>
+    <string name="signal_no_service">无服务</string>
+    <string name="signal_very_poor">极差</string>
+    <string name="signal_poor">差</string>
+    <string name="signal_normal">一般</string>
+    <string name="signal_good">好</string>
+    <string name="signal_unknown">未知</string>
+
 </resources>

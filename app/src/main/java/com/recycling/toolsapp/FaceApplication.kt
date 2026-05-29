@@ -118,10 +118,8 @@ dp: 55.555573
             ioScope.launch {
                 delay(500)
                 TaskLightsScheduler.cancelAllTasks(AppUtils.getContext())
-//                TaskRestartScheduler.scheduleDaily(this@FaceApplication, "06:30","restart")
                 TaskRestartScheduler.scheduleTimeRange(this@FaceApplication,"03:00","03:10" ,"restart")
-                TaskDelScheduler.scheduleDaily(this@FaceApplication, "21:30", "del")
-                TaskDelDateScheduler.scheduleDaily(this@FaceApplication, "21:35", "delDate")
+                TaskDelDateScheduler.scheduleDaily(this@FaceApplication, "23:00", "delDate")
             }
         }
     }

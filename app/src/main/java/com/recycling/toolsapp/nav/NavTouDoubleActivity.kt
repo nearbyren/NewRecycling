@@ -178,14 +178,14 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         SnackbarUtils.show(
                             activity = this@NavTouDoubleActivity, message = "网络已经断开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
                         )
-                        binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao0)
-                        binding.tvNetwork.text = "网络已经断开"
+                        binding.acivSignal.setBackgroundResource(R.drawable.ic_signal_0_no_service)
+                        binding.tvNetwork.text = "网络断开"
                     } else if (it.isConnectionRestored) {
                         SnackbarUtils.show(
                             activity = this@NavTouDoubleActivity, message = "网络连接已恢复", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
                         )
-                        binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao1)
-                        binding.tvNetwork.text = "网络已经连接"
+                        binding.acivSignal.setBackgroundResource(R.drawable.ic_signal_4_good)
+                        binding.tvNetwork.text = "网络正常"
                     }
                     // 消费事件后清除
                     networkStateManager.clearStateChangeEvent()
@@ -206,13 +206,6 @@ class NavTouDoubleActivity : AppCompatActivity() {
         if (initSocket) {
             initSocket()
         }
-    }
-    private var downTime = 0L
-    private fun initVerSn(text: String? = "0") {
-        val initSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""]
-        val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION]
-        binding.tvSn.text = "$initSn"
-        binding.tvVersion.text = "版本号：$text-v${AppUtils.getVersionName()}-v${gversion}"
         binding.tvSn.setOnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -222,7 +215,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
                 MotionEvent.ACTION_UP -> {
                     if (System.currentTimeMillis() - downTime >= 10000) {
-                        // 执行5秒长按回调
+                        // 执行10秒长按回调
                         toGoDebug()
                         true // 消耗事件
                     } else false
@@ -231,6 +224,16 @@ class NavTouDoubleActivity : AppCompatActivity() {
                 else -> false
             }
         }
+    }
+    private var downTime = 0L
+    private var serviceText = ""
+    private fun initVerSn(text: String? = "0") {
+        val initSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""]
+        val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION]
+        binding.tvSn.text = "$initSn"
+        binding.tvVersion.text = "版本号：v${AppUtils.getVersionName()}-v${gversion}"
+        binding.acivSignal
+
     }
 
     private fun toGoDebug() {
@@ -283,15 +286,10 @@ class NavTouDoubleActivity : AppCompatActivity() {
         // 原始分析结果
         val analysis = signalAnalyzer.analyzeSignalStrength(signalStrength)
         Loge.d("信号读取 分析结果: ${analysis.description}")
-        val levelDesc = when (analysis.signalLevel) {
-            0 -> "无服务"
-            1 -> "极差"
-            2 -> "差"
-            3 -> "一般"
-            4 -> "好"
-            else -> "未知"
-        }
-        binding.tvSignal.text = "$levelDesc"
+        val status = SignalStatus.fromValue(analysis.signalLevel)
+        binding.acivSignal.setImageResource(status.iconRes)
+        val text = getString(status.labelRes)
+        binding.tvSignal.text =  "$serviceText $text"
         Loge.d("信号读取 信号质量: ${analysis.quality.displayName}")
         val signal = EnumSignal.getDescByCode(analysis.quality.displayName)
 
@@ -380,12 +378,12 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 已断开连接：${Thread.currentThread().name} | state $")
                         cabinetVM.isDistClient = true
                         socketToast(true)
-                        initVerSn("d")
+                        initVerSn("服务断开")
                     }
 
                     CabinetVM.ConnectionState.CONNECTING -> {
                         Loge.e("出厂配置 initSocket NavTouDoubleActivity addSocketResultListener2 监 正在连接：${Thread.currentThread().name} | state $")
-                        initVerSn("i")
+                        initVerSn("服务连接中")
                     }
 
                     CabinetVM.ConnectionState.CONNECTED -> {
@@ -394,7 +392,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
                         val result = loginCount + 1
                         SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, result)
                         cabinetVM.toGoCmdLogin(result)//监听连接成功登录
-                        initVerSn("c")
+                        initVerSn("服务连接成功")
                     }
                 }
             }
@@ -404,7 +402,7 @@ class NavTouDoubleActivity : AppCompatActivity() {
         lifecycleScope.launch {
             cabinetVM?.incoming?.collect { bytes ->
                 socketToast(false)
-                initVerSn("s")
+                initVerSn("服务已连接")
                 Loge.e("出厂配置 initSocket 流程 recv: ${String(bytes)}")
                 val json = String(bytes)
                 val cmd = CommandParser.parseCommand(json)

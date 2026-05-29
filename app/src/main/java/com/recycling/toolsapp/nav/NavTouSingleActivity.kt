@@ -29,6 +29,7 @@ import com.recycling.toolsapp.FaceApplication
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.NavTouSingleActivityBinding
 import com.recycling.toolsapp.fitsystembar.showSystemBar
+import com.recycling.toolsapp.http.TaskDelDateScheduler
 import com.recycling.toolsapp.model.LogEntity
 import com.recycling.toolsapp.socket.AdminOverflowBean
 import com.recycling.toolsapp.socket.ConfigBean
@@ -120,7 +121,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         // 观察网络状态
         lifecycleScope.launch {
             networkStateManager.networkState.collect { state ->
-                AsyncBatchLogger.logBusiness("net","$state")
+                AsyncBatchLogger.logBusiness("net", "$state")
                 when (state) {
                     NetworkStateManager.NetworkState.Unknown -> {
                         Loge.e("网络测试 检测网络中...")
@@ -172,14 +173,14 @@ class NavTouSingleActivity : AppCompatActivity() {
                         SnackbarUtils.show(
                             activity = this@NavTouSingleActivity, message = "网络已经断开", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
                         )
-                        binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao0)
-                        binding.tvNetwork.text = "网络已经断开"
+                        binding.acivSignal.setBackgroundResource(R.drawable.ic_signal_0_no_service)
+                        binding.tvNetwork.text = "网络断开"
                     } else if (it.isConnectionRestored) {
                         SnackbarUtils.show(
                             activity = this@NavTouSingleActivity, message = "网络连接已恢复", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
                         )
-                        binding.acivSignal.setBackgroundResource(R.drawable.ic_xinhao1)
-                        binding.tvNetwork.text = "网络已经连接"
+                        binding.acivSignal.setBackgroundResource(R.drawable.ic_signal_4_good)
+                        binding.tvNetwork.text = "网络正常"
                     }
                     // 消费事件后清除
                     networkStateManager.clearStateChangeEvent()
@@ -201,14 +202,6 @@ class NavTouSingleActivity : AppCompatActivity() {
             Loge.e("测试我来了 刷新背景图 initSocket")
             initSocket()
         }
-    }
-
-    private var downTime = 0L
-    private fun initVerSn(text: String? = "0") {
-        val initSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""]
-        val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION]
-        binding.tvSn.text = "$initSn"
-        binding.tvVersion.text = "版本号：$text-v${AppUtils.getVersionName()}-v${gversion}"
         binding.tvSn.setOnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -218,7 +211,7 @@ class NavTouSingleActivity : AppCompatActivity() {
 
                 MotionEvent.ACTION_UP -> {
                     if (System.currentTimeMillis() - downTime >= 10000) {
-                        // 执行5秒长按回调
+                        // 执行10秒长按回调
                         toGoDebug()
                         true // 消耗事件
                     } else false
@@ -227,6 +220,17 @@ class NavTouSingleActivity : AppCompatActivity() {
                 else -> false
             }
         }
+    }
+
+    private var downTime = 0L
+    private var serviceText = ""
+    private fun initVerSn(text: String = "") {
+        val initSn = SPreUtil[AppUtils.getContext(), SPreUtil.init_sn, ""]
+        val gversion = SPreUtil[AppUtils.getContext(), SPreUtil.gversion, CmdCode.GJ_VERSION]
+        binding.tvSn.text = "$initSn"
+        binding.tvVersion.text = "版本号：v${AppUtils.getVersionName()}-v${gversion}"
+        serviceText = text
+
     }
 
     private fun toGoDebug() {
@@ -280,15 +284,10 @@ class NavTouSingleActivity : AppCompatActivity() {
         // 原始分析结果
         val analysis = signalAnalyzer.analyzeSignalStrength(signalStrength)
         Loge.d("信号读取 分析结果: ${analysis.description}")
-        val levelDesc = when (analysis.signalLevel) {
-            0 -> "无服务"
-            1 -> "极差"
-            2 -> "差"
-            3 -> "一般"
-            4 -> "好"
-            else -> "未知"
-        }
-        binding.tvSignal.text = "$levelDesc"
+        val status = SignalStatus.fromValue(analysis.signalLevel)
+        binding.acivSignal.setImageResource(status.iconRes)
+        val text = getString(status.labelRes)
+        binding.tvSignal.text =  "$serviceText $text"
         Loge.d("信号读取 信号质量: ${analysis.quality.displayName}")
         val signal = EnumSignal.getDescByCode(analysis.quality.displayName)
 
@@ -370,7 +369,7 @@ class NavTouSingleActivity : AppCompatActivity() {
             cabinetVM.initConfigSocket(host!!, port)
             cabinetVM.state.collect {
                 Loge.e("出厂配置 initSocket 连接状态: $it | ${Thread.currentThread().name}")
-                AsyncBatchLogger.logBusiness("socket","状态：$it")
+                AsyncBatchLogger.logBusiness("socket", "状态：$it")
                 when (it) {
                     CabinetVM.ConnectionState.START -> {
                         Loge.e("出厂配置 initSocket NavTouSingleActivity addSocketResultListener2 监 开始：${Thread.currentThread().name} | state $")
@@ -380,13 +379,13 @@ class NavTouSingleActivity : AppCompatActivity() {
                         Loge.e("出厂配置 initSocket NavTouSingleActivity addSocketResultListener2 监 已断开连接：${Thread.currentThread().name} | state $")
                         cabinetVM.isDistClient = true
                         socketToast(true)
-                        initVerSn("d")
+                        initVerSn("服务断开")
 
                     }
 
                     CabinetVM.ConnectionState.CONNECTING -> {
                         Loge.e("出厂配置 initSocket NavTouSingleActivity addSocketResultListener2 监 正在连接：${Thread.currentThread().name} | state $")
-                        initVerSn("i")
+                        initVerSn("服务连接中")
                     }
 
                     CabinetVM.ConnectionState.CONNECTED -> {
@@ -395,7 +394,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                         val result = loginCount + 1
                         SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, result)
                         cabinetVM.toGoCmdLogin(result)//监听连接成功登录
-                        initVerSn("c")
+                        initVerSn("服务连接成功")
 
                     }
                 }
@@ -406,7 +405,7 @@ class NavTouSingleActivity : AppCompatActivity() {
         lifecycleScope.launch {
             cabinetVM.incoming?.collect { bytes ->
                 socketToast(false)
-                initVerSn("s")
+                initVerSn("服务已连接")
                 Loge.e("出厂配置 initSocket 流程 recv: ${String(bytes)}")
                 val json = String(bytes)
                 val cmd = CommandParser.parseCommand(json)
@@ -422,7 +421,7 @@ class NavTouSingleActivity : AppCompatActivity() {
                             cabinetVM.saveSocketInitData(loginModel, false)
                         } else {
                             //这里继续延续登录
-                            AsyncBatchLogger.logBusiness("socket","登录失败${loginModel.retCode}")
+                            AsyncBatchLogger.logBusiness("socket", "登录失败${loginModel.retCode}")
                             val loginCount = SPreUtil[AppUtils.getContext(), SPreUtil.loginCount, 0] as Int
                             val newCount = loginCount + 1
                             SPreUtil.put(AppUtils.getContext(), SPreUtil.loginCount, newCount)
@@ -511,12 +510,12 @@ class NavTouSingleActivity : AppCompatActivity() {
                                 cabinetVM.stopAll()
 
                                 // 4. 确保日志写入磁盘
-                                AsyncBatchLogger.logBusiness("socket","收到指令重启")
+                                AsyncBatchLogger.logBusiness("socket", "收到指令重启")
                                 // 5. 正式重启
 //                                OSUtils.restartAppFrontDesk(this@NavTouSingleActivity)
                                 OSUtils.fullRestart(this@NavTouSingleActivity)
                             }
-                        }
+                         }
                     }
 
                     CmdValue.CMD_UPLOAD_LOG -> {
@@ -614,9 +613,7 @@ class NavTouSingleActivity : AppCompatActivity() {
             startActivity(intent)
         } catch (e: Throwable) {
             e.printStackTrace()
-            SnackbarUtils.show(
-                activity = this@NavTouSingleActivity, message = "安装失败", duration = Snackbar.LENGTH_LONG, textColor = Color.WHITE, textAlignment = View.TEXT_ALIGNMENT_CENTER, horizontalCenter = true, position = SnackbarUtils.Position.CENTER
-            )
+
         }
     }
 

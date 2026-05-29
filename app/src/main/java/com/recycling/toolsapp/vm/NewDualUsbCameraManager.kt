@@ -11,7 +11,9 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ImageFormat
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.SurfaceTexture
+import android.graphics.YuvImage
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
@@ -21,6 +23,7 @@ import android.hardware.camera2.CaptureRequest
 import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
+import android.media.Image
 import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
@@ -30,9 +33,11 @@ import android.view.TextureView
 import com.blankj.utilcode.util.ToastUtils
 import com.serial.port.utils.AppUtils
 import com.serial.port.utils.AsyncBatchLogger
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
@@ -44,9 +49,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
 class NewDualUsbCameraManager(context: Context) {
@@ -67,17 +74,52 @@ class NewDualUsbCameraManager(context: Context) {
 
     companion object {
         const val TAG = "DualUsbCamera"
+        /**捕获宽度*/
         const val PREVIEW_WIDTH = 640
+        /**捕获高度*/
         const val PREVIEW_HEIGHT = 480
+
+        /**捕获宽度*/
+        const val CAPTURE_WIDTH = 640
+        /**捕获高度*/
+        const val CAPTURE_HEIGHT = 480
+
+        /**捕获宽度*/
+//        const val CAPTURE_WIDTH = 1280
+        /**捕获高度*/
+//        const val CAPTURE_HEIGHT = 720
+        /**捕获宽度*/
+//        const val CAPTURE_WIDTH = 1920
+        /**捕获高度*/
+//        const val CAPTURE_HEIGHT = 1080
+
+        const val formatJpg = ImageFormat.JPEG
+        const val formatYuv = ImageFormat.YUV_420_888
+        /**预览 MAX 图像*/
         const val PREVIEW_MAX_IMAGES = 2
+        /**捕捉JPEG画质*/
         const val CAPTURE_JPEG_QUALITY = 90
+        /**捕获超时MS*/
         const val PREVIEW_RESUME_DELAY_MS = 800L
+        /**捕获超时MS*/
         const val CAPTURE_TIMEOUT_MS = 8000L
+
+        /**顺序捕获延迟 MS*/
         const val SEQUENTIAL_CAPTURE_DELAY_MS = 1000L
+        /**水印文字大小比*/
         const val WATERMARK_TEXT_SIZE_RATIO = 40f
+        /**水印邊距比率*/
         const val WATERMARK_MARGIN_RATIO = 0.02f
+        /**摄像机恢复延迟 MS*/
         const val CAMERA_RECOVER_DELAY_MS = 2000L
+        /**摄像机恢复最大计数*/
         const val CAMERA_RECOVER_MAX_COUNT = 3
+        /**摄像机闭合延迟毫秒*/
+        const val CAMERA_CLOSE_DELAY_MS = 2500L
+        /**摄像机开启超时 MS*/
+        const val CAMERA_OPEN_TIMEOUT_MS = 8000L
+
+
     }
 
     fun interface CameraErrorListener {
@@ -548,9 +590,25 @@ class NewDualUsbCameraManager(context: Context) {
         val externalIds = mutableListOf<String>()
         try {
             for (id in manager.cameraIdList) {
-                if (manager.getCameraCharacteristics(id).get(CameraCharacteristics.LENS_FACING) != null) {
+                val characteristics = manager.getCameraCharacteristics(id)
+                val lensFacing = characteristics.get(CameraCharacteristics.LENS_FACING)
+
+                if (lensFacing != null) {
                     externalIds.add(id)
                 }
+//                println(
+//
+//                    "supportedId $id"
+//                )
+//                val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+//                val sizes = map?.getOutputSizes(SurfaceTexture::class.java).orEmpty()
+//
+//                for (size in sizes) {
+//                    println(
+//
+//                        "supportedSizes $id:${size.width}|${size.height}"
+//                    )
+//                }
             }
         } catch (e: Exception) {
             AsyncBatchLogger.logBusiness("业务流", "获取摄像头异常: ${e.message}")
@@ -580,9 +638,9 @@ class NewDualUsbCameraManager(context: Context) {
 
         try {
             holder.reader = ImageReader.newInstance(
-                PREVIEW_WIDTH,
-                PREVIEW_HEIGHT,
-                ImageFormat.JPEG,
+                CAPTURE_WIDTH,
+                CAPTURE_HEIGHT,
+                formatJpg,
                 PREVIEW_MAX_IMAGES
             )
 
@@ -775,5 +833,361 @@ class NewDualUsbCameraManager(context: Context) {
                 }
             }
         }
+    }
+    ////////////////////////////////////////////////////单开拍照//////////////////////////////////////////////////
+
+    private val cameraShotMutex = Mutex()
+
+
+    private class SingleShotCamera(
+        val camera: CameraDevice,
+        val closed: CompletableDeferred<Unit>,
+    )
+
+    suspend fun takePicturesSequentialOpenClose(requests: List<PhotoRequest>): List<File?> {
+        return cameraShotMutex.withLock {
+            val results = mutableListOf<File?>()
+
+            for (req in requests) {
+                val file = withTimeoutOrNull(
+                    CAMERA_OPEN_TIMEOUT_MS + CAPTURE_TIMEOUT_MS + CAMERA_CLOSE_DELAY_MS + 8000L
+                ) {
+                    runCatching {
+                        openCameraTakePictureClose(req)
+                    }.onFailure {
+                        AsyncBatchLogger.logBusiness(
+                            "业务流",
+                            "[${req.cameraId}] 打开拍照关闭异常: ${it.message}"
+                        )
+                    }.getOrNull()
+                }
+
+                results.add(file)
+                delay(SEQUENTIAL_CAPTURE_DELAY_MS)
+            }
+
+            results
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun openCameraTakePictureClose(req: PhotoRequest): File? {
+        val thread = HandlerThread("Shot-${req.cameraId}").apply { start() }
+        val handler = Handler(thread.looper)
+
+        var singleShotCamera: SingleShotCamera? = null
+        var session: CameraCaptureSession? = null
+        var reader: ImageReader? = null
+
+        return try {
+            singleShotCamera = openCameraOnce(req.cameraId, handler) ?: return null
+
+            val camera = singleShotCamera.camera
+            val captureSize = chooseCaptureSize(req.cameraId, ImageFormat.YUV_420_888)
+
+            AsyncBatchLogger.logBusiness(
+                "业务流",
+                "[${req.cameraId}] 准备拍照 ${captureSize.width}x${captureSize.height}"
+            )
+
+            reader = ImageReader.newInstance(
+                captureSize.width,
+                captureSize.height,
+                formatYuv,
+                PREVIEW_MAX_IMAGES
+            )
+
+            session = createCaptureOnlySession(camera, reader.surface, handler) ?: return null
+
+            val bytes = captureOnceToBytes(
+                cameraId = req.cameraId,
+                device = camera,
+                session = session,
+                reader = reader,
+                handler = handler
+            ) ?: return null
+
+            withContext(Dispatchers.IO + NonCancellable) {
+                saveCaptureBytes(req, bytes)
+            }
+        } finally {
+            closeSingleShotResources(
+                cameraId = req.cameraId,
+                singleShotCamera = singleShotCamera,
+                session = session,
+                reader = reader,
+                thread = thread
+            )
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun openCameraOnce(cameraId: String, handler: Handler): SingleShotCamera? =
+        suspendCancellableCoroutine { cont ->
+            val closed = CompletableDeferred<Unit>()
+
+            try {
+                manager.openCamera(cameraId, object : CameraDevice.StateCallback() {
+                    override fun onOpened(camera: CameraDevice) {
+                        AsyncBatchLogger.logBusiness("业务流", "摄像头[$cameraId]已打开")
+                        if (cont.isActive) cont.resume(SingleShotCamera(camera, closed))
+                    }
+
+                    override fun onDisconnected(camera: CameraDevice) {
+                        runCatching { camera.close() }
+                        AsyncBatchLogger.logBusiness("业务流", "摄像头[$cameraId]打开后断开")
+                        if (cont.isActive) cont.resume(null)
+                    }
+
+                    override fun onError(camera: CameraDevice, error: Int) {
+                        runCatching { camera.close() }
+                        AsyncBatchLogger.logBusiness("业务流", "摄像头[$cameraId]打开失败 error=$error")
+                        if (cont.isActive) cont.resume(null)
+                    }
+
+                    override fun onClosed(camera: CameraDevice) {
+                        AsyncBatchLogger.logBusiness("业务流", "摄像头[$cameraId] onClosed")
+                        closed.complete(Unit)
+                    }
+                }, handler)
+            } catch (e: Exception) {
+                AsyncBatchLogger.logBusiness("业务流", "摄像头[$cameraId]打开异常: ${e.message}")
+                if (cont.isActive) cont.resume(null)
+            }
+        }
+
+    private suspend fun createCaptureOnlySession(camera: CameraDevice, surface: Surface, handler: Handler): CameraCaptureSession? =
+        suspendCancellableCoroutine { cont ->
+            try {
+                camera.createCaptureSession(
+                    listOf(surface),
+                    object : CameraCaptureSession.StateCallback() {
+                        override fun onConfigured(session: CameraCaptureSession) {
+                            AsyncBatchLogger.logBusiness("业务流", "摄像头[${camera.id}]拍照会话创建成功")
+                            if (cont.isActive) cont.resume(session)
+                        }
+
+                        override fun onConfigureFailed(session: CameraCaptureSession) {
+                            AsyncBatchLogger.logBusiness("业务流", "摄像头[${camera.id}]拍照会话创建失败")
+                            runCatching { session.close() }
+                            if (cont.isActive) cont.resume(null)
+                        }
+                    },
+                    handler
+                )
+            } catch (e: Exception) {
+                AsyncBatchLogger.logBusiness("业务流", "创建拍照会话异常: ${e.message}")
+                if (cont.isActive) cont.resume(null)
+            }
+        }
+
+    private suspend fun captureOnceToBytes(cameraId: String, device: CameraDevice, session: CameraCaptureSession, reader: ImageReader, handler: Handler): ByteArray? =
+        suspendCancellableCoroutine { cont ->
+            val handled = AtomicBoolean(false)
+
+            reader.setOnImageAvailableListener({ imageReader ->
+                if (!handled.compareAndSet(false, true)) {
+                    imageReader.acquireLatestImage()?.close()
+                    return@setOnImageAvailableListener
+                }
+
+                imageReader.setOnImageAvailableListener(null, null)
+
+                val image = imageReader.acquireLatestImage()
+                if (image == null) {
+                    AsyncBatchLogger.logBusiness("业务流", "[$cameraId] acquireLatestImage为空")
+                    if (cont.isActive) cont.resume(null)
+                    return@setOnImageAvailableListener
+                }
+
+                val bytes = try {
+                    AsyncBatchLogger.logBusiness(
+                        "业务流",
+                        "[$cameraId] 收到图片 ${image.width}x${image.height}"
+                    )
+//                val buffer = image.planes[0].buffer
+//                ByteArray(buffer.remaining()).also { buffer.get(it) }
+                    yuv420ToJpegBytes(image, CAPTURE_JPEG_QUALITY)
+                } catch (e: Exception) {
+                    AsyncBatchLogger.logBusiness("业务流", "[$cameraId] 图片转换异常: ${e.message}")
+                    null
+                } finally {
+                    image.close()
+                }
+
+                if (cont.isActive) {
+                    cont.resume(bytes)
+                }
+            }, handler)
+
+            cont.invokeOnCancellation {
+                reader.setOnImageAvailableListener(null, null)
+            }
+
+            try {
+                val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
+                    addTarget(reader.surface)
+                    set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
+                }
+
+                session.capture(builder.build(), null, handler)
+            } catch (e: Exception) {
+                reader.setOnImageAvailableListener(null, null)
+                AsyncBatchLogger.logBusiness("业务流", "[$cameraId] capture异常: ${e.message}")
+                if (cont.isActive) cont.resume(null)
+            }
+        }
+
+    private fun saveCaptureBytes(req: PhotoRequest, bytes: ByteArray): File? {
+        AsyncBatchLogger.logBusiness(
+            "业务流",
+            "[${req.cameraId}] 图片压缩完成 bytes=${bytes.size}"
+        )
+
+        val text = when (req.remoteOpenType) {
+            1 -> when (req.switchType) {
+                1 -> "投递前"
+                0 -> "投递后"
+                else -> "远程拍照"
+            }
+
+            2 -> when (req.switchType) {
+                1 -> "清运前"
+                0 -> "清运后"
+                else -> "远程拍照"
+            }
+
+            else -> "远程拍照"
+        }
+
+        val watermarkText = "$text-${req.inOut}-${AppUtils.getDateYMDHMS2()}"
+        val finalPath = saveImageWithWatermarkSync(bytes, req.saveFile, watermarkText)
+        val file = finalPath?.let { File(it) }
+
+        return if (file != null && file.exists() && file.length() > 0) {
+            AsyncBatchLogger.logBusiness(
+                "业务流",
+                "拍照完成[${req.cameraId}] path=${file.absolutePath} size=${file.length()}"
+            )
+            cameraErrorListener?.cameraStatus(true, req.cameraId, "拍照完成")
+            file
+        } else {
+            AsyncBatchLogger.logBusiness("业务流", "[${req.cameraId}] 图片保存失败")
+            cameraErrorListener?.cameraStatus(false, req.cameraId, "图片保存失败")
+            null
+        }
+    }
+
+    private suspend fun closeSingleShotResources(
+        cameraId: String,
+        singleShotCamera: SingleShotCamera?,
+        session: CameraCaptureSession?,
+        reader: ImageReader?,
+        thread: HandlerThread,
+    ) {
+        runCatching { reader?.setOnImageAvailableListener(null, null) }
+        runCatching { session?.stopRepeating() }
+        runCatching { session?.abortCaptures() }
+        runCatching { session?.close() }
+
+        val closed = singleShotCamera?.closed
+        runCatching { singleShotCamera?.camera?.close() }
+
+        if (closed != null) {
+            withTimeoutOrNull(2000L) {
+                closed.await()
+            }
+        } else {
+            delay(500L)
+        }
+
+        runCatching { reader?.close() }
+
+        thread.quitSafely()
+
+        withContext(Dispatchers.IO) {
+            runCatching { thread.join(2000L) }
+        }
+
+        AsyncBatchLogger.logBusiness("业务流", "摄像头[$cameraId] 已关闭")
+        delay(CAMERA_CLOSE_DELAY_MS)
+    }
+
+    private fun chooseCaptureSize(cameraId: String, format: Int): Size {
+        return try {
+            val characteristics = manager.getCameraCharacteristics(cameraId)
+            val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+
+            val sizes = map?.getOutputSizes(format)
+                ?: map?.getOutputSizes(ImageFormat.JPEG)
+                ?: emptyArray()
+
+            sizes.firstOrNull {
+                it.width == CAPTURE_WIDTH && it.height == CAPTURE_HEIGHT
+            } ?: sizes
+                .filter { it.width <= CAPTURE_WIDTH && it.height <= CAPTURE_HEIGHT }
+                .maxByOrNull { it.width * it.height }
+            ?: sizes.maxByOrNull { it.width * it.height }
+            ?: Size(PREVIEW_WIDTH, PREVIEW_HEIGHT)
+        } catch (e: Exception) {
+            AsyncBatchLogger.logBusiness("业务流", "选择拍照分辨率异常: ${e.message}")
+            Size(PREVIEW_WIDTH, PREVIEW_HEIGHT)
+        }
+    }
+
+    private fun yuv420ToJpegBytes(image: Image, quality: Int): ByteArray {
+        val width = image.width
+        val height = image.height
+        val planes = image.planes
+
+        val yPlane = planes[0]
+        val uPlane = planes[1]
+        val vPlane = planes[2]
+
+        val nv21 = ByteArray(width * height * 3 / 2)
+
+        val yBuffer = yPlane.buffer
+        val yRowStride = yPlane.rowStride
+
+        var offset = 0
+        for (row in 0 until height) {
+            yBuffer.position(row * yRowStride)
+            yBuffer.get(nv21, offset, width)
+            offset += width
+        }
+
+        val uBuffer = uPlane.buffer
+        val vBuffer = vPlane.buffer
+        val uRowStride = uPlane.rowStride
+        val vRowStride = vPlane.rowStride
+        val uPixelStride = uPlane.pixelStride
+        val vPixelStride = vPlane.pixelStride
+
+        val chromaHeight = height / 2
+        val chromaWidth = width / 2
+
+        for (row in 0 until chromaHeight) {
+            for (col in 0 until chromaWidth) {
+                val vIndex = row * vRowStride + col * vPixelStride
+                val uIndex = row * uRowStride + col * uPixelStride
+
+                if (vIndex < vBuffer.limit() && uIndex < uBuffer.limit() && offset + 1 < nv21.size) {
+                    nv21[offset++] = vBuffer.get(vIndex)
+                    nv21[offset++] = uBuffer.get(uIndex)
+                }
+            }
+        }
+
+        val yuvImage = YuvImage(
+            nv21,
+            ImageFormat.NV21,
+            width,
+            height,
+            null
+        )
+
+        val out = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(Rect(0, 0, width, height), quality, out)
+        return out.toByteArray()
     }
 }

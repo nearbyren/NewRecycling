@@ -1,12 +1,20 @@
 package com.recycling.toolsapp.nav
 
 import android.os.Bundle
+import android.os.Environment
 import androidx.fragment.app.viewModels
 import com.recycling.toolsapp.R
 import com.recycling.toolsapp.databinding.NavFragmentCameraInBinding
 import com.recycling.toolsapp.fitsystembar.base.bind.BaseBindLazyTimeFragment
 import com.recycling.toolsapp.vm.CabinetVM
 import com.recycling.toolsapp.vm.NewDualUsbCameraManager
+import com.serial.port.utils.AppUtils
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.io.File
+import kotlin.random.Random
 
 
 /***
@@ -32,12 +40,79 @@ class NavCameraInFragment : BaseBindLazyTimeFragment<NavFragmentCameraInBinding>
         binding.actvReturn.setOnClickListener {
             super.performCloseAction()
         }
-        cabinetVM.cameraManagerNew.autoStartUsbCameras(false, binding.textureIn!!, null, delayMs = 3000, listener = cameraErrorListener)
+//        cabinetVM.cameraManagerNew.autoStartUsbCameras(false, binding.textureIn!!, null, delayMs = 3000, listener = cameraErrorListener)
+        cabinetVM.cameraManagerNew.autoStartUsbCameras(true, binding.textureIn!!, binding.textureOut!!, delayMs = 3000, listener = cameraErrorListener)
+        binding.actvInCamera.setOnClickListener {
+            cabinetVM.ioScope.launch {
+//                togoTask()
+                timingPhoto()
+            }
+        }
     }
+    var taskPhoto: Job? = null
+    fun timingPhoto() {
+        taskPhoto = cabinetVM.ioScope.launch {
+            while (isActive) {
+                println("验证持续拍照 循环")
+                delay(10000)
+//                togoTask()
+                togoTask2()
+            }
+        }
+    }
+    suspend fun togoTask2() {
+        val ids = cabinetVM.cameraManagerNew.getExternalCameraIds()
+        val requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
+
+        val tran = generateRandomDigitString()
+        val nameIn = "10i${tran}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+        val dirIn = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+        if (!dirIn.exists()) dirIn.mkdirs()
+        val fileIn = File(dirIn, nameIn)
+        requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], 1, "内", fileIn, 1))
+
+        val nameOut = "22o${tran}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+        val dirOut = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+        if (!dirOut.exists()) dirOut.mkdirs()
+        val fileOut = File(dirOut, nameOut)
+        requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], 1, "外", fileOut, 1))
+        val results = cabinetVM.cameraManagerNew.takePicturesParallel(requests)
+        println("验证持续拍照 执行拍照 结束 ${results.size}")
+    }
+    fun generateRandomDigitString(length: Int = 24): String {
+        return StringBuilder(length).apply {
+            repeat(length) {
+                // 生成 0-9 的随机数字并追加
+                append(Random.nextInt(10))
+            }
+        }.toString()
+    }
+    suspend fun togoTask() {
+        println("验证持续拍照 执行拍照 开始")
+        val ids = cabinetVM.cameraManagerNew.getExternalCameraIds()
+        val requests = mutableListOf<NewDualUsbCameraManager.PhotoRequest>()
+        val tran = generateRandomDigitString()
+        val nameIn = "10i${tran}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+        val dirIn = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+        if (!dirIn.exists()) dirIn.mkdirs()
+        val fileIn = File(dirIn, nameIn)
+        requests.add(NewDualUsbCameraManager.PhotoRequest(ids[0], 1, "内", fileIn, 1))
+
+        val nameOut = "22o${tran}-${AppUtils.getDateHMS2()}---${AppUtils.getDateYMD()}.jpg"
+        val dirOut = File(AppUtils.getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "action")
+        if (!dirOut.exists()) dirOut.mkdirs()
+        val fileOut = File(dirOut, nameOut)
+        requests.add(NewDualUsbCameraManager.PhotoRequest(ids[1], 1, "外", fileOut, 1))
+        cabinetVM.cameraManagerNew.takePicturesSequentialOpenClose(requests)
+        println("验证持续拍照 执行拍照 结束")
+    }
+
 
     override fun onDestroy() {
         super.onDestroy()
         cabinetVM.cameraManagerNew.destroy()
+        taskPhoto?.cancel()
+        taskPhoto = null
     }
 }
 
