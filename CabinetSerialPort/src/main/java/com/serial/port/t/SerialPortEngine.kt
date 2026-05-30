@@ -7,23 +7,26 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
-import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
-// 将原本 SerialVM 的逻辑搬迁到单例中
+/**
+ * 串口：独立读线程 + 单协程事务队列 + CountDownLatch 等待回包。
+ * 读线程与事务线程通过 latch 同步，避免 CompletableDeferred 与帧被半包逻辑误删。
+ */
 object SerialPortEngine {
     enum class PortStatus { IDLE, CONNECTING, CONNECTED, ERROR }
 
@@ -34,47 +37,82 @@ object SerialPortEngine {
     private var fis: FileInputStream? = null
     private var fos: FileOutputStream? = null
 
-    private val sendMutex = Mutex()
-    private var responseWaiter: CompletableDeferred<ByteArray>? = null
-    private val pendingRequests = ConcurrentHashMap<Int, CompletableDeferred<ByteArray>>()
+    private val requestSeq = AtomicLong(0)
+    private val responseLock = Any()
+
+    @Volatile
+    private var activeLatch: CountDownLatch? = null
+
+    @Volatile
+    private var activeExpectedCmd: Int = -1
+
+    @Volatile
+    private var activeResponse: ByteArray? = null
+
+    @Volatile
+    private var activeSeq: Long = -1L
+
+    private data class SerialTransaction(
+        val frame: ByteArray,
+        val expectedCmdId: Int,
+        val timeoutMs: Long,
+        val seq: Long,
+        val result: CompletableDeferred<Result<ByteArray>>,
+    )
+
+    private val transactionChannel = Channel<SerialTransaction>(Channel.UNLIMITED)
 
     private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var readJob: Job? = null
+    private var dispatcherJob: Job? = null
 
-    // 统一的数据分发：所有的解析packet 都通过这里
     private val extractor = FrameExtractorNew { packet ->
-//        responseWaiter?.complete(packet)
-        val cmdId = packet[2].toInt() and 0xFF // 强制转为 0~255 的整数
-        // --- 关键日志 3: 打印packet 提取的 ID ---
-        val waiter = pendingRequests[cmdId]
+        val cmdId = packet[2].toInt() and 0xFF
+        synchronized(responseLock) {
+            val latch = activeLatch
+            if (latch != null && cmdId == activeExpectedCmd && activeResponse == null) {
+                activeResponse = packet
+                latch.countDown()
+                AsyncBatchLogger.log(
+                    "recv [$cmdId] seq=$activeSeq ${ByteUtils.toHexStringFastTo(packet)}",
+                    cmdId,
+                )
+            } else {
+                AsyncBatchLogger.log(
+                    "port read orphan cmd=$cmdId expect=$activeExpectedCmd seq=$activeSeq",
+                    -1,
+                )
+            }
+        }
+    }
 
-        if (waiter != null) {
-            pendingRequests.remove(cmdId)?.complete(packet)
-            AsyncBatchLogger.log(ByteUtils.toHexStringFastTo(packet), cmdId)
-        } else {
-            AsyncBatchLogger.log("port read [packet] failure！ID=$cmdId, Map not find Keys=${pendingRequests.keys()}", -1)
+    private fun ensureDispatcher() {
+        if (dispatcherJob?.isActive == true) return
+        dispatcherJob = engineScope.launch {
+            for (tx in transactionChannel) {
+                processTransaction(tx)
+            }
         }
     }
 
     fun start(path: String, baud: Int) {
-        if (isRunning.getAndSet(true)) return
-
+        if (isRunning.getAndSet(true)) {
+            ensureDispatcher()
+            return
+        }
+        ensureDispatcher()
         readJob = engineScope.launch {
             var retryDelay = 1000L
             while (isActive && isRunning.get()) {
                 _portStatus.value = PortStatus.CONNECTING
                 val success = SerialPortManagerSdk.instance.openDevice(path, baud)
-
                 if (success) {
-                    // 获取并赋值给类成员，供发送方法使用
                     fis = SerialPortManagerSdk.instance.getInputStream()
                     fos = SerialPortManagerSdk.instance.getOutputStream()
-
                     _portStatus.value = PortStatus.CONNECTED
                     retryDelay = 1000L
-
                     try {
-                        readLoop() // 调用提取出来的读取循环
+                        readLoop()
                     } catch (e: Exception) {
                         AsyncBatchLogger.log("port read interrupt: ${e.message}", -1)
                     } finally {
@@ -84,7 +122,6 @@ object SerialPortEngine {
                 } else {
                     _portStatus.value = PortStatus.ERROR
                 }
-
                 if (isRunning.get()) {
                     delay(retryDelay)
                     retryDelay = (retryDelay * 2).coerceAtMost(10000L)
@@ -93,7 +130,6 @@ object SerialPortEngine {
         }
     }
 
-    private val readBuffer = ByteArrayOutputStream(4096)
     private fun readLoop() {
         val buffer = ByteArray(4096)
         try {
@@ -101,103 +137,112 @@ object SerialPortEngine {
                 val len = fis?.read(buffer) ?: -1
                 if (len == -1) break
                 if (len > 0) {
-                    // 拷贝当前读取到的实际有效长度
-                    val validData = buffer.copyOfRange(0, len)
-                    AsyncBatchLogger.log(ByteUtils.toHexStringFastTo(validData), 0)
-                    if (validData[0] == 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
-                        //完成帧
-                        readBuffer.write(validData)
-                        extractor.push(readBuffer.toByteArray())
-                        readBuffer.reset()
-                    } else if (validData[0] == 0x9b.toByte() && validData[len - 1] != 0x9a.toByte()) {
-                        //这里是读取帧数据 帧头为9b 帧尾不为9a的  存起来
-                        readBuffer.write(validData)
-                    } else if (validData[0] != 0x9b.toByte() && validData[len - 1] == 0x9a.toByte()) {
-                        //不是帧头为9b的 不是帧尾9a 第二部分
-                        readBuffer.write(validData)
-                        extractor.push(readBuffer.toByteArray())
-                        readBuffer.reset()
-                    }
+                    val chunk = buffer.copyOfRange(0, len)
+                    AsyncBatchLogger.log(ByteUtils.toHexStringFastTo(chunk), 0)
+                    extractor.push(chunk)
                 }
             }
         } catch (e: Exception) {
             AsyncBatchLogger.log("port read reading abnormality: ${e.message}", -1)
-
         }
     }
 
-    /**
-     * 统一发送入口
-     */
-    suspend fun sendOnce(data: ByteArray, timeout: Long = 5000): Result<ByteArray> {
-        if (_portStatus.value != PortStatus.CONNECTED) return Result.failure(IOException("串口未连接"))
-        val msgId = data[2].toInt() and 0xFF // 统一 ID 取法
-        return sendMutex.withLock {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    // 1. 清除解析器内部的逻辑缓存（这步非常重要！）
-                    extractor.clear()
-                    val available = fis?.available() ?: 0
-                    if (available > 0) {
-                        val skipBuffer = ByteArray(available)
-                        fis?.read(skipBuffer) // 彻底排空旧缓冲区
-                        AsyncBatchLogger.log("read [Preprocessing] buffer residual data has been discarded: $available byte", -1)
+    /** 丢弃驱动层残留字节（上一枪迟到的回包），禁止进解析器，避免误绑到本枪 latch */
+    private fun discardInputBuffer() {
+        val available = fis?.available() ?: 0
+        if (available > 0) {
+            val buf = ByteArray(available)
+            fis?.read(buf)
+            AsyncBatchLogger.log(
+                "read discard stale $available byte before send",
+                -1,
+            )
+        }
+    }
+
+    private suspend fun processTransaction(tx: SerialTransaction) {
+        val msgId = tx.expectedCmdId
+        withContext(Dispatchers.IO) {
+            extractor.clear()
+            discardInputBuffer()
+            val latch = CountDownLatch(1)
+            synchronized(responseLock) {
+                activeExpectedCmd = msgId
+                activeLatch = latch
+                activeResponse = null
+                activeSeq = tx.seq
+            }
+            try {
+                AsyncBatchLogger.log(
+                    "send [$msgId] seq=${tx.seq} write ${ByteUtils.toHexStringFastTo(tx.frame)}",
+                    msgId,
+                )
+                fos?.write(tx.frame)
+                fos?.flush()
+                val got = latch.await(tx.timeoutMs, TimeUnit.MILLISECONDS)
+                val packet = synchronized(responseLock) { activeResponse }
+                if (got && packet != null) {
+                    AsyncBatchLogger.log("send [$msgId] seq=${tx.seq} ok", msgId)
+                    tx.result.complete(Result.success(packet))
+                } else {
+                    AsyncBatchLogger.log(
+                        "send [$msgId] seq=${tx.seq} fail: timeout got=$got hasPacket=${packet != null}",
+                        msgId,
+                    )
+                    tx.result.complete(
+                        Result.failure(TimeoutException("cmd=$msgId seq=${tx.seq} timeout=${tx.timeoutMs}ms")),
+                    )
+                }
+            } catch (e: Exception) {
+                AsyncBatchLogger.log(
+                    "send [$msgId] seq=${tx.seq} fail: ${e.javaClass.simpleName} ${e.message}",
+                    msgId,
+                )
+                tx.result.complete(Result.failure(e))
+            } finally {
+                synchronized(responseLock) {
+                    if (activeLatch === latch) {
+                        activeLatch = null
+                        activeExpectedCmd = -1
+                        activeResponse = null
+                        activeSeq = -1L
                     }
                 }
-            }
-            val waiter = CompletableDeferred<ByteArray>()
-            // 存入前清理同 ID 的旧请求（虽然有锁，但在超时重试场景下这是双保险）
-            pendingRequests.remove(msgId)?.cancel()
-//            responseWaiter = waiter
-            // 保存到待处理队列
-            pendingRequests[msgId] = waiter
-            try {
-                withContext(Dispatchers.IO) {
-                    fos?.write(data)
-                    fos?.flush()
-//                    delay(10)
-                }
-                val response = withTimeout(timeout) { waiter.await() }
-                Result.success(response)
-            } catch (e: Exception) {
-                AsyncBatchLogger.log("send [$msgId] with... ", msgId)
-                Result.failure(e)
-            } finally {
-                pendingRequests.remove(msgId)
-
+                // 不在此处 clear 解析器/抽干 fis：迟到的合法回包留给 discardInputBuffer 在下一枪开头丢掉
             }
         }
     }
 
-    /**
-     * 保留原有方法，内部改为调用 sendOnce (可选，向下兼容)
-     */
+    suspend fun sendOnce(data: ByteArray, timeout: Long = 5000): Result<ByteArray> {
+        if (_portStatus.value != PortStatus.CONNECTED) {
+            return Result.failure(IOException("串口未连接"))
+        }
+        val seq = requestSeq.incrementAndGet()
+        val result = CompletableDeferred<Result<ByteArray>>()
+        transactionChannel.send(
+            SerialTransaction(
+                frame = data,
+                expectedCmdId = data[2].toInt() and 0xFF,
+                timeoutMs = timeout,
+                seq = seq,
+                result = result,
+            ),
+        )
+        return result.await()
+    }
+
     suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 5, timeout: Long = 2000): Result<ByteArray> {
         var lastErr: Exception? = null
-        if (maxRetries > 0) {
-            repeat(maxRetries) { attempt ->
-                // 如果不是第一次发送，说明之前失败了，发送前先给一点点物理缓冲
-                if (attempt > 0) {
-                    // 给单片机和驱动一点恢复时间，防止连续冲突
-                    delay(100L + (attempt * 50L))
-                }
-
-                val res = sendOnce(data, timeout)
-                if (res.isSuccess) return res
-
-                lastErr = res.exceptionOrNull() as? Exception
-
-                // 记录一下重试日志，方便排查
-                AsyncBatchLogger.log("send ${data[2]} no ${attempt + 1} second try...", -1)
-            }
-        } else {
+        val attempts = if (maxRetries > 0) maxRetries else 1
+        repeat(attempts) { attempt ->
+            if (attempt > 0) delay(100L + (attempt * 50L))
             val res = sendOnce(data, timeout)
             if (res.isSuccess) return res
-
             lastErr = res.exceptionOrNull() as? Exception
-
+            if (maxRetries > 0) {
+                AsyncBatchLogger.log("send ${data[2]} no ${attempt + 1} second try...", -1)
+            }
         }
-
         return Result.failure(lastErr ?: Exception("执行失败"))
     }
 
@@ -205,17 +250,15 @@ object SerialPortEngine {
         isRunning.set(false)
         _portStatus.value = PortStatus.IDLE
         readJob?.cancel()
-        responseWaiter?.cancel()
-        // 清理所有挂起的请求并抛出取消异常
-        pendingRequests.values.forEach { it.cancel() }
-        pendingRequests.clear()
-
-        responseWaiter?.cancel()
-        responseWaiter = null
-
+        dispatcherJob?.cancel()
+        synchronized(responseLock) {
+            activeLatch?.countDown()
+            activeLatch = null
+            activeExpectedCmd = -1
+            activeResponse = null
+        }
         closeStreams()
         extractor.clear()
-        // 彻底释放硬件
         SerialPortManagerSdk.instance.closeAllSerialPort()
     }
 

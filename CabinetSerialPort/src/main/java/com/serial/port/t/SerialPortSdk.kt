@@ -109,6 +109,9 @@ object SerialPortSdk {
         isInit = true
     }
 
+    fun isSerialReady(): Boolean =
+        isInit && SerialPortEngine.portStatus.value == SerialPortEngine.PortStatus.CONNECTED
+
     private val _flowBusinessSetup = MutableStateFlow(DoorResult(cmd = -1, cmdStatus = false))
     val flowBusinessSetup = _flowBusinessSetup.asStateFlow()
 
@@ -167,12 +170,10 @@ object SerialPortSdk {
         return result
     }
 
-    /** 查询货柜状态 */
+    /** 查询货柜状态（下发 CMD5，一发一收） */
     suspend fun queryStatus(): Result<DoorResult> {
         if (!isInit) return Result.failure(Exception("SDK未初始化"))
-        val result = SerialPortCoreSdk.instance.queryStatus()
-//        _flowBusinessSetup.value = result.getOrNull() ?: DoorResult(cmd = -1, cmdStatus = false)
-        return result
+        return SerialPortCoreSdk.instance.queryStatus()
     }
 
     /** 灯光操作 */

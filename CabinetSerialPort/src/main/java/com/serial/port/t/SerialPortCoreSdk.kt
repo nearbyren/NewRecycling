@@ -11,6 +11,8 @@ import com.serial.port.utils.Loge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * @author: lr
@@ -26,14 +28,17 @@ class SerialPortCoreSdk private constructor() {
 
     companion object {
         val instance by lazy { SerialPortCoreSdk() }
+        /** 一发一收：覆盖下位机处理 + 大帧组包，不重试 */
+        private const val CMD5_TIMEOUT_MS = 8000L
     }
+
+    /** 全局仅允许一枪 CMD5 在飞（轮询与调试页互斥） */
+    private val cmd5Mutex = Mutex()
 
     private suspend fun execute(cmd: Byte, data: ByteArray): Result<ByteArray> {
         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
-        // 如果是 ID=5 (通常是 0x05)
-        return if (cmd == 0x05.toByte()) {
-            // ID=5：只试 1 次，超时给短一点。失败了立刻放锁，让给 1/2/4
-            SerialPortEngine.sendWithRetry(frame, maxRetries = 0, timeout = 800)
+        return if (cmd == SerialPortSdk.CMD5) {
+            SerialPortEngine.sendOnce(frame, CMD5_TIMEOUT_MS)
         } else if (cmd == 0x11.toByte()) {
             // 重量校准需要很长时间
             SerialPortEngine.sendWithRetry(frame, maxRetries = 3, timeout = 20000)
@@ -244,36 +249,45 @@ class SerialPortCoreSdk private constructor() {
         }
     }
 
-    /** 查询货柜状态 */
+    private fun parseCmd5Frame(bytes: ByteArray): DoorResult {
+        val cmd = bytes[SerialPortSdk.CMD_POS]
+        Loge.i("我的数据 cmd $cmd")
+        if (cmd != SerialPortSdk.CMD5) {
+            return DoorResult(containers = mutableListOf(), cmd = 5, cmdByte = SerialPortSdk.CMD5, cmdStatus = false)
+        }
+        val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
+        Loge.i("我的数据 len ${payload.size} ${ByteUtils.toHexStringFastTo(payload)}")
+        if (payload.size < 26) throw Exception("返回数据长度不足")
+        val list = mutableListOf<ContainersResult>()
+        val step = 13
+        val groups = ProtocolCodec.parseGroups(payload, step)
+        groups.forEach { group ->
+            if (group.size < step) return@forEach
+            val weightBytes = group.copyOfRange(1, 5)
+            val rawWeight = ProtocolCodec.bytesToInt(weightBytes)
+            Loge.i("我的数据 for 重量：${rawWeight}")
+            list.add(
+                ContainersResult(
+                    locker = group[0].toUByte().toInt(),
+                    weigh = HexConverter.getWeight(rawWeight),
+                    smokeValue = group[5].toUByte().toInt(),
+                    irStateValue = group[6].toUByte().toInt(),
+                    touCGStatusValue = group[7].toUByte().toInt(),
+                    touJSStatusValue = group[8].toUByte().toInt(),
+                    doorStatusValue = group[9].toUByte().toInt(),
+                    lockStatusValue = group[10].toUByte().toInt(),
+                    xzStatusValue = group[11].toUByte().toInt(),
+                    jsStatusValue = group[12].toUByte().toInt(),
+                ),
+            )
+        }
+        return DoorResult(containers = list, cmdByte = SerialPortSdk.CMD5, cmdStatus = true)
+    }
+
+    /** 查询设备状态：下发 CMD5，一发一收 */
     suspend fun queryStatus(): Result<DoorResult> {
-        return execute(SerialPortSdk.CMD5, byteArrayOf(0x01, 0x01)).mapCatching { bytes ->
-            val cmd = bytes[SerialPortSdk.CMD_POS]
-            Loge.i("我的数据 cmd $cmd")
-            if (cmd != SerialPortSdk.CMD5) DoorResult(containers = mutableListOf(), cmd = 5, cmdByte = SerialPortSdk.CMD5, cmdStatus = false)
-            val payload = ProtocolCodec.getSafePayload(bytes) ?: throw Exception("解析Payload失败")
-            Loge.i("我的数据 len ${payload.size} ${ByteUtils.toHexStringFastTo(payload)}")
-            if (payload.size < 26) throw Exception("返回数据长度不足")
-            val list = mutableListOf<ContainersResult>()
-            val STEP = 13 // 每组格口数据占据 14 字节
-            // 使用之前 ProtocolCodec 中的分组工具
-            val groups = ProtocolCodec.parseGroups(payload, STEP)
-            groups.forEach { group ->
-                if (group.size < STEP) return@forEach // 防护处理
-                // 1. 提取重量 (index 1 到 4，共 4 字节)
-                val weightBytes = group.copyOfRange(1, 5)
-                val rawWeight = ProtocolCodec.bytesToInt(weightBytes)
-                Loge.i("我的数据 for 重量：${rawWeight}")
-                // 2. 封装对象
-                list.add(
-                    ContainersResult(
-                        locker = group[0].toUByte().toInt(), weigh = HexConverter.getWeight(rawWeight),
-                        // 状态位从 index 5 开始
-                        smokeValue = group[5].toUByte().toInt(), irStateValue = group[6].toUByte().toInt(), touCGStatusValue = group[7].toUByte().toInt(), touJSStatusValue = group[8].toUByte().toInt(), doorStatusValue = group[9].toUByte().toInt(), lockStatusValue = group[10].toUByte().toInt(), xzStatusValue = group[11].toUByte().toInt(), jsStatusValue = group[12].toUByte().toInt()
-                        // 如果还有第 13 位，可以在此继续映射
-                    )
-                )
-            }
-            DoorResult(containers = list, cmdByte = SerialPortSdk.CMD5, cmdStatus = true)
+        return cmd5Mutex.withLock {
+            execute(SerialPortSdk.CMD5, byteArrayOf(0x01, 0x01)).mapCatching { parseCmd5Frame(it) }
         }
     }
 
