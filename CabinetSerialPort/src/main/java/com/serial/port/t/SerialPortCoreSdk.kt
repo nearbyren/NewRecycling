@@ -11,6 +11,7 @@ import com.serial.port.utils.Loge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -29,7 +30,7 @@ class SerialPortCoreSdk private constructor() {
     companion object {
         val instance by lazy { SerialPortCoreSdk() }
         /** 一发一收：覆盖下位机处理 + 大帧组包，不重试 */
-        private const val CMD5_TIMEOUT_MS = 8000L
+        private const val CMD5_TIMEOUT_MS = 12000L
     }
 
     /** 全局仅允许一枪 CMD5 在飞（轮询与调试页互斥） */
@@ -52,6 +53,11 @@ class SerialPortCoreSdk private constructor() {
         val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
         return SerialPortEngine.sendWithRetry(frame)
             ?: Result.failure(Exception("Communication VM is null"))
+    }
+
+    fun executeChipFlow(cmd: Byte, data: ByteArray): Flow<ByteArray> {
+        val frame = ProtocolCodec.encode(cmd, SerialPortSdk.ADDR, data)
+        return SerialPortEngine.sendAndObserve(frame)
     }
 
 

@@ -4681,7 +4681,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
 
     /** 投递/清运结束时间，用于状态轮询与串口业务错峰 */
     private var lastSerialBusinessEndMs = 0L
-    private val containersPollIntervalMs = 5000L
+    private val containersPollIntervalMs = 5500L
     private val containersPollFailIntervalMs = 8000L
     private val serialBusinessCooldownMs = 1200L
     private val containersQueryInFlight = AtomicBoolean(false)
@@ -4723,7 +4723,8 @@ class CabinetVM @Inject constructor() : ViewModel() {
                             val queryResult = SerialPortSdk.queryStatus()
                             if (queryResult.isSuccess) {
                                 nextDelayMs = containersPollIntervalMs
-                                applyContainersStatusResult(queryResult.getOrThrow())
+                                val doorResult = queryResult.getOrThrow()
+                                applyContainersStatusResult(doorResult)
                             } else {
                                 nextDelayMs = containersPollFailIntervalMs
                                 Loge.e("业务流：轮询 onFailure: ${queryResult.exceptionOrNull()?.message}")

@@ -12,7 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.PriorityBlockingQueue
 
 class CommandScheduler(private val scope: CoroutineScope) {
@@ -37,9 +36,7 @@ class CommandScheduler(private val scope: CoroutineScope) {
 
         // 增加 try-catch 保护，防止任务内部崩溃导致整个调度器停止
         val result = try {
-          withTimeoutOrNull(2000) {
-            task.action()
-          } ?: Result.failure(Exception("串口响应超时"))
+          task.action()
         } catch (e: Exception) {
           Result.failure(e)
         }

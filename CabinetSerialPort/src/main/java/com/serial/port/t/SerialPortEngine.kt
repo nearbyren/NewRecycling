@@ -2,105 +2,79 @@ package com.serial.port.t
 
 import com.serial.port.utils.AsyncBatchLogger
 import com.serial.port.utils.ByteUtils
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * 串口：独立读线程 + 单协程事务队列 + CountDownLatch 等待回包。
- * 读线程与事务线程通过 latch 同步，避免 CompletableDeferred 与帧被半包逻辑误删。
+ * 串口：独立读线程 + Flow 分发完整帧。
+ * 发送只负责写串口，业务层通过 [frames] / [sendAndObserve] 监听回包。
  */
 object SerialPortEngine {
     enum class PortStatus { IDLE, CONNECTING, CONNECTED, ERROR }
 
+    data class SerialFrame(
+        val seq: Long,
+        val cmdId: Int,
+        val packet: ByteArray,
+        val timestamp: Long = System.currentTimeMillis(),
+    )
+
     private val _portStatus = MutableStateFlow(PortStatus.IDLE)
     val portStatus = _portStatus.asStateFlow()
+
+    private val _frames = MutableStateFlow<SerialFrame?>(null)
+    val frames = _frames.asStateFlow()
 
     private val isRunning = AtomicBoolean(false)
     private var fis: FileInputStream? = null
     private var fos: FileOutputStream? = null
 
-    private val requestSeq = AtomicLong(0)
-    private val responseLock = Any()
-
-    @Volatile
-    private var activeLatch: CountDownLatch? = null
-
-    @Volatile
-    private var activeExpectedCmd: Int = -1
-
-    @Volatile
-    private var activeResponse: ByteArray? = null
-
-    @Volatile
-    private var activeSeq: Long = -1L
-
-    private data class SerialTransaction(
-        val frame: ByteArray,
-        val expectedCmdId: Int,
-        val timeoutMs: Long,
-        val seq: Long,
-        val result: CompletableDeferred<Result<ByteArray>>,
-    )
-
-    private val transactionChannel = Channel<SerialTransaction>(Channel.UNLIMITED)
+    private val responseSeq = AtomicLong(0)
+    private val sendSeq = AtomicLong(0)
+    private val writeMutex = Mutex()
 
     private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var readJob: Job? = null
-    private var dispatcherJob: Job? = null
 
     private val extractor = FrameExtractorNew { packet ->
         val cmdId = packet[2].toInt() and 0xFF
-        synchronized(responseLock) {
-            val latch = activeLatch
-            if (latch != null && cmdId == activeExpectedCmd && activeResponse == null) {
-                activeResponse = packet
-                latch.countDown()
-                AsyncBatchLogger.log(
-                    "recv [$cmdId] seq=$activeSeq ${ByteUtils.toHexStringFastTo(packet)}",
-                    cmdId,
-                )
-            } else {
-                AsyncBatchLogger.log(
-                    "port read orphan cmd=$cmdId expect=$activeExpectedCmd seq=$activeSeq",
-                    -1,
-                )
-            }
-        }
-    }
-
-    private fun ensureDispatcher() {
-        if (dispatcherJob?.isActive == true) return
-        dispatcherJob = engineScope.launch {
-            for (tx in transactionChannel) {
-                processTransaction(tx)
-            }
-        }
+        val frame = SerialFrame(
+            seq = responseSeq.incrementAndGet(),
+            cmdId = cmdId,
+            packet = packet,
+        )
+        _frames.value = frame
+        AsyncBatchLogger.log(
+            "recv [$cmdId] seq=${frame.seq} ${ByteUtils.toHexStringFastTo(packet)}",
+            cmdId,
+        )
     }
 
     fun start(path: String, baud: Int) {
         if (isRunning.getAndSet(true)) {
-            ensureDispatcher()
             return
         }
-        ensureDispatcher()
         readJob = engineScope.launch {
             var retryDelay = 1000L
             while (isActive && isRunning.get()) {
@@ -147,116 +121,71 @@ object SerialPortEngine {
         }
     }
 
-    /** 丢弃驱动层残留字节（上一枪迟到的回包），禁止进解析器，避免误绑到本枪 latch */
-    private fun discardInputBuffer() {
-        val available = fis?.available() ?: 0
-        if (available > 0) {
-            val buf = ByteArray(available)
-            fis?.read(buf)
-            AsyncBatchLogger.log(
-                "read discard stale $available byte before send",
-                -1,
-            )
-        }
-    }
+    /** 仅 readLoop 读 fis；事务线程禁止 read，避免与读线程抢字节导致偶发无 [0] */
+    private const val PRE_SEND_DRAIN_MS = 80L
+    private const val POST_WRITE_SETTLE_MS = 40L
 
-    private suspend fun processTransaction(tx: SerialTransaction) {
-        val msgId = tx.expectedCmdId
-        withContext(Dispatchers.IO) {
-            extractor.clear()
-            discardInputBuffer()
-            val latch = CountDownLatch(1)
-            synchronized(responseLock) {
-                activeExpectedCmd = msgId
-                activeLatch = latch
-                activeResponse = null
-                activeSeq = tx.seq
-            }
-            try {
-                AsyncBatchLogger.log(
-                    "send [$msgId] seq=${tx.seq} write ${ByteUtils.toHexStringFastTo(tx.frame)}",
-                    msgId,
-                )
-                fos?.write(tx.frame)
-                fos?.flush()
-                val got = latch.await(tx.timeoutMs, TimeUnit.MILLISECONDS)
-                val packet = synchronized(responseLock) { activeResponse }
-                if (got && packet != null) {
-                    AsyncBatchLogger.log("send [$msgId] seq=${tx.seq} ok", msgId)
-                    tx.result.complete(Result.success(packet))
-                } else {
-                    AsyncBatchLogger.log(
-                        "send [$msgId] seq=${tx.seq} fail: timeout got=$got hasPacket=${packet != null}",
-                        msgId,
-                    )
-                    tx.result.complete(
-                        Result.failure(TimeoutException("cmd=$msgId seq=${tx.seq} timeout=${tx.timeoutMs}ms")),
-                    )
-                }
-            } catch (e: Exception) {
-                AsyncBatchLogger.log(
-                    "send [$msgId] seq=${tx.seq} fail: ${e.javaClass.simpleName} ${e.message}",
-                    msgId,
-                )
-                tx.result.complete(Result.failure(e))
-            } finally {
-                synchronized(responseLock) {
-                    if (activeLatch === latch) {
-                        activeLatch = null
-                        activeExpectedCmd = -1
-                        activeResponse = null
-                        activeSeq = -1L
-                    }
-                }
-                // 不在此处 clear 解析器/抽干 fis：迟到的合法回包留给 discardInputBuffer 在下一枪开头丢掉
-            }
-        }
-    }
-
-    suspend fun sendOnce(data: ByteArray, timeout: Long = 5000): Result<ByteArray> {
+    suspend fun send(data: ByteArray): Result<Unit> {
         if (_portStatus.value != PortStatus.CONNECTED) {
             return Result.failure(IOException("串口未连接"))
         }
-        val seq = requestSeq.incrementAndGet()
-        val result = CompletableDeferred<Result<ByteArray>>()
-        transactionChannel.send(
-            SerialTransaction(
-                frame = data,
-                expectedCmdId = data[2].toInt() and 0xFF,
-                timeoutMs = timeout,
-                seq = seq,
-                result = result,
-            ),
+        val msgId = data[2].toInt() and 0xFF
+        val seq = sendSeq.incrementAndGet()
+        return withContext(Dispatchers.IO) {
+            extractor.clear()
+            writeMutex.withLock {
+                try {
+                    delay(PRE_SEND_DRAIN_MS)
+                    AsyncBatchLogger.log(
+                        "send [$msgId] seq=$seq write ${ByteUtils.toHexStringFastTo(data)}",
+                        msgId,
+                    )
+                    fos?.write(data)
+                    fos?.flush()
+                    delay(POST_WRITE_SETTLE_MS)
+                    Result.success(Unit)
+                } catch (e: Exception) {
+                    AsyncBatchLogger.log(
+                        "send [$msgId] seq=$seq fail: ${e.javaClass.simpleName} ${e.message}",
+                        msgId,
+                    )
+                    Result.failure(e)
+                }
+            }
+        }
+    }
+
+    fun observeCommand(cmdId: Int): Flow<ByteArray> =
+        frames
+            .filter { it?.cmdId == cmdId }
+            .map { it!!.packet }
+
+    fun sendAndObserve(data: ByteArray): Flow<ByteArray> = flow {
+        val startSeq = responseSeq.get()
+        val sendResult = send(data)
+        sendResult.getOrThrow()
+        val cmdId = data[2].toInt() and 0xFF
+        emitAll(
+            frames
+                .filter { it != null && it.seq > startSeq && it.cmdId == cmdId }
+                .map { it!!.packet },
         )
-        return result.await()
+    }
+
+    suspend fun sendOnce(data: ByteArray, timeout: Long = 5000): Result<ByteArray> {
+        return runCatching {
+            sendAndObserve(data).first()
+        }
     }
 
     suspend fun sendWithRetry(data: ByteArray, maxRetries: Int = 5, timeout: Long = 2000): Result<ByteArray> {
-        var lastErr: Exception? = null
-        val attempts = if (maxRetries > 0) maxRetries else 1
-        repeat(attempts) { attempt ->
-            if (attempt > 0) delay(100L + (attempt * 50L))
-            val res = sendOnce(data, timeout)
-            if (res.isSuccess) return res
-            lastErr = res.exceptionOrNull() as? Exception
-            if (maxRetries > 0) {
-                AsyncBatchLogger.log("send ${data[2]} no ${attempt + 1} second try...", -1)
-            }
-        }
-        return Result.failure(lastErr ?: Exception("执行失败"))
+        return sendOnce(data, timeout)
     }
 
     fun stop() {
         isRunning.set(false)
         _portStatus.value = PortStatus.IDLE
         readJob?.cancel()
-        dispatcherJob?.cancel()
-        synchronized(responseLock) {
-            activeLatch?.countDown()
-            activeLatch = null
-            activeExpectedCmd = -1
-            activeResponse = null
-        }
         closeStreams()
         extractor.clear()
         SerialPortManagerSdk.instance.closeAllSerialPort()
