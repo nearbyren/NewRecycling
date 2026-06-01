@@ -434,7 +434,17 @@ class NavTouDoubleActivity : AppCompatActivity() {
 
                     CmdValue.CMD_OPEN_DOOR -> {
                         val doorOpenModel = Gson().fromJson(json, DoorOpenBean::class.java)
-                        val doorGex = cabinetVM.doorGeX
+                        val cabinId = doorOpenModel.cabinId
+                        var doorGex = -1
+                        val list = cabinetVM.containersDB
+                        list.forEachIndexed { index, stateEntity ->
+                            if (cabinId == stateEntity.cabinId && index == 0) {
+                                doorGex = CmdCode.GE1
+                            } else if (cabinId == stateEntity.cabinId && index == 1) {
+                                doorGex = CmdCode.GE2
+                            }
+                        }
+                        if (doorGex == -1) return@collect
                         var a = 0
                         var b = 0
                         var c = 0

@@ -4644,7 +4644,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
                     weightDuringOpeningValue = weightDuringOpening
                     weightAfterClosingValue = weightAfterClosing
                 })
-                if (flowEnd && weight!=null) {
+                if (flowEnd && weight != null) {
                     val doorClose = DoorCloseBean().apply {
                         cmd = CmdValue.CMD_CLOSE_DOOR
                         transId = openModel.transId
@@ -4676,7 +4676,7 @@ class CabinetVM @Inject constructor() : ViewModel() {
             }
         }
 
-    private var containersDB = mutableListOf<StateEntity>()
+    var containersDB = mutableListOf<StateEntity>()
 
 
     private var containersJob: Job? = null
